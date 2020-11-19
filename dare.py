@@ -90,6 +90,8 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, exclude):
         file_path = i[46]
         # get sample name
         sample_name = i[7]
+        # get parent sample name
+        parent_sample = i[9].split(':')[0]
         # skip if project provided and not in record
         if project and project != i[1]:
             continue
@@ -121,14 +123,18 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, exclude):
         # check if library aliases are provided
         if library_aliases:
             # skip libraries not included in file
-            if library not in library_aliases:
+            if library not in library_aliases and parent_sample not in library_aliases:
                 continue
             else: 
                 # skip libraries if aliquot ID is provided and incorrect
-                if library_aliases[library] and library_aliases[library] != aliquot:
-                    continue
+                if library in library_aliases:
+                    if library_aliases[library] and library_aliases[library] != aliquot:
+                        continue
+                elif parent_sample in library_aliases:
+                    if library_aliases[parent_sample] and library_aliases[parent_sample] != aliquot:
+                        continue
         # check if sample or library is excluded 
-        if sample_name in exclude or library in exclude:
+        if sample_name in exclude or library in exclude or parent_sample in exclude:
             if run_id not in K:
                 K[run_id] = []
             K[run_id].append(file_path)
@@ -189,7 +195,7 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
 
 def link_files(args):
     '''
-    (str | None, list | None, str | None, str, bool, str, str, dict) -> None
+    (str | None, list | None, str | None, str, bool, str, str, str, str | list, str) -> None
     
     Parameters
     ----------
@@ -207,10 +213,10 @@ def link_files(args):
     - nomiseq (bool): Exclude MiSeq runs if activated
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
-    - run_name (str): Specifies the run folder name. Run Id or run.withhold as run folder name of not specified. 
-    - keywords (str): Optional run name parameter. Valid option: run_name. Replaces run ID
+    - run_name (str): Specifies the run folder name. Run Id or run.withhold as run folder name if not specified. 
     - exclude (str | list): File with sample name or libraries to exclude from the release,
                             or a list of sample name or libraries
+    - suffix (str): Indicates map for fastqs or datafiles in the output file name
     '''
     
     try:
@@ -308,7 +314,7 @@ def write_map_file(projects_dir, project_name, run, L, suffix):
     
 def map_external_ids(args):
     '''
-    (str | None, list | None, str | None, str, bool, str, str, str) -> None
+    (str | None, list | None, str | None, str, bool, str, str, str | list, str) -> None
 
     Parameters
     ----------    
@@ -326,6 +332,8 @@ def map_external_ids(args):
     - nomiseq (bool): Exclude MiSeq runs if activated
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
+    - exclude (str | list): File with sample name or libraries to exclude from the release,
+                            or a list of sample name or libraries
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     '''
 
