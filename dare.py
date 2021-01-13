@@ -440,7 +440,10 @@ def mark_files_nabu(args):
     # mark files il nabu
     for i in swids:
         print(i)
-        subprocess.call('perl /.mounts/labs/gsiprojects/gsi/Nabu_DataSignoff/nabu.pl --post --swid {0} --status {1} --user {2}'.format(i, args.release.upper(), args.user), shell=True)
+        if args.comment:
+            subprocess.call('perl /.mounts/labs/gsiprojects/gsi/Nabu_DataSignoff/nabu.pl --post --swid {0} --status {1} --user {2} --comment \'{3}\''.format(i, args.release.upper(), args.user, args.comment), shell=True)
+        else:
+            subprocess.call('perl /.mounts/labs/gsiprojects/gsi/Nabu_DataSignoff/nabu.pl --post --swid {0} --status {1} --user {2}'.format(i, args.release.upper(), args.user), shell=True)
     
     
 if __name__ == '__main__':
@@ -485,6 +488,7 @@ if __name__ == '__main__':
     n_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
     n_parser.add_argument('-rl', '--release', dest='release', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
+    n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
     n_parser.set_defaults(func=mark_files_nabu)
     
     # get arguments from the command line
