@@ -410,6 +410,7 @@ def mark_files_nabu(args):
                      - pass: files that are released
                      - fail: files that are withheld
     - user (str): User name to appear in Nabu for each released or whitheld file
+    - comment (str): A comment to used to tag the file. For instance the Jira ticket 
     '''
     
     # make a list of files in directory
