@@ -466,7 +466,7 @@ if __name__ == '__main__':
     l_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     l_parser.add_argument('-rn', '--run_name', dest='run_name', help='Optional run name parameter. Replaces run ID and run.withhold folder names if used')
     l_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
-    l_parser.add_argument('-s', '--suffix', dest='suffix', choices=['fastqs', 'datafiles'], help='Indicates if fastqs or datafiles are released by adding suffix fastqs or datafiles in the directory name', required=True)
+    l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
@@ -481,7 +481,7 @@ if __name__ == '__main__':
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     m_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
-    m_parser.add_argument('-s', '--suffix', dest='suffix', choices=['fastqs', 'datafiles'], help='Indicates if fastqs or datafiles are released by adding suffix fastqs or datafiles in the directory name', required=True)
+    m_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
