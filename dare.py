@@ -150,7 +150,7 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
                 continue
         else:
             # skip if not provided workflow
-            if workflow != i[30]:
+            if workflow.lower() != i[30].lower():
                 continue
         # check if file list is provided
         if files_release:
