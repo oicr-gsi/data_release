@@ -183,6 +183,8 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
 
     # select the files corresponding to the most recent workflow ID for each run
     for i in D:
+        # remove duplicates due to multiple records of full paths because of merging workflows
+        D[i] = list(set(D[i]))    
         L = select_most_recent_workflow(D[i])
         # remove duplicate files that are not the most recent
         toremove = [j for j in D[i] if j not in L]
