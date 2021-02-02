@@ -44,14 +44,45 @@ def get_libraries(library_file):
     
 
 
-def extract_files(project, runs, workflow, nomiseq, library_aliases, file_paths, exclude):
+def select_most_recent_workflow(L):
+    '''
+    (list) -> list
+    
+    Parameters
+    ----------
+    
+    Returns a list of file paths corresponding to the most recent workflow ID for each file
+        
+    - L (list): List of file paths
+    '''
+    
+    # create a dict to store workflow accession and file path for each file name
+    d = {}
+    
+    for i in L:
+        filename = os.path.basename(i)
+        if filename not in d:
+            d[filename] = []
+        k = i.split('/')
+        for j in k:
+            if j.isdigit():
+                d[filename].append([int(j), i])
+    # get the most recent workflow accession id and corresponding file
+    for i in d:
+        d[i].sort()
+    # keep only the files corresponding to the most recent workflow run
+    files = [d[i][-1][1] for i in d]
+    return files
+
+
+def extract_files(project, runs, workflow, nomiseq, library_aliases, files_release, exclude):
     '''
     (str, list, str, bool, dict, list, list) -> (dict, dict)
   
     Returns a tuple with dictionaries with files extracted from FPR and their corresponding run
-    respectively from release and withheld from release
-    
-        
+    respectively from release and withheld from release. Returns the files corresponding to the
+    most recent workflow iteration if duplicate files
+            
     Parameters
     ----------
     - project (str): Project name as it appears in File Provenance Report or empty string.
@@ -63,7 +94,7 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, file_paths,
     - nomiseq (bool): Exclude MiSeq runs if True
     - library_aliases (dict): Dictionary with library alias as key and library aliquot ID as value or the empty string.
                               Can be an empty dictionary
-    - file_paths (list): List of file paths to include
+    - files_release (list): List of file names to release
     - exclude (list): List of samples or libraries to exclude from release
     '''
     
@@ -122,9 +153,9 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, file_paths,
             if workflow != i[30]:
                 continue
         # check if file list is provided
-        if file_paths:
+        if files_release:
             # skip files not in the allow list
-            if file_path not in file_paths:
+            if os.path.basename(file_path) not in files_release:
                 continue
         # check if library aliases are provided
         if library_aliases:
@@ -150,6 +181,14 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, file_paths,
                 D[run_id] = []
             D[run_id].append(file_path)
 
+    # select the files corresponding to the most recent workflow ID for each run
+    for i in D:
+        L = select_most_recent_workflow(D[i])
+        # remove duplicate files that are not the most recent
+        toremove = [j for j in D[i] if j not in L]
+        for j in toremove:
+            D[i].remove(j)
+    
     return D, K
 
 
@@ -243,15 +282,16 @@ def link_files(args):
     # get the list of allowed file paths if exists
     if args.files:
         infile = open(args.files)
-        file_paths = infile.read().rstrip().split('\n')
+        files_names = infile.read().rstrip().split('\n')
+        files_names = list(map(lambda x: os.path.basename(x), files_names))
         infile.close()
     else:
-        file_paths = []
+        files_names = []
         
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, file_paths, exclude)
+    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
     
     # link files to project dir
     if args.suffix == 'fastqs':
@@ -371,15 +411,16 @@ def map_external_ids(args):
     # get the list of allowed file paths if exists
     if args.files:
         infile = open(args.files)
-        file_paths = infile.read().rstrip().split('\n')
+        files_names = infile.read().rstrip().split('\n')
+        files_names = list(map(lambda x: os.path.basename(x), files_names))
         infile.close()
     else:
-        file_paths = []
+        files_names = []
 
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, file_paths, exclude)
+    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
     
     for run in files_release:
         # make a list of items to write to file
