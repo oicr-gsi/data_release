@@ -44,9 +44,9 @@ def get_libraries(library_file):
     
 
 
-def extract_files(project, runs, workflow, nomiseq, library_aliases, exclude):
+def extract_files(project, runs, workflow, nomiseq, library_aliases, file_paths, exclude):
     '''
-    (str, list, str, bool, dict, list) -> (dict, dict)
+    (str, list, str, bool, dict, list, list) -> (dict, dict)
   
     Returns a tuple with dictionaries with files extracted from FPR and their corresponding run
     respectively from release and withheld from release
@@ -63,6 +63,7 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, exclude):
     - nomiseq (bool): Exclude MiSeq runs if True
     - library_aliases (dict): Dictionary with library alias as key and library aliquot ID as value or the empty string.
                               Can be an empty dictionary
+    - file_paths (list): List of file paths to include
     - exclude (list): List of samples or libraries to exclude from release
     '''
     
@@ -119,6 +120,11 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, exclude):
         else:
             # skip if not provided workflow
             if workflow != i[30]:
+                continue
+        # check if file list is provided
+        if file_paths:
+            # skip files not in the allow list
+            if file_path not in file_paths:
                 continue
         # check if library aliases are provided
         if library_aliases:
@@ -195,7 +201,7 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
 
 def link_files(args):
     '''
-    (str | None, list | None, str | None, str, bool, str, str, str, str | list, str) -> None
+    (str | None, str | None, list | None, str | None, str, bool, str, str, str, str | list, str) -> None
     
     Parameters
     ----------
@@ -203,6 +209,7 @@ def link_files(args):
                               The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM).
                               The second and optional column is the library aliquot ID (eg. LDI32439).
                               Only the samples with these library aliases are used if provided'
+    - files (str | None): Path to file with file names to be released 
     - runs (list | None): List of run IDs. Include one or more run Id separated by white space.
                           Other runs are ignored if provided
     - project (str | None): Project name as it appears in File Provenance Report.
@@ -233,10 +240,18 @@ def link_files(args):
     else:
         libraries = {}
 
+    # get the list of allowed file paths if exists
+    if args.files:
+        infile = open(args.files)
+        file_paths = infile.read().rstrip().split('\n')
+        infile.close()
+    else:
+        file_paths = []
+        
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, exclude)
+    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, file_paths, exclude)
     
     # link files to project dir
     if args.suffix == 'fastqs':
@@ -314,7 +329,7 @@ def write_map_file(projects_dir, project_name, run, L, suffix):
     
 def map_external_ids(args):
     '''
-    (str | None, list | None, str | None, str, bool, str, str, str | list, str) -> None
+    (str | None, str | None, list | None, str | None, str, bool, str, str, str | list, str) -> None
 
     Parameters
     ----------    
@@ -322,6 +337,7 @@ def map_external_ids(args):
                               The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM).
                               The second and optional column is the library aliquot ID (eg. LDI32439).
                               Only the samples with these library aliases are used if provided'
+    - files (str | None): Path to file with file names to be released 
     - runs (list | None): List of run IDs. Include one or more run Id separated by white space.
                           Other runs are ignored if provided
     - project (str | None): Project name as it appears in File Provenance Report.
@@ -351,10 +367,19 @@ def map_external_ids(args):
     else:
         libraries = {}
 
+
+    # get the list of allowed file paths if exists
+    if args.files:
+        infile = open(args.files)
+        file_paths = infile.read().rstrip().split('\n')
+        infile.close()
+    else:
+        file_paths = []
+
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, exclude)
+    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, file_paths, exclude)
     
     for run in files_release:
         # make a list of items to write to file
@@ -467,6 +492,7 @@ if __name__ == '__main__':
     l_parser.add_argument('-rn', '--run_name', dest='run_name', help='Optional run name parameter. Replaces run ID and run.withhold folder names if used')
     l_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
     l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
+    l_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
@@ -482,6 +508,7 @@ if __name__ == '__main__':
     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     m_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
     m_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
+    m_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
