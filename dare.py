@@ -44,6 +44,29 @@ def get_libraries(library_file):
     
 
 
+
+def get_workflow_id(file_path):
+    '''
+    (str) -> int
+    
+    Parameters
+    ----------
+    
+    Returns the workflow id from the file path
+           
+    - file_path (str): File path
+    '''
+    
+    workflow = -1
+    
+    k = file_path.split('/')
+    for j in k:
+        if j.isdigit():
+            workflow = int(j)
+    assert workflow != -1
+    return workflow
+    
+
 def select_most_recent_workflow(L):
     '''
     (list) -> list
@@ -63,10 +86,8 @@ def select_most_recent_workflow(L):
         filename = os.path.basename(i)
         if filename not in d:
             d[filename] = []
-        k = i.split('/')
-        for j in k:
-            if j.isdigit():
-                d[filename].append([int(j), i])
+        workflow = get_workflow_id(i)
+        d[filename].append([workflow, i])
     # get the most recent workflow accession id and corresponding file
     for i in d:
         d[i].sort()
@@ -77,11 +98,11 @@ def select_most_recent_workflow(L):
 
 def extract_files(project, runs, workflow, nomiseq, library_aliases, files_release, exclude):
     '''
-    (str, list, str, bool, dict, list, list) -> (dict, dict)
+    (str, list, str, bool, dict, list, list) -> (dict, dict, dict)
   
     Returns a tuple with dictionaries with files extracted from FPR and their corresponding run
-    respectively from release and withheld from release. Returns the files corresponding to the
-    most recent workflow iteration if duplicate files
+    respectively from release and withheld from release, and a dictionary with md5sums of the release files.
+    Returns the files corresponding to the most recent workflow iteration if duplicate files
             
     Parameters
     ----------
@@ -101,6 +122,9 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
     # create a dict {run: [files]}
     D, K = {}, {}
     
+    # create a dict {file: md5sum}
+    M = {}
+        
     # make a list of records
     records = []
     
@@ -180,8 +204,14 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
             if run_id not in D:
                 D[run_id] = []
             D[run_id].append(file_path)
+            # record md5sum
+            if run_id not in M:
+                M[run_id] = []
+            M[run_id].append([file_path, i[47]]) 
+
 
     # select the files corresponding to the most recent workflow ID for each run
+    # get the corresponding md5sums of the file
     for i in D:
         # remove duplicates due to multiple records of full paths because of merging workflows
         D[i] = list(set(D[i]))    
@@ -190,8 +220,12 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
         toremove = [j for j in D[i] if j not in L]
         for j in toremove:
             D[i].remove(j)
+        # remove files not selected
+        to_remove = [j for j in M[i] if j[0] not in L]
+        for j in to_remove:
+            M[i].remove(j)
     
-    return D, K
+    return D, K, M
 
 
 
@@ -293,13 +327,22 @@ def link_files(args):
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    files_release, files_withhold, md5sums = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
     
     # link files to project dir
     if args.suffix == 'fastqs':
         assert args.workflow == 'bcl2fastq' or args.workflow.lower() == 'casava'
     generate_links(files_release, files_withhold, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
         
+    # write summary md5sums
+    run_dir = os.path.join(args.projects_dir, args.project_name)
+    os.makedirs(run_dir, exist_ok=True)
+    for i in md5sums:
+        filename = i + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
+        newfile = open(os.path.join(run_dir, filename), 'w')
+        for j in md5sums[i]:
+            newfile.write('\t'.join([os.path.basename(j[0]), j[1]]) +'\n')
+        newfile.close()    
     
 def map_file_ids(L):
     '''
@@ -422,7 +465,7 @@ def map_external_ids(args):
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    files_release, files_withhold, md5sums = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
     
     for run in files_release:
         # make a list of items to write to file
