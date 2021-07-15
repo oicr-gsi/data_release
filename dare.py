@@ -625,7 +625,7 @@ def parse_qc_etl(bamqc_table, project):
             barcodes = i[header.index('Barcodes')]
             lane = i[header.index('Lane Number')]
             sample = i[header.index('sample')]
-            percent_duplicate = i[header.index('mark duplicates_PERCENT_DUPLICATION')]
+            percent_duplicate = float(i[header.index('mark duplicates_PERCENT_DUPLICATION')])
             
             total_bases_on_target = int(i[header.index('total bases on target')])
             total_reads = int(i[header.index('total reads')])
@@ -682,12 +682,33 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                             # add coverage
                             FPR_info[file]['coverage'] = round(d['coverage'] * 100, 2)
                             # add percent duplicate
-                            FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'] * 100, 2)
+                            FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'], 2)
                             # add on_target
                             if d['on_target'] > 100:
                                 FPR_info[file]['on_target'] = 100
                             else:
                                 FPR_info[file]['on_target'] = round(d['on_target'], 2)
+
+
+def rename_metrics_FPR(FPR_info):
+    '''
+    
+    
+    '''
+    
+    for file in FPR_info:
+        FPR_info[file]['duplicate (%)'] =  FPR_info[file]['percent_duplicate']
+        FPR_info[file]['library'] =  FPR_info[file]['lid']
+        FPR_info[file]['reads'] =  FPR_info[file]['read_count']
+        
+        for  i in ['percent_duplicate', 'lid', 'read_count']:
+            del FPR_info[file][i]
+    return FPR_info                        
+    
+
+
+
+
                     
 
 def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
@@ -1133,13 +1154,22 @@ def write_report(args):
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
     # update FPR info with QC info from bamqc table
     update_information_released_fastqs(FPR_info, bamqc_info)
+
+    # rename QC metrics for tables
+    FPR_info = rename_metrics_FPR(FPR_info)
     
     # count the number of released fastqs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
     
     # generate plots for coverage, read count by instrument
     # group read_counts across runs for each instrument
-    read_counts = group_qc_metric_by_instrument(FPR_info, 'read_count')
+    
+    #read_counts = group_qc_metric_by_instrument(FPR_info, 'read_count')
+    
+    read_counts = group_qc_metric_by_instrument(FPR_info, 'reads')
+    
+    
+    
     # group coverage across runs for each instrument
     coverage = group_qc_metric_by_instrument(FPR_info, 'coverage')
     # make a list of possible sequencers
@@ -1181,8 +1211,17 @@ def write_report(args):
     
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-    header = ['ID', 'lid', 'run', 'barcode', 'external_id']       
-    column_size = {'ID': '10%', 'lid': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
+    #header = ['ID', 'lid', 'run', 'barcode', 'external_id']       
+    #column_size = {'ID': '10%', 'lid': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
+    
+    
+    
+    header = ['ID', 'library', 'run', 'barcode', 'external_id']       
+    column_size = {'ID': '10%', 'library': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
+    
+    
+    
+    
     Text.append(generate_table(FPR_info, header, column_size))            
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
@@ -1193,8 +1232,19 @@ def write_report(args):
  
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    header = ['ID', 'lid', 'run', 'read_count', 'coverage', 'on_target']       
-    column_size = {'ID': '10%', 'lid': '30%', 'run': '30%', 'read_count': '10%', 'coverage': '10%', 'on_target': '10%'}
+    #header = ['ID', 'lid', 'run', 'read_count', 'coverage', 'on_target']       
+    #column_size = {'ID': '10%', 'lid': '30%', 'run': '30%', 'read_count': '10%', 'coverage': '10%', 'on_target': '10%'}
+    
+    #header = ['ID', 'lid', 'run', 'read_count', 'coverage', 'on_target', 'percent_duplicate']       
+    #column_size = {'ID': '10%', 'lid': '25%', 'run': '30%', 'read_count': '10%', 'coverage': '10%', 'on_target': '10%', 'percent_duplicate': '5%'}
+    
+    
+    header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
+    column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+    
+    
+    
+    
     Text.append(generate_table(FPR_info, header, column_size))            
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
