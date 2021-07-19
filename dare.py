@@ -1110,9 +1110,9 @@ def sort_metrics(FPR_info, instrument, metric1, metric2):
     # group metric 1 by instrument
     D1 = group_qc_metric_by_instrument(FPR_info, metric1)
     # make a sorted list of metric1 in ascending order
-    Q1 = [i[0] for i in D1[instrument]]
+    Q1 = [i[0] for i in D1[instrument] if 'R1' in i[1]]
     # make a list of files corresponding to the sorted metric1 values
-    files = [i[1] for i in D1[instrument]]
+    files = [i[1] for i in D1[instrument] if 'R1' in i[1]]
     
     # group metric 2 by instrument
     D2 = group_qc_metric_by_instrument(FPR_info, metric2)
