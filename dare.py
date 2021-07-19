@@ -711,7 +711,83 @@ def rename_metrics_FPR(FPR_info):
 
                     
 
-def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
+#def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
+#    '''
+#    
+#    
+#    
+#    
+#    
+#    
+#    '''
+#    
+#    # create ax in figure to plot data 1
+#    ax = figure.add_subplot(row, col, pos)
+#    
+#    # plot data 
+#    xcoord = [i/10 for i in range(len(Data))]
+#    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = 'pink', markeredgecolor = 'grey', markeredgewidth = 1, markersize = 10)
+#
+#    # compute median and mean of the data
+#    median, mean = np.median(Data), np.mean(Data)
+#    
+#    # plot median and mean. use zorder to bring line to background
+#    ax.axhline(y=mean, color='r', linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+#    ax.axhline(y=median, color='blue', linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+#    
+#    # write axis labels
+#    if XLabel is not None:
+#        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
+#    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
+#
+#    # add title 
+#    if title is not None:
+#        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
+#
+#    # add xticks 
+#    plt.xticks(xcoord, ['' for i in range(0, len(xcoord), 5)], ha='center', fontsize=12, rotation=0)
+#
+#    # add splace bewteen axis and tick labels
+#    ax.yaxis.labelpad = 17
+#    ax.xaxis.labelpad = 17
+#    
+#    # do not show frame lines  
+#    ax.spines["top"].set_visible(False)    
+#    ax.spines["bottom"].set_visible(True)    
+#    ax.spines["right"].set_visible(False)    
+#    ax.spines["left"].set_visible(False)    
+#        
+#    # offset the x axis
+#    for loc, spine in ax.spines.items():
+#        spine.set_position(('outward', 5))
+#        spine.set_smart_bounds(True)
+#    
+#    # keep ticks only along the x axis, edit font size and change tick direction
+#    if XLabel is not None:
+#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
+#        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
+#        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
+#    else:
+#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
+#    
+#    # disable scientific notation
+#    ax.ticklabel_format(style='plain', axis='y')
+#    
+#    # add a light grey horizontal grid to the plot, semi-transparent, 
+#    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.7, linewidth = 0.5)  
+#    # hide these grids behind plot objects
+#    ax.set_axisbelow(True)
+#
+#    return ax
+#
+
+
+
+def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, title = None, XLabel = None):
     '''
     
     
@@ -722,45 +798,59 @@ def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
     '''
     
     # create ax in figure to plot data 1
-    ax = figure.add_subplot(row, col, pos)
-    
-    # plot data 
-    xcoord = [i/10 for i in range(len(Data))]
-    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = 'pink', markeredgecolor = 'grey', markeredgewidth = 1, markersize = 10)
+    ax1 = figure.add_subplot(row, col, pos)
+    # create ax 2 in figure to plot data 2 using a different y scale
+    ax2 = ax1.twinx()
 
-    # compute median and mean of the data
-    median, mean = np.median(Data), np.mean(Data)
-    
+    # choose qualitative colors
+    color1 = '#00CD6C'
+    color2 = '#AF58BA'
+
+    # plot data 1 and median  
+    xcoord = [i/10 for i in range(len(Data1))]
+    ax1.plot(xcoord, Data1, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color1, markeredgecolor = color1, markeredgewidth = 1, markersize = 10)
+    # compute median the data
+    median1 = np.median(Data1)
     # plot median and mean. use zorder to bring line to background
-    ax.axhline(y=mean, color='r', linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
-    ax.axhline(y=median, color='blue', linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+    ax1.axhline(y=median1, color=color1, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+    
+    # plot data 2 and median  
+    ax2.plot(xcoord, Data2, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color2, markeredgecolor = color2, markeredgewidth = 1, markersize = 10)
+    # compute median the data
+    median2 = np.median(Data2)
+    # plot median and mean. use zorder to bring line to background
+    ax2.axhline(y=median2, color=color2, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
     
     # write axis labels
     if XLabel is not None:
-        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
-    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
+        ax1.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
+    ax1.set_ylabel(YLabel1, color='black', size=18, ha='center', weight='normal')
+    ax2.set_ylabel(YLabel2, color='black', size=18, ha='center', weight='normal')
 
     # add title 
     if title is not None:
-        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
+        ax1.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
 
     # add xticks 
     plt.xticks(xcoord, ['' for i in range(0, len(xcoord), 5)], ha='center', fontsize=12, rotation=0)
 
     # add splace bewteen axis and tick labels
-    ax.yaxis.labelpad = 17
-    ax.xaxis.labelpad = 17
-    
+    for i in [ax1, ax2]:
+        i.yaxis.labelpad = 17
+        i.xaxis.labelpad = 17
+       
     # do not show frame lines  
-    ax.spines["top"].set_visible(False)    
-    ax.spines["bottom"].set_visible(True)    
-    ax.spines["right"].set_visible(False)    
-    ax.spines["left"].set_visible(False)    
+    for i in [ax1, ax2]:
+        i.spines["top"].set_visible(False)    
+        i.spines["bottom"].set_visible(True)    
+        i.spines["right"].set_visible(False)    
+        i.spines["left"].set_visible(False)    
         
     # offset the x axis
-    for loc, spine in ax.spines.items():
-        spine.set_position(('outward', 5))
-        spine.set_smart_bounds(True)
+    for i in [ax1, ax2]:
+        for loc, spine in i.spines.items():
+            spine.set_position(('outward', 5))
+            spine.set_smart_bounds(True)
     
     # keep ticks only along the x axis, edit font size and change tick direction
     if XLabel is not None:
@@ -775,14 +865,32 @@ def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
                     labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
     
     # disable scientific notation
-    ax.ticklabel_format(style='plain', axis='y')
+    for i in [ax1, ax2]:
+        i.ticklabel_format(style='plain', axis='y')
+        i.ticklabel_format(style='plain', axis='y')
     
     # add a light grey horizontal grid to the plot, semi-transparent, 
-    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.7, linewidth = 0.5)  
+    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.7, linewidth = 0.5)  
     # hide these grids behind plot objects
-    ax.set_axisbelow(True)
+    ax1.set_axisbelow(True)
 
-    return ax
+    return ax1, ax2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def plot_qc_metrics(outputfile, width, height, read_counts, coverage):
@@ -809,9 +917,15 @@ def plot_qc_metrics(outputfile, width, height, read_counts, coverage):
     
     
     # plot read count
-    ax1 = create_ax(2, 1, 1, figure, read_counts, 'Read counts', title = None, XLabel = None)
+    #ax1 = create_ax(2, 1, 1, figure, read_counts, 'Read counts', title = None, XLabel = None)
     # plot coverage
-    ax2 = create_ax(2, 1, 2, figure, coverage, 'Coverage', title = None, XLabel = None)
+    #ax2 = create_ax(2, 1, 2, figure, coverage, 'Coverage', title = None, XLabel = None)
+    
+    
+    ax1, ax2 = create_ax(1, 1, 1, figure, read_counts, coverage, 'Read counts', 'Coverage', title = None, XLabel = None)
+
+    
+    
     
     # make sure axes do not overlap
     plt.tight_layout(pad = 5)
@@ -820,26 +934,66 @@ def plot_qc_metrics(outputfile, width, height, read_counts, coverage):
     plt.close()
 
 
-def generate_figures(project_dir, project_name,  sequencers, read_counts, coverage):
+#def generate_figures(project_dir, project_name,  sequencers, read_counts, coverage, metric1, metric2):
+#    '''
+#    (str, str, list, dict, dict, str, str)
+#    
+#    
+#    
+#    
+#    
+#    '''
+#    
+#    
+#    
+#    
+#    
+#    # generate plots for each instrument. keep track of figure file names
+#    figure_files = {}
+#    for i in sequencers:
+#        if i in read_counts and i in coverage:
+#            outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, metric1, metric2))
+#            plot_qc_metrics(outputfile, 12, 10, read_counts[i], coverage[i])
+#            if i not in figure_files:
+#                figure_files[i] = []
+#            figure_files[i].append(outputfile)
+#    return figure_files
+
+
+def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, metric2):
     '''
-    (str, str, list, dict, dict)
+    (str, str, list, dict, str, str)
     
     
     
     
     
     '''
+    
+    
+    
+    
     
     # generate plots for each instrument. keep track of figure file names
     figure_files = {}
     for i in sequencers:
-        if i in read_counts and i in coverage:
-            outputfile = os.path.join(project_dir, '{0}.{1}.QC_plots.png'.format(project_name, i))
-            plot_qc_metrics(outputfile, 12, 10, read_counts[i], coverage[i])
-            if i not in figure_files:
-                figure_files[i] = []
-            figure_files[i].append(outputfile)
+        outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, metric1, metric2))
+        # sort read counts in ascending order and coverage according to read count order
+        Q1, Q2 = sort_metrics(FPR_info, i, metric1, metric2)
+        
+        
+        plot_qc_metrics(outputfile, 12, 10, Q1, Q2)
+        if i not in figure_files:
+            figure_files[i] = []
+        figure_files[i].append(outputfile)
     return figure_files
+
+
+
+
+
+
+
 
 
 def resize_figure(filename, scaling_factor):
@@ -885,6 +1039,37 @@ def map_instrument_type(sequencer):
     return instrument
 
 
+#def group_qc_metric_by_instrument(FPR_info, metric):
+#    '''
+#    (dict, str) - > dict 
+#    
+#    Returns sorted metric across runs by instrument
+#    Uses a generic intrument collapsing sequencer models into a generic name
+#    
+#    Parameters
+#    ----------
+#    - FPR_info (dict): Dictionary with information from FPR updated with information from QC-ETL
+#                       for each released fastq of a given project
+#    - metric (str): Metric of interest.
+#                    Valid values:
+#                    - read_count
+#                    - coverage
+#    '''
+#    
+#    # collect read_counts across runs for each instrument and file
+#    D = {}
+#    for file in FPR_info:
+#        instrument = map_instrument_type(FPR_info[file]['instrument'])
+#        if instrument in D:
+#            D[instrument].append(FPR_info[file][metric])
+#        else:
+#            D[instrument] = [FPR_info[file][metric]]
+#    # sort metric for lowest to highest value
+#    for i in D:
+#        D[i].sort()
+#    return D
+  
+
 def group_qc_metric_by_instrument(FPR_info, metric):
     '''
     (dict, str) - > dict 
@@ -898,23 +1083,57 @@ def group_qc_metric_by_instrument(FPR_info, metric):
                        for each released fastq of a given project
     - metric (str): Metric of interest.
                     Valid values:
-                    - read_count
+                    - reads
                     - coverage
     '''
     
-    # collect read_counts across runs for each instrument
+    # collect read_counts across runs for each instrument and file
     D = {}
     for file in FPR_info:
         instrument = map_instrument_type(FPR_info[file]['instrument'])
         if instrument in D:
-            D[instrument].append(FPR_info[file][metric])
+            D[instrument].append([FPR_info[file][metric], file])
         else:
-            D[instrument] = [FPR_info[file][metric]]
+            D[instrument] = [[FPR_info[file][metric], file]]
     # sort metric for lowest to highest value
     for i in D:
-        D[i].sort()
+        D[i].sort(key=lambda x: x[0])
     return D
-  
+
+
+def sort_metrics(FPR_info, instrument, metric1, metric2):
+    '''
+    
+    
+    '''
+    
+    # group metric 1 by instrument
+    D1 = group_qc_metric_by_instrument(FPR_info, metric1)
+    # make a sorted list of metric1 in ascending order
+    Q1 = [i[0] for i in D1[instrument]]
+    # make a list of files corresponding to the sorted metric1 values
+    files = [i[1] for i in D1[instrument]]
+    
+    # group metric 2 by instrument
+    D2 = group_qc_metric_by_instrument(FPR_info, metric2)
+    # make a list of metric 2sorted according to the order of metric1
+    Q2 = []
+    for i in files:
+        for j in D2[instrument]:
+            if j[1] == i:
+                Q2.append(j[0])
+    assert len(Q1) == len(Q2)
+
+    return Q1, Q2
+
+
+
+
+
+
+
+
+
 
 def count_released_fastqs_by_instrument(FPR_info):
     '''
@@ -1154,7 +1373,6 @@ def write_report(args):
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
     # update FPR info with QC info from bamqc table
     update_information_released_fastqs(FPR_info, bamqc_info)
-
     # rename QC metrics for tables
     FPR_info = rename_metrics_FPR(FPR_info)
     
@@ -1165,13 +1383,10 @@ def write_report(args):
     # group read_counts across runs for each instrument
     
     #read_counts = group_qc_metric_by_instrument(FPR_info, 'read_count')
-    
-    read_counts = group_qc_metric_by_instrument(FPR_info, 'reads')
-    
-    
-    
+    #read_counts = group_qc_metric_by_instrument(FPR_info, 'reads')
     # group coverage across runs for each instrument
-    coverage = group_qc_metric_by_instrument(FPR_info, 'coverage')
+    #coverage = group_qc_metric_by_instrument(FPR_info, 'coverage')
+    
     # make a list of possible sequencers
     sequencers = ['MiSeq', 'NextSeq', 'HiSeq', 'NovaSeq']
     # remove sequencers if not part of release
@@ -1179,8 +1394,14 @@ def write_report(args):
     for i in to_remove:
         sequencers.remove(i)
     # generate plots for each instrument. keep track of figure file names
-    figure_files = generate_figures(project_dir, args.project_name,  sequencers, read_counts, coverage)
-                
+    #figure_files = generate_figures(project_dir, args.project_name,  sequencers, read_counts, coverage)
+          
+
+    figure_files = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage')
+    
+
+
+      
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
     
@@ -1267,9 +1488,9 @@ def write_report(args):
     newfile.close()
 
     # remove figure files from disk
-    for i in figure_files:
-        for j in figure_files[i]:
-            os.remove(j)
+#    for i in figure_files:
+#        for j in figure_files[i]:
+#            os.remove(j)
 
 ##################################################
 
