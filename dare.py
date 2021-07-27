@@ -1476,11 +1476,16 @@ def write_report(args):
     
     figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     
-    
-
-      
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
+    
+    # write md5sums to file
+    md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
+    newfile = open(md5_file, 'w')
+    newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
+    for file in sorted(list(FPR_info.keys())):
+        newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
+    newfile.close()       
     
     # make a list to store report
     Text = []
@@ -1506,7 +1511,6 @@ def write_report(args):
 #            Text.append('<img src="{0}" alt="{1}" title="{1}" style="display:block; padding-right: 100px; padding-left:30px; width:{2}; height:{3}">'.format(plot, 'qc_plot', width, height))
 #            Text.append('<br />')
 #    
-        height, width = resize_figure(figure_files[i][0], 0.3)
         #Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1], width, height))
         Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1]))
         
@@ -1562,6 +1566,7 @@ def write_report(args):
     
     # add md5sums
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompagying text file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
     header = ['filename', 'md5sum']       
     column_size = {'filename': '70%', 'md5sum': '30%'}
     Text.append(generate_table(FPR_info, header, column_size, 'md5sum'))            
