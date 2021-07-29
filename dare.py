@@ -1582,29 +1582,12 @@ def write_report(args):
     newfile.close()
 
     # remove figure files from disk
-#    for i in figure_files:
-#        for j in figure_files[i]:
-#            os.remove(j)
-
-##################################################
+    for i in figure_files:
+        for j in figure_files[i]:
+            os.remove(j)
 
 
-#mark duplicates_ESTIMATED_LIBRARY_SIZE  qi
-#mark duplicates_LIBRARY qs
-#mark duplicates_PERCENT_DUPLICATION     qf
-#mark duplicates_READ_PAIR_DUPLICATES    qi
-#mark duplicates_READ_PAIR_OPTICAL_DUPLICATES    qi
-#mark duplicates_READ_PAIRS_EXAMINED     qi
-#mark duplicates_UNMAPPED_READS  qi
-#mark duplicates_UNPAIRED_READ_DUPLICATES        qi
-#mark duplicates_UNPAIRED_READS_EXAMINED qi
 
-      
-    
-    
-    
-    
-    
 def map_external_ids(args):
     '''
     (str | None, str | None, list | None, str | None, str, bool, str, str, str | list, str) -> None
