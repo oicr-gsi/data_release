@@ -1385,8 +1385,12 @@ def list_file_count(sequencers, fastq_counts):
     '''
     (list, dict) -> list
     
+    Returns a list of htm strings with counts of released fastqs by instrument and run
     
-    
+    Parameters
+    ----------
+    - sequencers (list): List of sequencing instruments
+    - fastq_counts (dict): Counts of released fastqs for each run and instrument
     '''
     
     # count all files
@@ -1394,10 +1398,8 @@ def list_file_count(sequencers, fastq_counts):
     for i in fastq_counts:
         for j in fastq_counts[i]:
             c += fastq_counts[i][j]
-    
-    
+    # store html in list
     L = []
-    
     L.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
     L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} fastqs. File count is broken down by instrument and run as follow.</p>'.format(c))
                  
@@ -1412,14 +1414,6 @@ def list_file_count(sequencers, fastq_counts):
                 L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run_name, fastq_counts[instrument][run]))
     return L            
     
-
-
-
-
-
-
-
-
 
 def write_report(args):
     '''
