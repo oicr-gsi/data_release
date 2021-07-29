@@ -20,6 +20,7 @@ import mistune
 import base64
 import copy
 from PIL import Image
+import math
 
 # can mark files other than fastqs in nabu?
 
@@ -688,7 +689,9 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                                 FPR_info[file]['on_target'] = 100
                             else:
                                 FPR_info[file]['on_target'] = round(d['on_target'], 2)
-
+                            # fix floating point approximations
+                            if math.ceil(FPR_info[file]['on_target']) == 100:
+                                FPR_info[file]['on_target'] = math.ceil(FPR_info[file]['on_target'])
 
 
 def rename_metrics_FPR(FPR_info):
@@ -838,8 +841,8 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
     # write axis labels
     if XLabel is not None:
         ax1.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
-    ax1.set_ylabel(YLabel1, color='black', size=18, ha='center', weight='normal')
-    ax2.set_ylabel(YLabel2, color='black', size=18, ha='center', weight='normal')
+    ax1.set_ylabel(YLabel1, color=color1, size=18, ha='center', weight='normal')
+    ax2.set_ylabel(YLabel2, color=color2, size=18, ha='center', weight='normal')
 
     # add title 
     if title is not None:
@@ -867,16 +870,16 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
             spine.set_smart_bounds(True)
     
     # keep ticks only along the x axis, edit font size and change tick direction
-#    if XLabel is not None:
-#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
-#        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
-#        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
-#    else:
-#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
+    if XLabel is not None:
+        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
+                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
+        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
+                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
+        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
+                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
+    else:
+        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
+                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
     
     # disable scientific notation
 #    for i in [ax1, ax2]:
