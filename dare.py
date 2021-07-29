@@ -829,8 +829,8 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
         
         ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))
         ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
-    ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))        
-    ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
+    #ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))        
+    #ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
         
         #plt.setp(ax2.get_yticklabels(), visible=True, rotation=30, ha='right')
     
@@ -910,7 +910,7 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
 
 
 
-def plot_qc_metrics(outputfile, width, height, read_counts, coverage, YLabel1, YLabel2, color1, color2, adjust_yaxis):
+def plot_qc_metrics(outputfile, width, height, read_counts, coverage, YLabel1, YLabel2, color1, color2, adjust_yaxis, XLabel=None):
     '''
     (str, int, int, list, foat) -> None
     
@@ -956,7 +956,7 @@ def plot_qc_metrics(outputfile, width, height, read_counts, coverage, YLabel1, Y
     #ax2 = create_ax(2, 1, 2, figure, coverage, 'Coverage', title = None, XLabel = None)
     
     
-    ax1, ax2 = create_ax(1, 1, 1, figure, read_counts, coverage, YLabel1, YLabel2, color1, color2, adjust_yaxis, title = None, XLabel = None)
+    ax1, ax2 = create_ax(1, 1, 1, figure, read_counts, coverage, YLabel1, YLabel2, color1, color2, adjust_yaxis, title = None, XLabel = XLabel)
 
     
     
@@ -1017,7 +1017,7 @@ def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, 
         
         #plot_qc_metrics(outputfile, 15, 10, Q1, Q2)
         
-        plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, adjust_yaxis)
+        plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, adjust_yaxis, 'Samples')
         if i not in figure_files:
             figure_files[i] = []
         figure_files[i].append(outputfile)
@@ -1472,7 +1472,7 @@ def write_report(args):
 
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', False)
     
-    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E', True)
+    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E', False)
     
     figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     
@@ -1503,6 +1503,8 @@ def write_report(args):
     Text.append('<br />')           
     # add QC plots
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read counts</span> and <span style="font-style: italic">percent duplicate</span> are plotted by ascending order. <span style="font-style: italic">Mean coverage</span> and <span style="font-style: italic">on target rate</span> are plotted respectively according to the order of <span style="font-style: italic">read counts</span> and <span style="font-style: italic">percent duplicate</span></p>')
+    Text.append('<br />')
     for i in sequencers:
         Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
 #        for plot in figure_files[i]:
@@ -1566,7 +1568,7 @@ def write_report(args):
     
     # add md5sums
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
-    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompagying text file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
     header = ['filename', 'md5sum']       
     column_size = {'filename': '70%', 'md5sum': '30%'}
     Text.append(generate_table(FPR_info, header, column_size, 'md5sum'))            
