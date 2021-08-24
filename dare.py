@@ -696,8 +696,13 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
 
 def rename_metrics_FPR(FPR_info):
     '''
+    (dict) -> None
     
-    
+    Rename fields of interest with final metric name in report. Update dictionary in place 
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
     '''
     
     for file in FPR_info:
@@ -707,14 +712,7 @@ def rename_metrics_FPR(FPR_info):
         
         for  i in ['percent_duplicate', 'lid', 'read_count']:
             del FPR_info[file][i]
-    return FPR_info                        
     
-
-
-
-
-                    
-
 #def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
 #    '''
 #    
@@ -791,14 +789,24 @@ def rename_metrics_FPR(FPR_info):
 
 
 
-def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, adjust_yaxis, title = None, XLabel = None):
+def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = None):
     '''
+    (int, int, int, matplotlib.figure.Figure, list, list, str, str, str, str, str | None, str | None)
     
+    Parameters
+    ----------
     
-    
-    
-    
-    
+    - row (int): Row position of the plot in figure
+    - col (int): Column position of the plot in figure
+    - figure (matplotlib.figure.Figure): Matplotlib figure
+    - Data1 (list): List of metrics to plot in graph
+    - Data2 (list): List of metrics to plot on the same graph as Data1
+    - YLabel1 (str): Label of the Y axis for Data1
+    - YLabel2 (str): Label of the Y axis for Data2
+    - color1 (str): Color of markers and text related to Data1
+    - color2 (str): Color of markers and text related to Data2
+    - title (str | None): Title of the graph
+    - XLabel (str | None): Label of the X axis    
     '''
     
     # create ax in figure to plot data 1
@@ -824,14 +832,22 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
     # start y axis at 0
     for i in [ax1, ax2]:
         i.set_ylim(ymin=0)
-    if adjust_yaxis:
-        ax1.set_ylim(ymax=max(Data1))
-        #ax2.set_ylim(ymax=max(Data2))
-        #ax2.set_yticks([0,20,40,60,80,100]) 
-        #ax2.set_yticklabels(['0',  '20',  '40',  '60',  '80', '100'])
-        
-        ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))
-        ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
+    #ax1.set_ylim(ymin=0)
+    #ax2.set_ylim(ymin=0)
+    
+    #ax1.set_yticks([i for i in range(0, max(Data1))])
+    #ax2.set_yticks([i for i in range(0, max(Data2))])
+    
+
+
+#    if adjust_yaxis:
+#        ax1.set_ylim(ymax=max(Data1))
+#        #ax2.set_ylim(ymax=max(Data2))
+#        #ax2.set_yticks([0,20,40,60,80,100]) 
+#        #ax2.set_yticklabels(['0',  '20',  '40',  '60',  '80', '100'])
+#        
+#        ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))
+#        ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
     #ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))        
     #ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
         
@@ -870,17 +886,17 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
             spine.set_smart_bounds(True)
     
     # keep ticks only along the x axis, edit font size and change tick direction
-    if XLabel is not None:
-        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
-        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
-                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
-        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
-                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
-    else:
-        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
-    
+#    if XLabel is not None:
+#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
+#        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
+#        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
+#    else:
+#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
+#                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
+#    
     # disable scientific notation
 #    for i in [ax1, ax2]:
 #        i.ticklabel_format(style='plain', axis='y')
@@ -913,36 +929,24 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
 
 
 
-def plot_qc_metrics(outputfile, width, height, read_counts, coverage, YLabel1, YLabel2, color1, color2, adjust_yaxis, XLabel=None):
+def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, color1, color2, XLabel=None):
     '''
     (str, int, int, list, foat) -> None
     
-    
+    Plot 2 metrics of interest on the same graph
+        
     Parameters
     ----------
     - outputfile (str): Path to the output figure
     - width (int): Width in inches of the figure
     - height (int): Height in inches of the figure
-    - read_counts (list): Ordered list of read counts for each sample across runs
-    - coverage (float): Ordered list of coverage for each sample across runs
-   
-    
-    
-    
-    -YLabel1:
-        
-        
-    -YLabel2:    
-        
-        
-    -color1
-
-
-    -  color2    
-        
-        
-    - adjust_yaxis
-    
+    - Data1 (list): List of metrics to plot in graph
+    - Data2 (list): List of metrics to plot on the same graph as Data1
+    - YLabel1 (str): Label of the Y axis for Data1
+    - YLabel2 (str): Label of the Y axis for Data2
+    - color1 (str): Color of markers and text related to Data1
+    - color2 (str): Color of markers and text related to Data2
+    - XLabel (str | None): Label of the X axis    
     '''
     
     #create figure
@@ -959,10 +963,7 @@ def plot_qc_metrics(outputfile, width, height, read_counts, coverage, YLabel1, Y
     #ax2 = create_ax(2, 1, 2, figure, coverage, 'Coverage', title = None, XLabel = None)
     
     
-    ax1, ax2 = create_ax(1, 1, 1, figure, read_counts, coverage, YLabel1, YLabel2, color1, color2, adjust_yaxis, title = None, XLabel = XLabel)
-
-    
-    
+    ax1, ax2 = create_ax(1, 1, 1, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = XLabel)
     
     # make sure axes do not overlap
     plt.tight_layout(pad = 5)
@@ -997,19 +998,25 @@ def plot_qc_metrics(outputfile, width, height, read_counts, coverage, YLabel1, Y
 #    return figure_files
 
 
-def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, metric2, YLabel1, YLabel2, color1, color2, adjust_yaxis):
+def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, metric2, YLabel1, YLabel2, color1, color2):
     '''
-    (str, str, list, dict, str, str)
+    (project_dir, str, list, dict, str, str, str, str, str, str) -> list
     
+    Returns a list of paths to figure files
     
-    
-    
-    
+    Parameters
+    ----------
+    - project_dir (str): Path to the folder where figure files are written
+    - project_name (str): name of the project
+    - sequencers (list): List of intruments
+    - FPR_info (dict): Dictionary with QC metrics of interest from FPR and bamQC 
+    - metric1 (str): Metrics of interest 1
+    - metric2 (str): Metrics of interest 2
+    - YLabel1 (str): Label of the Y axis for Data1
+    - YLabel2 (str): Label of the Y axis for Data2
+    - color1 (str): Color of markers and text related to Data1
+    - color2 (str): Color of markers and text related to Data2
     '''
-    
-    
-    
-    
     
     # generate plots for each instrument. keep track of figure file names
     figure_files = {}
@@ -1017,33 +1024,23 @@ def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, 
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
         Q1, Q2 = sort_metrics(FPR_info, i, metric1, metric2)
-        
-        #plot_qc_metrics(outputfile, 15, 10, Q1, Q2)
-        
-        plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, adjust_yaxis, 'Samples')
+        plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
         if i not in figure_files:
             figure_files[i] = []
         figure_files[i].append(outputfile)
     return figure_files
 
 
-
-
-
-
-
-
-
 def resize_figure(filename, scaling_factor):
     '''
     (str, float) -> (int, int)
+    
+    Returns new file size with same proportions as a tuple of height and width
     
     Parameters
     ----------
     - filename (str): Path to figure file
     - scaling_factor (float): The factor applied to resize figure 
-    
-    Return new file size with same proportions as a tuple of height and width
     '''
     # extract the original figure size
     image = Image.open(filename)
@@ -1119,10 +1116,7 @@ def group_qc_metric_by_instrument(FPR_info, metric):
     ----------
     - FPR_info (dict): Dictionary with information from FPR updated with information from QC-ETL
                        for each released fastq of a given project
-    - metric (str): Metric of interest.
-                    Valid values:
-                    - reads
-                    - coverage
+    - metric (str): Metric of interest
     '''
     
     # collect read_counts across runs for each instrument and file
@@ -1141,8 +1135,17 @@ def group_qc_metric_by_instrument(FPR_info, metric):
 
 def sort_metrics(FPR_info, instrument, metric1, metric2):
     '''
+    (dict, str, str, str) -> (list, list)
     
+    Returns a tuple with lists of metrics 1 and 2 sorted according to metrics 1
     
+    Parameters
+    ----------
+    
+    - FPR_info (dict): QC metrics extracted from the File provenance Report and bamqc
+    - instrument (str): Sequencing intrument
+    - metric1 (str): Name of QC metric 1
+    - metric2 (str): Name of QC metric 2
     '''
     
     # group metric 1 by instrument
@@ -1163,14 +1166,6 @@ def sort_metrics(FPR_info, instrument, metric1, metric2):
     assert len(Q1) == len(Q2)
 
     return Q1, Q2
-
-
-
-
-
-
-
-
 
 
 def count_released_fastqs_by_instrument(FPR_info):
@@ -1219,8 +1214,16 @@ def encode_image(filename):
 
 def generate_table(FPR_info, header, column_size, table_type=None):
     '''
-    (dict, list, dict, str)
-
+    (dict, list, dict, str) -> str
+    
+    Returns a html string representing a table
+    
+    Parameters
+    ----------
+    - FPR_info (dict):
+    - header (list):
+    - column_size (dict):
+    - table_type (str | None):
     '''
     
     # count the expected number of cells (excluding header) in tables
@@ -1312,17 +1315,15 @@ def generate_project_table(project_name, project_code, current_date, name, email
 
 def generate_header_table(logo, width, height):
     '''
-    (str, str, str, str, str) -> str
+    (str, int, int) -> str
 
-    Returns a html string representing a table with project information
+    Returns a html string representing a table with logo and report title
 
     Parameters
     ----------
-    - project_name (str): Name of the project
-    - project_code (str): Project code (PROXXXX) available in MISO
-    - current_date (str): Date of the release (Y-M-D)
-    - name (str): Name of contact personn releasing the data
-    - email (str): Email of the contact personn releasing the data     
+    - logo (str): Path to the OICR logo
+    - width (int): Width of the logo figure
+    - height (int): Height of the logo figure
     '''
 
     table = []
@@ -1343,23 +1344,14 @@ def generate_header_table(logo, width, height):
 def generate_figure_table(file1, file2):
    
     '''
-    (str, str, int, int) -> str
+    (str, str) -> str
 
     Returns a html string representing a table with figure files
 
     Parameters
     ----------
-    - file1 (str)
-    
-    
-    - project_name (str): Name of the project
-    
-    
-    
-    - project_code (str): Project code (PROXXXX) available in MISO
-    - current_date (str): Date of the release (Y-M-D)
-    - name (str): Name of contact personn releasing the data
-    - email (str): Email of the contact personn releasing the data     
+    - file1 (str): Path to the figure file with metrics 1 and 2 
+    - file2 (str): Path to the figure file with metrics 3 and 4
     '''
 
     table = []
@@ -1378,10 +1370,6 @@ def generate_figure_table(file1, file2):
     table.append('</table>')
     
     return ''.join(table)
-
-
-
-
 
 
 def list_file_count(sequencers, fastq_counts):
@@ -1420,12 +1408,18 @@ def list_file_count(sequencers, fastq_counts):
 
 def write_report(args):
     '''
+    (str, str, str, str, str, str, str, list)
 
-    - project: Project name as it appears in File Provenance Report
-    - working-dir: default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Project name as it appears in File Provenance Report')
-    - project_name: Project name used to create the project directory in gsi space
-    - project_code: Project code from MISO
-    - bamqc_table: Path to the bamqc table of qc-etl
+    Write a PDF report with QC metrics and released fastqs for a given project
+
+    - project (str): Project name as it appears in File Provenance Report
+    - working-dir (str): Path to the directory with project directories and links to fastqs 
+    - project_name (str): Project name used to create the project directory in gsi space
+    - project_code (str): Project code from MISO
+    - bamqc_table (str): Path to the bamqc table of qc-etl
+    - contact_name (str): Name of the analyst releasing the data
+    - contact_email (str): Email of the analyst releasing the data
+    - run_directories (list): List of directories with links to fastqs
     '''
     
     # get the project directory with release run folders
@@ -1444,7 +1438,7 @@ def write_report(args):
     # update FPR info with QC info from bamqc table
     update_information_released_fastqs(FPR_info, bamqc_info)
     # rename QC metrics for tables
-    FPR_info = rename_metrics_FPR(FPR_info)
+    rename_metrics_FPR(FPR_info)
     
     # count the number of released fastqs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
@@ -1467,9 +1461,9 @@ def write_report(args):
     #figure_files = generate_figures(project_dir, args.project_name,  sequencers, read_counts, coverage)
           
 
-    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', False)
+    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     
-    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E', False)
+    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
     
     figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     
