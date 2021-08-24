@@ -54,8 +54,6 @@ def get_libraries(library_file):
     return D
     
 
-
-
 def get_workflow_id(file_path):
     '''
     (str) -> int
@@ -354,6 +352,7 @@ def link_files(args):
         for j in md5sums[i]:
             newfile.write('\t'.join([os.path.basename(j[0]), j[1]]) +'\n')
         newfile.close()    
+
     
 def map_file_ids(L):
     '''
@@ -713,81 +712,6 @@ def rename_metrics_FPR(FPR_info):
         for  i in ['percent_duplicate', 'lid', 'read_count']:
             del FPR_info[file][i]
     
-#def create_ax(row, col, pos, figure, Data, YLabel, title = None, XLabel = None):
-#    '''
-#    
-#    
-#    
-#    
-#    
-#    
-#    '''
-#    
-#    # create ax in figure to plot data 1
-#    ax = figure.add_subplot(row, col, pos)
-#    
-#    # plot data 
-#    xcoord = [i/10 for i in range(len(Data))]
-#    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = 'pink', markeredgecolor = 'grey', markeredgewidth = 1, markersize = 10)
-#
-#    # compute median and mean of the data
-#    median, mean = np.median(Data), np.mean(Data)
-#    
-#    # plot median and mean. use zorder to bring line to background
-#    ax.axhline(y=mean, color='r', linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
-#    ax.axhline(y=median, color='blue', linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
-#    
-#    # write axis labels
-#    if XLabel is not None:
-#        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
-#    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
-#
-#    # add title 
-#    if title is not None:
-#        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
-#
-#    # add xticks 
-#    plt.xticks(xcoord, ['' for i in range(0, len(xcoord), 5)], ha='center', fontsize=12, rotation=0)
-#
-#    # add splace bewteen axis and tick labels
-#    ax.yaxis.labelpad = 17
-#    ax.xaxis.labelpad = 17
-#    
-#    # do not show frame lines  
-#    ax.spines["top"].set_visible(False)    
-#    ax.spines["bottom"].set_visible(True)    
-#    ax.spines["right"].set_visible(False)    
-#    ax.spines["left"].set_visible(False)    
-#        
-#    # offset the x axis
-#    for loc, spine in ax.spines.items():
-#        spine.set_position(('outward', 5))
-#        spine.set_smart_bounds(True)
-#    
-#    # keep ticks only along the x axis, edit font size and change tick direction
-#    if XLabel is not None:
-#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
-#        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
-#        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
-#    else:
-#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
-#    
-#    # disable scientific notation
-#    ax.ticklabel_format(style='plain', axis='y')
-#    
-#    # add a light grey horizontal grid to the plot, semi-transparent, 
-#    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.7, linewidth = 0.5)  
-#    # hide these grids behind plot objects
-#    ax.set_axisbelow(True)
-#
-#    return ax
-#
-
-
 
 def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = None):
     '''
@@ -832,28 +756,7 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
     # start y axis at 0
     for i in [ax1, ax2]:
         i.set_ylim(ymin=0)
-    #ax1.set_ylim(ymin=0)
-    #ax2.set_ylim(ymin=0)
-    
-    #ax1.set_yticks([i for i in range(0, max(Data1))])
-    #ax2.set_yticks([i for i in range(0, max(Data2))])
-    
-
-
-#    if adjust_yaxis:
-#        ax1.set_ylim(ymax=max(Data1))
-#        #ax2.set_ylim(ymax=max(Data2))
-#        #ax2.set_yticks([0,20,40,60,80,100]) 
-#        #ax2.set_yticklabels(['0',  '20',  '40',  '60',  '80', '100'])
-#        
-#        ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))
-#        ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
-    #ax2.yaxis.set_ticks(np.arange(0, max(Data2)+20, 20))        
-    #ax2.yaxis.set_ticklabels(['0',  '20',  '40',  '60',  '80', '100'])
-        
-        #plt.setp(ax2.get_yticklabels(), visible=True, rotation=30, ha='right')
-    
-    
+       
     # write axis labels
     if XLabel is not None:
         ax1.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
@@ -898,35 +801,9 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
 #                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
 #    
     # disable scientific notation
-#    for i in [ax1, ax2]:
-#        i.ticklabel_format(style='plain', axis='y')
-#        i.ticklabel_format(style='plain', axis='y')
     ax1.ticklabel_format(style='plain', axis='y')
     
-    
-    
-#    # add a light grey horizontal grid to the plot, semi-transparent, 
-#    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.7, linewidth = 0.5)  
-#    # hide these grids behind plot objects
-#    ax1.set_axisbelow(True)
-
     return ax1, ax2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, color1, color2, XLabel=None):
@@ -952,50 +829,14 @@ def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, c
     #create figure
     figure = plt.figure()
     figure.set_size_inches(width, height)
-    
-    #figure = plt.figure(1, figsize = (4, 2))
-    
-    
-    
-    # plot read count
-    #ax1 = create_ax(2, 1, 1, figure, read_counts, 'Read counts', title = None, XLabel = None)
-    # plot coverage
-    #ax2 = create_ax(2, 1, 2, figure, coverage, 'Coverage', title = None, XLabel = None)
-    
-    
+    # plot data
     ax1, ax2 = create_ax(1, 1, 1, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = XLabel)
-    
     # make sure axes do not overlap
     plt.tight_layout(pad = 5)
-      
+    # write figure to file  
     figure.savefig(outputfile, bbox_inches = 'tight')
     plt.close()
 
-
-#def generate_figures(project_dir, project_name,  sequencers, read_counts, coverage, metric1, metric2):
-#    '''
-#    (str, str, list, dict, dict, str, str)
-#    
-#    
-#    
-#    
-#    
-#    '''
-#    
-#    
-#    
-#    
-#    
-#    # generate plots for each instrument. keep track of figure file names
-#    figure_files = {}
-#    for i in sequencers:
-#        if i in read_counts and i in coverage:
-#            outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, metric1, metric2))
-#            plot_qc_metrics(outputfile, 12, 10, read_counts[i], coverage[i])
-#            if i not in figure_files:
-#                figure_files[i] = []
-#            figure_files[i].append(outputfile)
-#    return figure_files
 
 
 def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, metric2, YLabel1, YLabel2, color1, color2):
@@ -1050,7 +891,6 @@ def resize_figure(filename, scaling_factor):
     return height, width        
 
 
-
 def map_instrument_type(sequencer):
     '''
     (str) -> str
@@ -1073,37 +913,6 @@ def map_instrument_type(sequencer):
         instrument = 'NovaSeq'
     return instrument
 
-
-#def group_qc_metric_by_instrument(FPR_info, metric):
-#    '''
-#    (dict, str) - > dict 
-#    
-#    Returns sorted metric across runs by instrument
-#    Uses a generic intrument collapsing sequencer models into a generic name
-#    
-#    Parameters
-#    ----------
-#    - FPR_info (dict): Dictionary with information from FPR updated with information from QC-ETL
-#                       for each released fastq of a given project
-#    - metric (str): Metric of interest.
-#                    Valid values:
-#                    - read_count
-#                    - coverage
-#    '''
-#    
-#    # collect read_counts across runs for each instrument and file
-#    D = {}
-#    for file in FPR_info:
-#        instrument = map_instrument_type(FPR_info[file]['instrument'])
-#        if instrument in D:
-#            D[instrument].append(FPR_info[file][metric])
-#        else:
-#            D[instrument] = [FPR_info[file][metric]]
-#    # sort metric for lowest to highest value
-#    for i in D:
-#        D[i].sort()
-#    return D
-  
 
 def group_qc_metric_by_instrument(FPR_info, metric):
     '''
@@ -1424,7 +1233,6 @@ def write_report(args):
     
     # get the project directory with release run folders
     project_dir = os.path.join(args.working_dir, args.project_name)
-    
     # make a list of full paths to the released fastqs resolving the links in the run directories
     files = list_files_release_folder(args.run_directories)
     # map file names to their workflow accession
@@ -1443,34 +1251,22 @@ def write_report(args):
     # count the number of released fastqs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
     
-    # generate plots for coverage, read count by instrument
-    # group read_counts across runs for each instrument
-    
-    #read_counts = group_qc_metric_by_instrument(FPR_info, 'read_count')
-    #read_counts = group_qc_metric_by_instrument(FPR_info, 'reads')
-    # group coverage across runs for each instrument
-    #coverage = group_qc_metric_by_instrument(FPR_info, 'coverage')
-    
     # make a list of possible sequencers
     sequencers = ['MiSeq', 'NextSeq', 'HiSeq', 'NovaSeq']
     # remove sequencers if not part of release
     to_remove = [i for i in sequencers if i not in fastq_counts]
     for i in to_remove:
         sequencers.remove(i)
-    # generate plots for each instrument. keep track of figure file names
-    #figure_files = generate_figures(project_dir, args.project_name,  sequencers, read_counts, coverage)
-          
-
+    
+    # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
-    
     figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
-    
     figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
     
-    # write md5sums to file
+    # write md5sums to separate text file
     md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
     newfile = open(md5_file, 'w')
     newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
@@ -1484,7 +1280,6 @@ def write_report(args):
     logo = 'OICR_Logo_RGB_ENGLISH.png'
     height, width = resize_figure(logo, 0.085)
     Text.append(generate_header_table(logo, width, height))
-    #Text.append('<p style="text-align: left; color: black; font-size:30px; font-family: Arial, Verdana, sans-serif; font-weight:bold"> <img src="{0}" alt="{1}" title="{1}" style="float: left; padding-right: 300px; padding-left:0px; width:{2}; height:{3}"> Data Release Report</p>'.format(logo, 'logo', width, height))
     Text.append('<br />' * 3)
     # add information about project and contact personn
     Text.append(generate_project_table(args.project_name, args.project_code, current_date, args.contact_name, args.contact_email))
@@ -1498,61 +1293,24 @@ def write_report(args):
     Text.append('<br />')
     for i in sequencers:
         Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
-#        for plot in figure_files[i]:
-#            # resize image
-#            height, width = resize_figure(plot, 0.3)
-#            Text.append('<img src="{0}" alt="{1}" title="{1}" style="display:block; padding-right: 100px; padding-left:30px; width:{2}; height:{3}">'.format(plot, 'qc_plot', width, height))
-#            Text.append('<br />')
-#    
-        #Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1], width, height))
         Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1]))
-        
-        
         Text.append('<br />')
-
-
-
-
 
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
     
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-    #header = ['ID', 'lid', 'run', 'barcode', 'external_id']       
-    #column_size = {'ID': '10%', 'lid': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
-    
-    
-    
     header = ['ID', 'library', 'run', 'barcode', 'external_id']       
     column_size = {'ID': '10%', 'library': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
-    
-    
-    
-    
     Text.append(generate_table(FPR_info, header, column_size))            
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
                 
-    #header = ['filename', 'md5sum', 'file_swid', 'ID', 'lid', 'run', 'barcode',
-    #          'external_id', 'group_id', 'group_desc', 'tube_id', 'instrument',
-    #          'read_count', 'coverage', 'on_target']       
- 
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    #header = ['ID', 'lid', 'run', 'read_count', 'coverage', 'on_target']       
-    #column_size = {'ID': '10%', 'lid': '30%', 'run': '30%', 'read_count': '10%', 'coverage': '10%', 'on_target': '10%'}
-    
-    #header = ['ID', 'lid', 'run', 'read_count', 'coverage', 'on_target', 'percent_duplicate']       
-    #column_size = {'ID': '10%', 'lid': '25%', 'run': '30%', 'read_count': '10%', 'coverage': '10%', 'on_target': '10%', 'percent_duplicate': '5%'}
-    
-    
     header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
     column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
-    
-    
-    
-    
     Text.append(generate_table(FPR_info, header, column_size))            
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
