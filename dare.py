@@ -341,7 +341,7 @@ def link_files(args):
     
     # link files to project dir
     if args.suffix == 'fastqs':
-        assert args.workflow.lower in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
+        assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
     generate_links(files_release, files_withhold, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
         
     # write summary md5sums
