@@ -310,6 +310,7 @@ def link_files(args):
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     '''
     
+    # get the list of samples/libraries to exclude
     try:
         exclude = list(get_libraries(args.exclude[0]).keys())
     except:
@@ -340,7 +341,7 @@ def link_files(args):
     
     # link files to project dir
     if args.suffix == 'fastqs':
-        assert args.workflow == 'bcl2fastq' or args.workflow.lower() == 'casava'
+        assert args.workflow.lower in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
     generate_links(files_release, files_withhold, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
         
     # write summary md5sums
