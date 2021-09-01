@@ -72,7 +72,6 @@ def get_workflow_id(file_path):
     for j in k:
         if j.isdigit():
             workflow = int(j)
-    assert workflow != -1
     return workflow
     
 
@@ -84,7 +83,10 @@ def select_most_recent_workflow(L):
     ----------
     
     Returns a list of file paths corresponding to the most recent workflow ID for each file
-        
+    
+
+
+    
     - L (list): List of file paths
     '''
     
@@ -101,6 +103,7 @@ def select_most_recent_workflow(L):
     for i in d:
         d[i].sort()
     # keep only the files corresponding to the most recent workflow run
+    # when worflow id not in file path, eg FileImport, just select the file. assumes 1 record in FPR
     files = [d[i][-1][1] for i in d]
     return files
 
@@ -147,7 +150,7 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
     elif runs:
         for run in runs:
             records.extend(subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run), shell=True).decode('utf-8').rstrip().split('\n'))
-        
+
     # parse the records
     for i in records:
         i = i.rstrip().split('\t')
@@ -217,7 +220,6 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
             if run_id not in M:
                 M[run_id] = []
             M[run_id].append([file_path, i[47]]) 
-
 
     # select the files corresponding to the most recent workflow ID for each run
     # get the corresponding md5sums of the file
