@@ -265,6 +265,7 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
             run_name = run + '.{0}.{1}'.format(project_name, suffix)
         run_dir = os.path.join(working_dir, run_name)
         os.makedirs(run_dir, exist_ok=True)
+        print('Linking files to folder {0}'.format(run_dir))
         for file in D[run]:
             filename = os.path.basename(file)
             link = os.path.join(run_dir, filename)
@@ -340,6 +341,7 @@ def link_files(args):
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
     files_release, files_withhold, md5sums = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    print('Extracted files from File Provenance Report')
     
     # link files to project dir
     if args.suffix == 'fastqs':
@@ -350,6 +352,7 @@ def link_files(args):
     run_dir = os.path.join(args.projects_dir, args.project_name)
     os.makedirs(run_dir, exist_ok=True)
     for i in md5sums:
+        print('Generating md5sums summary file for run {0}'.format(i))
         filename = i + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
         newfile = open(os.path.join(run_dir, filename), 'w')
         for j in md5sums[i]:
@@ -1397,10 +1400,12 @@ def map_external_ids(args):
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
     files_release, files_withhold, md5sums = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    print('Extracted files from File Provenance Report')
     
     for run in files_release:
         # make a list of items to write to file
         # make a list of records items
+        print('Generating map for run {0}'.format(run))
         L, recorded = [], []
         # grab all the FPR records for that run
         records = subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run), shell=True).decode('utf-8').rstrip().split('\n')
