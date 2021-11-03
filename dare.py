@@ -1489,7 +1489,7 @@ def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
         # record created
         print('Sucessfully updated {0} status to {1}'.format(file_swid, qc_status))
     else:
-        print('Could not update {0} status'.format(file_swid))
+        print('Could not update {0} status. Nabu response code: {1}'.format(file_swid, response.status_code))
 
 
 def mark_files_nabu(args):
@@ -1539,6 +1539,11 @@ def mark_files_nabu(args):
         mapped_files = map_swid_file(records)
         # get the swid Ids
         swids = [mapped_files[file] for file in files if file in mapped_files]
+        # list the released files without any swid
+        no_swids = [file for file in files if file not in mapped_files]
+        if no_swids:
+            for file in no_swids:
+                print('File {0} in directory {1} does not have a swid'.format(os.path.basename(file), args.directory))
         # mark files il nabu
         for i in swids:
             change_nabu_status(args.api, i, args.release.upper(), args.user, comment=args.comment)
