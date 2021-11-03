@@ -395,13 +395,17 @@ def map_file_ids(L):
                 tubeid = geo['geo_tube_id']
             else:
                 tubeid = '-'
-            D[file] = [ID, lid, run, barcode, externalid, groupid, groupdesc, tubeid]
+            if 'geo_targeted_resequencing' in geo:
+                panel = geo['geo_targeted_resequencing']
+            else:
+                panel = '-'
+            D[file] = [ID, lid, run, barcode, externalid, groupid, groupdesc, tubeid, panel]
         except:
             continue
     return D        
 
 
-def write_map_file(projects_dir, project_name, run, L, suffix):
+def write_map_file(projects_dir, project_name, run, L, suffix, add_tube, add_panel):
     '''
     (str, str, str, list, str) -> None
     
@@ -420,10 +424,21 @@ def write_map_file(projects_dir, project_name, run, L, suffix):
     os.makedirs(working_dir, exist_ok=True)
     
     output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.txt'.format(run, project_name, suffix))
-    newfile = open(output_map, 'w')    
-    newfile.write("sample\tlibrary\trun\tbarcode\texternal_id\tgroup_id\tgroup_description\ttube_id\n")
+    newfile = open(output_map, 'w')
+    header = ['sample', 'library', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
+    if add_tube:
+        header.append('tube_id')
+    if add_panel:
+        header.append('panel')
+    newfile.write('\t'.join(header) + '\n')
+
     for i in L:
-       newfile.write('\t'.join(i) + '\n')
+        line = i[:-2]
+        if add_tube:
+            line.append(i[-2])
+        if add_panel:
+            line.append(i[-1])
+        newfile.write('\t'.join(line) + '\n')
     newfile.close()
 
 
@@ -1531,6 +1546,8 @@ if __name__ == '__main__':
     m_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
     m_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     m_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
+    m_parser.add_argument('--tube', dest='add_tube', action='store_true', help='Add tube_id to sample map if option is used. By default, tube_id is not added.')
+    m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
