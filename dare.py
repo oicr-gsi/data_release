@@ -1508,34 +1508,40 @@ def mark_files_nabu(args):
     - comment (str): A comment to used to tag the file. For instance the Jira ticket 
     '''
     
+    # check directory
+    if os.path.isdir(args.directory) == False:
+        raise ValueError('{0} is not a valid directory'.format(args.directory))
+        
     # make a list of files in directory
-    # get directory name
+    # get directory name and run Id
     run = os.path.basename(args.directory)
+    if '.' in run:
+        run_id = run[:run.index('.')]
+    else:
+        run_id = run
     if '.withhold' in run:
-        if args.release != 'fail':
+        if args.release.lower() != 'fail':
             raise ValueError('this run should not be released. Expected release value is fail')
     else:
-        if args.release == 'fail':
+        if args.release.lower() == 'fail':
             raise ValueError('this run should be released. Expected release value is pass')
-
-    # get run ID
-    run = run[:run.index('.')]
     
     # get the real path of the links in directory
     files = [os.path.realpath(os.path.join(args.directory, i)) for i in os.listdir(args.directory) if os.path.isfile(os.path.join(args.directory, i))]
     
     # make a list of swids
     swids = []
-    records = subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run), shell=True).decode('utf-8').rstrip().split('\n')
-    
-    mapped_files = map_swid_file(records)
-    
-    # get the swid Ids
-    swids = [mapped_files[file] for file in files if file in mapped_files]
-
-    # mark files il nabu
-    for i in swids:
-        change_nabu_status(args.api, i, args.release.upper(), args.user, comment=args.comment)
+    try:
+        records = subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run_id), shell=True).decode('utf-8').rstrip().split('\n')
+    except:
+        raise ValueError('Cannot find records for run {0} in FPR'.format(run_id))
+    else:
+        mapped_files = map_swid_file(records)
+        # get the swid Ids
+        swids = [mapped_files[file] for file in files if file in mapped_files]
+        # mark files il nabu
+        for i in swids:
+            change_nabu_status(args.api, i, args.release.upper(), args.user, comment=args.comment)
             
     
 if __name__ == '__main__':
