@@ -21,6 +21,7 @@ import base64
 import copy
 from PIL import Image
 import math
+import requests
 
 # can mark files other than fastqs in nabu?
 
@@ -1433,7 +1434,7 @@ def map_external_ids(args):
                     L.append(R)
                 recorded.append(R)
         
-        write_map_file(args.projects_dir, args.project_name, run, L, args.suffix)
+        write_map_file(args.projects_dir, args.project_name, run, L, args.suffix, args.add_tube, args.add_panel)
     
 
 def map_swid_file(L):
@@ -1457,6 +1458,38 @@ def map_swid_file(L):
         file = os.path.realpath(j[46])
         D[file] = swid         
     return D
+
+
+
+def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
+    '''
+    (str, str, str, str, str | None) -> None
+    
+    Modify the record of file with file_swid in Nabu with QC status updated to qc_status,
+    username updated to user_name and comment updated to comment if used 
+    
+    Parameters
+    ----------
+    - api (str): URL of the nabu API
+    - file_swid (str): File unique identifier
+    - qc_status (str): File QC status: PASS, PENDING or FAIL
+    - comment (str): Jira ticket of the release
+    '''
+    
+    if qc_status not in ['PASS', 'PENDING', 'FAIL']:
+        raise ValueError('QC status is PASS, FAIL or PENDING')
+    
+    if comment:
+        response = requests.post(api + '/fileqcs?fileswid={0}&qcstatus={1}&username={2}&comment={3}'.format(file_swid, qc_status, user_name, comment))
+    else:
+        response = requests.post(api + '/fileqcs?fileswid={0}&qcstatus={1}&username={2}'.format(file_swid, qc_status, user_name))
+    
+    # check response code
+    if response.status_code == 201:
+        # record created
+        print('Sucessfully updated {0} status to {1}'.format(file_swid, qc_status))
+    else:
+        print('Could not update {0} status'.format(file_swid))
 
 
 def mark_files_nabu(args):
@@ -1502,12 +1535,8 @@ def mark_files_nabu(args):
 
     # mark files il nabu
     for i in swids:
-        print(i)
-        if args.comment:
-            subprocess.call('perl /.mounts/labs/gsiprojects/gsi/Nabu_DataSignoff/nabu.pl --post --swid {0} --status {1} --user {2} --comment \'{3}\''.format(i, args.release.upper(), args.user, args.comment), shell=True)
-        else:
-            subprocess.call('perl /.mounts/labs/gsiprojects/gsi/Nabu_DataSignoff/nabu.pl --post --swid {0} --status {1} --user {2}'.format(i, args.release.upper(), args.user), shell=True)
-    
+        change_nabu_status(args.api, i, args.release.upper(), args.user, comment=args.comment)
+            
     
 if __name__ == '__main__':
 
@@ -1556,6 +1585,7 @@ if __name__ == '__main__':
     n_parser.add_argument('-rl', '--release', dest='release', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
+    n_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API')
     n_parser.set_defaults(func=mark_files_nabu)
     
     # write a report
