@@ -278,12 +278,12 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
                 run_name = keywords['run_name'] + '.withhold'
             else:
                 run_name = run + '.{0}.{1}.withhold'.format(project_name, suffix)
-        run_dir = os.path.join(working_dir, run_name)
-        os.makedirs(run_dir, exist_ok=True)
-        for file in K[run]:
-            filename = os.path.basename(file)
-            link = os.path.join(run_dir, filename)
-            subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
+            run_dir = os.path.join(working_dir, run_name)
+            os.makedirs(run_dir, exist_ok=True)
+            for file in K[run]:
+                filename = os.path.basename(file)
+                link = os.path.join(run_dir, filename)
+                subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
 
 
 def link_files(args):
