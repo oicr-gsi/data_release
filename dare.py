@@ -23,7 +23,6 @@ from PIL import Image
 import math
 import requests
 
-# can mark files other than fastqs in nabu?
 
 
 def get_libraries(library_file):
@@ -109,9 +108,9 @@ def select_most_recent_workflow(L):
     return files
 
 
-def extract_files(project, runs, workflow, nomiseq, library_aliases, files_release, exclude):
+def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases, files_release, exclude):
     '''
-    (str, list, str, bool, dict, list, list) -> (dict, dict, dict)
+    (str, str, list, str, bool, dict, list, list) -> (dict, dict, dict)
   
     Returns a tuple with dictionaries with files extracted from FPR and their corresponding run
     respectively from release and withheld from release, and a dictionary with md5sums of the release files.
@@ -119,6 +118,7 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
             
     Parameters
     ----------
+    - provenance (str): Path to File Provenance Report
     - project (str): Project name as it appears in File Provenance Report or empty string.
                      Used to parse the FPR by project. Files are further filtered
                      by run is runs parameter if provided, or all files for
@@ -147,10 +147,10 @@ def extract_files(project, runs, workflow, nomiseq, library_aliases, files_relea
     
     # parse the file provenance record
     if project: 
-        records.extend(subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(project), shell=True).decode('utf-8').rstrip().split('\n'))
+        records.extend(subprocess.check_output('zcat {0} | grep {1}'.format(provenance, project), shell=True).decode('utf-8').rstrip().split('\n'))
     elif runs:
         for run in runs:
-            records.extend(subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run), shell=True).decode('utf-8').rstrip().split('\n'))
+            records.extend(subprocess.check_output('zcat {0} | grep {1}'.format(provenance, run), shell=True).decode('utf-8').rstrip().split('\n'))
 
     # parse the records
     for i in records:
@@ -285,7 +285,7 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
                 filename = os.path.basename(file)
                 link = os.path.join(run_dir, filename)
                 subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
-
+    
 
 def link_files(args):
     '''
@@ -312,7 +312,12 @@ def link_files(args):
     - exclude (str | list): File with sample name or libraries to exclude from the release,
                             or a list of sample name or libraries
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
+    - provenance (str): Path to File Provenance Report.
+                        Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
     '''
+    
+    # dereference link to FPR
+    provenance = os.path.realpath(args.provenance)
     
     # get the list of samples/libraries to exclude
     try:
@@ -341,7 +346,7 @@ def link_files(args):
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold, md5sums = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
     print('Extracted files from File Provenance Report')
     
     # link files to project dir
@@ -359,7 +364,7 @@ def link_files(args):
         for j in md5sums[i]:
             newfile.write('\t'.join([os.path.basename(j[0]), j[1]]) +'\n')
         newfile.close()    
-
+    print('Files were extracted from FPR {0}'.format(provenance))
     
 def map_file_ids(L):
     '''
@@ -419,6 +424,8 @@ def write_map_file(projects_dir, project_name, run, L, suffix, add_tube, add_pan
     - run (str): Run ID corresponding to the libraries with external Ids in L
     - L (list): List of records including library IDs and external IDs
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
+    - add_tube (bool): Add tube_id column to sample map if True
+    - add_panel (bool): Add panel column to sample map if True
     '''
 
     working_dir = os.path.join(projects_dir, project_name)
@@ -487,9 +494,9 @@ def map_filename_workflow_accession(files):
     return file_names
     
 
-def get_project_records(project):
+def get_project_records(project, provenance):
     '''
-    (str) -> list
+    (str, str) -> list
     
     Returns a list with all the records from the File Provenance Report for a given project
     Each individual record in the list is a list of fields    
@@ -497,10 +504,11 @@ def get_project_records(project):
     Parameters
     ----------
     - project (str): Name of a project as it appears in File Provenance Report
+    - provenance (str): Path to File Provenance Report.
     '''
         
     # get the records for a single project
-    records = subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(project), shell=True).decode('utf-8').rstrip().split('\n')
+    records = subprocess.check_output('zcat {0} | grep {1}'.format(provenance, project), shell=True).decode('utf-8').rstrip().split('\n')
     for i in range(len(records)):
         records[i] = records[i].rstrip().split('\t')
     return records
@@ -1251,6 +1259,7 @@ def write_report(args):
     - contact_name (str): Name of the analyst releasing the data
     - contact_email (str): Email of the analyst releasing the data
     - run_directories (list): List of directories with links to fastqs
+    - provenance (str): Path to File Provenance Report.
     '''
     
     # get the project directory with release run folders
@@ -1260,7 +1269,10 @@ def write_report(args):
     # map file names to their workflow accession
     file_names = map_filename_workflow_accession(files)
     # get the records for the project of interest
-    records = get_project_records(args.project)
+    # dereference link to FPR
+    provenance = os.path.realpath(args.provenance)
+    records = get_project_records(args.project, provenance)
+    print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about each released fastq 
     FPR_info = collect_info_released_fastqs(records, file_names)
     # collect information from bamqc table
@@ -1359,7 +1371,7 @@ def write_report(args):
     for i in figure_files:
         for j in figure_files[i]:
             os.remove(j)
-
+    
 
 
 def map_external_ids(args):
@@ -1386,6 +1398,10 @@ def map_external_ids(args):
     - exclude (str | list): File with sample name or libraries to exclude from the release,
                             or a list of sample name or libraries
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
+    - add_tube (bool): Add tube_id column to sample map if True
+    - add_panel (bool): Add panel column to sample map if True
+    - provenance (str): Path to File Provenance Report.
+                        Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
     '''
 
     try:
@@ -1415,8 +1431,10 @@ def map_external_ids(args):
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold, md5sums = extract_files(project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
-    print('Extracted files from File Provenance Report')
+    # dereference link to FPR
+    provenance = os.path.realpath(args.provenance)
+    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    print('Extracted files from FPR')
     
     for run in files_release:
         # make a list of items to write to file
@@ -1424,7 +1442,7 @@ def map_external_ids(args):
         print('Generating map for run {0}'.format(run))
         L, recorded = [], []
         # grab all the FPR records for that run
-        records = subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run), shell=True).decode('utf-8').rstrip().split('\n')
+        records = subprocess.check_output('zcat {0} | grep {1}'.format(provenance, run), shell=True).decode('utf-8').rstrip().split('\n')
         # map files in run to external IDs
         mapped_files = map_file_ids(records)
         for file in files_release[run]:
@@ -1435,7 +1453,7 @@ def map_external_ids(args):
                 recorded.append(R)
         
         write_map_file(args.projects_dir, args.project_name, run, L, args.suffix, args.add_tube, args.add_panel)
-    
+    print('Information was extracted from FPR {0}'.format(provenance))
 
 def map_swid_file(L):
     '''
@@ -1506,6 +1524,7 @@ def mark_files_nabu(args):
                      - fail: files that are withheld
     - user (str): User name to appear in Nabu for each released or whitheld file
     - comment (str): A comment to used to tag the file. For instance the Jira ticket 
+    - provenance (str): Path to File Provenance Report
     '''
     
     # check directory
@@ -1531,10 +1550,12 @@ def mark_files_nabu(args):
     
     # make a list of swids
     swids = []
+    # dereference FPR
+    provenance = os.path.realpath(args.provenance)
     try:
-        records = subprocess.check_output('zcat /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz | grep {0}'.format(run_id), shell=True).decode('utf-8').rstrip().split('\n')
+        records = subprocess.check_output('zcat {0} | grep {1}'.format(provenance, run_id), shell=True).decode('utf-8').rstrip().split('\n')
     except:
-        raise ValueError('Cannot find records for run {0} in FPR'.format(run_id))
+        raise ValueError('Cannot find records for run {0} in FPR {1}'.format(run_id, provenance))
     else:
         mapped_files = map_swid_file(records)
         # get the swid Ids
@@ -1547,6 +1568,7 @@ def mark_files_nabu(args):
         # mark files il nabu
         for i in swids:
             change_nabu_status(args.api, i, args.release.upper(), args.user, comment=args.comment)
+    print('Information was extracted from FPR {0}'.format(provenance))
             
     
 if __name__ == '__main__':
@@ -1570,6 +1592,7 @@ if __name__ == '__main__':
     l_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
     l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     l_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
+    l_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
@@ -1588,6 +1611,7 @@ if __name__ == '__main__':
     m_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
     m_parser.add_argument('--tube', dest='add_tube', action='store_true', help='Add tube_id to sample map if option is used. By default, tube_id is not added.')
     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
+    m_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
@@ -1597,6 +1621,7 @@ if __name__ == '__main__':
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
     n_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API')
+    n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     n_parser.set_defaults(func=mark_files_nabu)
     
     # write a report
@@ -1609,6 +1634,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-q', '--qc_table', dest='bamqc_table', help='Path to the bamqc table', required=True)
     r_parser.add_argument('-ct', '--contact', dest='contact_name', help='Name of the contact personn releasing the data', required=True)
     r_parser.add_argument('-e', '--email', dest='contact_email', help='Email of the contact personn releasing the data', required=True)
+    r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     r_parser.set_defaults(func=write_report)
     
     # get arguments from the command line
