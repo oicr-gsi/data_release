@@ -1541,10 +1541,10 @@ def mark_files_nabu(args):
     else:
         run_id = run
     if '.withhold' in run:
-        if args.release.lower() != 'fail':
+        if args.status.lower() != 'fail':
             raise ValueError('this run should not be released. Expected release value is fail')
     else:
-        if args.release.lower() == 'fail':
+        if args.status.lower() == 'fail':
             raise ValueError('this run should be released. Expected release value is pass')
     
     # get the real path of the links in directory
@@ -1622,7 +1622,7 @@ if __name__ == '__main__':
     n_parser.add_argument('-s', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
-    n_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API')
+    n_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
     n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     n_parser.set_defaults(func=mark_files_nabu)
     
