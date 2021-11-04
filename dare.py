@@ -1519,7 +1519,7 @@ def mark_files_nabu(args):
     Parameters
     ----------    
     - directory (str): Directory with links organized by project and run in gsi space 
-    - release (str): Mark files accordingly when released or withheld. Valid options:
+    - status (str): Mark files accordingly when released or withheld. Valid options:
                      - pass: files that are released
                      - fail: files that are withheld
     - user (str): User name to appear in Nabu for each released or whitheld file
@@ -1567,7 +1567,7 @@ def mark_files_nabu(args):
                 print('File {0} in directory {1} does not have a swid'.format(os.path.basename(file), args.directory))
         # mark files il nabu
         for i in swids:
-            change_nabu_status(args.api, i, args.release.upper(), args.user, comment=args.comment)
+            change_nabu_status(args.api, i, args.status.upper(), args.user, comment=args.comment)
     print('Information was extracted from FPR {0}'.format(provenance))
             
     
@@ -1617,7 +1617,7 @@ if __name__ == '__main__':
     # mark files in nabu 
     n_parser = subparsers.add_parser('mark', help="Mark released or withheld files in Nabu")
     n_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
-    n_parser.add_argument('-rl', '--release', dest='release', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
+    n_parser.add_argument('-s', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
     n_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API')
