@@ -270,7 +270,8 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
         for file in D[run]:
             filename = os.path.basename(file)
             link = os.path.join(run_dir, filename)
-            subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
+            if os.path.isfile(link) == False:
+                subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
 
 
     if len(K) != 0:
@@ -284,7 +285,8 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
             for file in K[run]:
                 filename = os.path.basename(file)
                 link = os.path.join(run_dir, filename)
-                subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
+                if os.path.isfile(link) == False:
+                    subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
     
 
 def link_files(args):
