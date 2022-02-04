@@ -516,17 +516,16 @@ def get_project_records(project, provenance):
     return records
 
 
-def collect_info_released_fastqs(records, file_names):
+def collect_info_fastqs(records):
     '''
-    (list, dict) -> dict
+    (list) -> dict
     
-    Returns a dictionary with relevant information for each released fastqs
-    by parsing the File Provenance Report for a given project 
+    Returns a dictionary with relevant information for fastqs by parsing the
+    File Provenance Report for a given project 
     
     Parameters
     ----------
     - records (list): Project level records from File Provenance Report
-    - file_names (dict): Map of the names of the released fastqs and the workflow accession that generated them
     '''
     
     # initiate dict
@@ -540,37 +539,35 @@ def collect_info_released_fastqs(records, file_names):
         workflow_accession = get_workflow_id(file)
         # get file name
         filename = os.path.basename(file)
-        # only keep information about released fastqs
-        if filename in file_names and workflow_accession == file_names[filename]:
-            # get md5sum, file SWID (unique file identifier) and get the lane of the flow cell
-            md5sum, file_swid, lane = i[47], i[44], i[24]
-            # get the run ID
-            run = i[23]
-            # remove lane from run
-            run_alias = run[:run.index('_lane')]
-            # get read count
-            read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
-            read_count = int(read_count['read_count'])
-            # get instrument, aliquit ID and barcode and ID
-            instrument, lid, barcode, ID = i[22], i[13], i[27], i[7]
-            # get information about external sample ID, group ID, description and tube ID 
-            geo = {k.split('=')[0]:k.split('=')[1] for k in i[12].split(';')}
-            externalid = geo['geo_external_name']
-            if 'geo_group_id' in geo:
-                groupid = geo['geo_group_id']
-            else:
-                groupid = 'NA'
-            if 'geo_group_id_description' in geo:
-                groupdesc = geo['geo_group_id_description']
-            else:
-                groupdesc = 'NA'
-            if 'geo_tube_id' in geo:
-                tubeid = geo['geo_tube_id']
-            else:
-                tubeid = 'NA'
-            D[file] = {'filename': filename, 'md5sum': md5sum, 'file_swid': file_swid, 'ID': ID, 'lid': lid,
-                        'run': run, 'barcode': barcode, 'external_id': externalid, 'group_id': groupid, 'group_desc': groupdesc,
-                        'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias}       
+        # get md5sum, file SWID (unique file identifier) and get the lane of the flow cell
+        md5sum, file_swid, lane = i[47], i[44], i[24]
+        # get the run ID
+        run = i[23]
+        # remove lane from run
+        run_alias = run[:run.index('_lane')]
+        # get read count
+        read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
+        read_count = int(read_count['read_count'])
+        # get instrument, aliquit ID and barcode and ID
+        instrument, lid, barcode, ID = i[22], i[13], i[27], i[7]
+        # get information about external sample ID, group ID, description and tube ID 
+        geo = {k.split('=')[0]:k.split('=')[1] for k in i[12].split(';')}
+        externalid = geo['geo_external_name']
+        if 'geo_group_id' in geo:
+            groupid = geo['geo_group_id']
+        else:
+            groupid = 'NA'
+        if 'geo_group_id_description' in geo:
+            groupdesc = geo['geo_group_id_description']
+        else:
+            groupdesc = 'NA'
+        if 'geo_tube_id' in geo:
+            tubeid = geo['geo_tube_id']
+        else:
+            tubeid = 'NA'
+        D[file] = {'filename': filename, 'workflow_id': workflow_accession, 'md5sum': md5sum, 'file_swid': file_swid, 'ID': ID, 'lid': lid,
+                    'run': run, 'barcode': barcode, 'external_id': externalid, 'group_id': groupid, 'group_desc': groupdesc,
+                    'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias}       
     return D
 
 
@@ -1275,8 +1272,12 @@ def write_report(args):
     provenance = os.path.realpath(args.provenance)
     records = get_project_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
-    # collect relevant information from File Provenance Report about each released fastq 
-    FPR_info = collect_info_released_fastqs(records, file_names)
+    # collect relevant information from File Provenance Report about fastqs for project 
+    FPR_info = collect_info_fastqs(records)
+    # keep only info about released fastqs
+    to_remove = [i for i in FPR_info if i not in file_names or file_names[i] != FPR_info[i]['workflow_id']]
+    for i in to_remove:
+        del FPR_info[i]
     # collect information from bamqc table
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
     # update FPR info with QC info from bamqc table
@@ -1374,6 +1375,8 @@ def write_report(args):
         for j in figure_files[i]:
             os.remove(j)
     
+
+
 
 
 def map_external_ids(args):
