@@ -1303,7 +1303,7 @@ def write_report(args):
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    records = get_project_records(args.project, provenance)
+    records = get_FPR_records(args.project, provenance, 'project')
     print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about fastqs for project 
     FPR_info = collect_info_fastqs(records)
