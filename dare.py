@@ -22,6 +22,7 @@ import copy
 from PIL import Image
 import math
 import requests
+import gzip
 
 
 
@@ -147,10 +148,10 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
     
     # parse the file provenance record
     if project: 
-        records.extend(subprocess.check_output('zcat {0} | grep {1}'.format(provenance, project), shell=True).decode('utf-8').rstrip().split('\n'))
+        records.extend(get_FPR_records(project, provenance, 'project'))
     elif runs:
         for run in runs:
-            records.extend(subprocess.check_output('zcat {0} | grep {1}'.format(provenance, run), shell=True).decode('utf-8').rstrip().split('\n'))
+            records.extend(get_FPR_records(run, provenance, 'run'))
 
     # parse the records
     for i in records:
@@ -271,8 +272,7 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
             filename = os.path.basename(file)
             link = os.path.join(run_dir, filename)
             if os.path.isfile(link) == False:
-                subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
-
+                os.symlink(file, link)
 
     if len(K) != 0:
         for run in K:
@@ -286,7 +286,7 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
                 filename = os.path.basename(file)
                 link = os.path.join(run_dir, filename)
                 if os.path.isfile(link) == False:
-                    subprocess.call('ln -s {0} {1}'.format(file, link), shell=True)
+                    os.symlink(file, link)
     
 
 def link_files(args):
@@ -494,25 +494,58 @@ def map_filename_workflow_accession(files):
         assert filename not in file_names
         file_names[filename] = workflow_accession
     return file_names
-    
 
-def get_project_records(project, provenance):
+
+def is_gzipped(file):
     '''
-    (str, str) -> list
+    (str) -> bool
+
+    Return True if file is gzipped
+
+    Parameters
+    ----------
+    - file (str): Path to file
+    '''
     
-    Returns a list with all the records from the File Provenance Report for a given project
+    # open file in rb mode
+    infile = open(file, 'rb')
+    header = infile.readline()
+    infile.close()
+    if header.startswith(b'\x1f\x8b\x08'):
+        return True
+    else:
+        return False
+  
+
+def get_FPR_records(name, provenance, level):
+    '''
+    (str, str, str) -> list
+    
+    Returns a list with all the records from the File Provenance Report for a given project or run
     Each individual record in the list is a list of fields    
     
     Parameters
     ----------
-    - project (str): Name of a project as it appears in File Provenance Report
+    - name (str): Name of a project or run as it appears in File Provenance Report
     - provenance (str): Path to File Provenance Report.
+    - level (str): Run or project: Parse FPR for a given run or project
     '''
         
     # get the records for a single project
-    records = subprocess.check_output('zcat {0} | grep {1}'.format(provenance, project), shell=True).decode('utf-8').rstrip().split('\n')
-    for i in range(len(records)):
-        records[i] = records[i].rstrip().split('\t')
+    records = []
+    # open provenance for reading. allow gzipped file or not
+    if is_gzipped(provenance):
+        infile = gzip.open(provenance, 'rt', errors='ignore')
+    else:
+        infile = open(provenance)
+    for line in infile:
+        if name in line:
+            line = line.rstrip().split('\t')
+            if level == 'project' and name == line[1]:
+                records.append(line)
+            elif level == 'run' and name == line[18]:
+                records.append(line)
+    infile.close()
     return records
 
 
@@ -1447,7 +1480,7 @@ def map_external_ids(args):
         print('Generating map for run {0}'.format(run))
         L, recorded = [], []
         # grab all the FPR records for that run
-        records = subprocess.check_output('zcat {0} | grep {1}'.format(provenance, run), shell=True).decode('utf-8').rstrip().split('\n')
+        records = get_FPR_records(run, provenance, 'run')
         # map files in run to external IDs
         mapped_files = map_file_ids(records)
         for file in files_release[run]:
@@ -1558,7 +1591,7 @@ def mark_files_nabu(args):
     # dereference FPR
     provenance = os.path.realpath(args.provenance)
     try:
-        records = subprocess.check_output('zcat {0} | grep {1}'.format(provenance, run_id), shell=True).decode('utf-8').rstrip().split('\n')
+        records = get_FPR_records(run_id, provenance, 'run')
     except:
         raise ValueError('Cannot find records for run {0} in FPR {1}'.format(run_id, provenance))
     else:
