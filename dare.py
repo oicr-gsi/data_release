@@ -691,6 +691,9 @@ def parse_qc_etl(bamqc_table, project):
             
             total_bases_on_target = int(i[header.index('total bases on target')])
             total_reads = int(i[header.index('total reads')])
+            
+            paired_reads = int(i[header.index('paired reads')])
+                        
             if bases_mapped == 0:
                 on_target = 'NA'
             else:
@@ -701,7 +704,8 @@ def parse_qc_etl(bamqc_table, project):
                  'mapped_reads': mapped_reads, 'sample': sample,
                  'total_bases_on_target': total_bases_on_target,
                  'total_reads': total_reads, 'on_target': on_target,
-                 'barcodes':barcodes, 'lane': lane, 'percent_duplicate': percent_duplicate}
+                 'barcodes':barcodes, 'lane': lane, 'percent_duplicate': percent_duplicate,
+                 'paired_reads': paired_reads}
             # collect information at the run level
             if run_alias in B:
                 B[run_alias].append(d)
@@ -741,6 +745,11 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                         # check that sample is in file name
                         if sample_name in file:
                             # matched file between FPR and qc-etl. update file information
+                            
+                            
+                            print(sample_name, FPR_info[file]['read_count'], d['paired_reads'], d['total_reads'])
+                            
+                            
                             # add coverage
                             FPR_info[file]['coverage'] = round(d['coverage'] * 100, 2)
                             # add percent duplicate
@@ -1277,6 +1286,87 @@ def list_file_count(sequencers, fastq_counts):
     return L            
     
 
+
+
+
+    
+    # apply consistent ticket naming scheme by removing URL if present 
+    # remove 'NA' if at least 1 ticket is found.
+    # this is because 'NA' is added if the QC status cannot be retrieved from Nabu    
+    if any(map(lambda x: x.startswith('GDR'), T)):
+        while 'NA' in T:
+            T.remove('NA')
+    return T
+
+
+
+
+
+
+
+def get_QC_status_from_nabu(api, file_swid):
+    '''
+    (str, str) -> (str | None, str)
+    
+    Returns a tuple with the file QC status and release ticket if file is released
+        
+    Parameters
+    ----------
+    - api (str): URL of the nabu API
+    - file_swid (str): File unique identifier
+    '''
+    
+    try:
+        response = requests.get(api + '/fileqc/{0}'.format(file_swid), {'accept': 'application/json',})
+    except:
+        qcstatus, ticket = None, 'NA'
+            
+    # check response code
+    if response.status_code == 200:
+        d = response.json()
+        if d['fileqcs']:
+            assert len(d['fileqcs']) == 1
+            qcstatus = d['fileqcs'][0]['qcstatus']
+            if 'comment' in d['fileqcs'][0]:
+                ticket = d['fileqcs'][0]['comment']
+            else:
+                ticket = 'NA'
+        else:
+            qcstatus, ticket = None, 'NA'
+    else:
+        qcstatus, ticket = None, 'NA'
+
+    return qcstatus, ticket
+        
+
+
+def list_released_fastqs_project(api, FPR_info):
+    '''
+    (str, dict) -> list
+    
+    Returns a list of fastqs for a given project that were previously released by interrogating QC status in Nabu
+    Pre-condition: Released files need to be marked in Nabu
+        
+    Parameters
+    ----------
+    - api (str): URL of the nabu API
+    - file_swid (str): File unique identifier
+    '''
+    
+    L = []
+    
+    for file in FPR_info:
+        # get file QC status
+        qcstatus, ticket = get_QC_status_from_nabu(api, FPR_info[file]['file_swid'])
+        ticket = os.path.basename(ticket).upper()
+        if qcstatus == 'PASS' and ticket.startswith('GDR'):
+            L.append(file)
+        elif qcstatus is None:
+            print('Warning. Could not retrieve QC status from Nabu for {0}'.format(file))
+    return L
+
+
+
 def write_report(args):
     '''
     (str, str, str, str, str, str, str, list)
@@ -1292,14 +1382,11 @@ def write_report(args):
     - contact_email (str): Email of the analyst releasing the data
     - run_directories (list): List of directories with links to fastqs
     - provenance (str): Path to File Provenance Report.
+    - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
     '''
     
     # get the project directory with release run folders
     project_dir = os.path.join(args.working_dir, args.project_name)
-    # make a list of full paths to the released fastqs resolving the links in the run directories
-    files = list_files_release_folder(args.run_directories)
-    # map file names to their workflow accession
-    file_names = map_filename_workflow_accession(files)
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
@@ -1308,6 +1395,14 @@ def write_report(args):
     # collect relevant information from File Provenance Report about fastqs for project 
     FPR_info = collect_info_fastqs(records)
     # keep only info about released fastqs
+    if args.level == 'single':
+        # make a list of full paths to the released fastqs resolving the links in the run directories
+        files = list_files_release_folder(args.run_directories)
+    elif args.level == 'cumulative':
+        files = list_released_fastqs_project(args.api, FPR_info)
+    # map file names to their workflow accession
+    file_names = map_filename_workflow_accession(files)
+    # keep information about the listed fastqs
     to_remove = [i for i in FPR_info if i not in file_names or file_names[i] != FPR_info[i]['workflow_id']]
     for i in to_remove:
         del FPR_info[i]
@@ -1673,6 +1768,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-ct', '--contact', dest='contact_name', help='Name of the contact personn releasing the data', required=True)
     r_parser.add_argument('-e', '--email', dest='contact_email', help='Email of the contact personn releasing the data', required=True)
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
+    r_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
     r_parser.set_defaults(func=write_report)
     
     # get arguments from the command line
