@@ -566,41 +566,43 @@ def collect_info_fastqs(records):
     
     # loop through each record. each individual record is a list of fields 
     for i in records:
-        # get file path
-        file = i[46]
-        # get workflow accession from file path
-        workflow_accession = get_workflow_id(file)
-        # get file name
-        filename = os.path.basename(file)
-        # get md5sum, file SWID (unique file identifier) and get the lane of the flow cell
-        md5sum, file_swid, lane = i[47], i[44], i[24]
-        # get the run ID
-        run = i[23]
-        # remove lane from run
-        run_alias = run[:run.index('_lane')]
-        # get read count
-        read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
-        read_count = int(read_count['read_count'])
-        # get instrument, aliquit ID and barcode and ID
-        instrument, lid, barcode, ID = i[22], i[13], i[27], i[7]
-        # get information about external sample ID, group ID, description and tube ID 
-        geo = {k.split('=')[0]:k.split('=')[1] for k in i[12].split(';')}
-        externalid = geo['geo_external_name']
-        if 'geo_group_id' in geo:
-            groupid = geo['geo_group_id']
-        else:
-            groupid = 'NA'
-        if 'geo_group_id_description' in geo:
-            groupdesc = geo['geo_group_id_description']
-        else:
-            groupdesc = 'NA'
-        if 'geo_tube_id' in geo:
-            tubeid = geo['geo_tube_id']
-        else:
-            tubeid = 'NA'
-        D[file] = {'filename': filename, 'workflow_id': workflow_accession, 'md5sum': md5sum, 'file_swid': file_swid, 'ID': ID, 'lid': lid,
-                    'run': run, 'barcode': barcode, 'external_id': externalid, 'group_id': groupid, 'group_desc': groupdesc,
-                    'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias}       
+        # only consider workflows generating fastqs
+        if 'casava' in i[30].lower() or 'bcl2fastq' in i[30].lower():
+            # get file path
+            file = i[46]
+            # get workflow accession from file path
+            workflow_accession = get_workflow_id(file)
+            # get file name
+            filename = os.path.basename(file)
+            # get md5sum, file SWID (unique file identifier) and get the lane of the flow cell
+            md5sum, file_swid, lane = i[47], i[44], i[24]
+            # get the run ID
+            run = i[23]
+            # remove lane from run
+            run_alias = run[:run.index('_lane')]
+            # get read count
+            read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
+            read_count = int(read_count['read_count'])
+            # get instrument, aliquit ID and barcode and ID
+            instrument, lid, barcode, ID = i[22], i[13], i[27], i[7]
+            # get information about external sample ID, group ID, description and tube ID 
+            geo = {k.split('=')[0]:k.split('=')[1] for k in i[12].split(';')}
+            externalid = geo['geo_external_name']
+            if 'geo_group_id' in geo:
+                groupid = geo['geo_group_id']
+            else:
+                groupid = 'NA'
+            if 'geo_group_id_description' in geo:
+                groupdesc = geo['geo_group_id_description']
+            else:
+                groupdesc = 'NA'
+            if 'geo_tube_id' in geo:
+                tubeid = geo['geo_tube_id']
+            else:
+                tubeid = 'NA'
+            D[file] = {'filename': filename, 'workflow_id': workflow_accession, 'md5sum': md5sum, 'file_swid': file_swid, 'ID': ID, 'lid': lid,
+                       'run': run, 'barcode': barcode, 'external_id': externalid, 'group_id': groupid, 'group_desc': groupdesc,
+                       'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias}       
     return D
 
 
