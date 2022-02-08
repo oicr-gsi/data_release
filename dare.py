@@ -732,6 +732,7 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
     
     # map files to qc-etl data
     for file in FPR_info:
+        found_qc = False
         # bamqc info is reported for each run
         run_alias = FPR_info[file]['run_alias']
         # check that run information is present in bamqc
@@ -739,19 +740,16 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
             # map FPR file info with bamqc file info
             for d in bamqc_info[run_alias]:
                 # check if same file
-                if FPR_info[file]['instrument'].replace('_', ' ') == d['instrument'] and FPR_info[file]['run_alias'] == d['run_alias']:
-                    if FPR_info[file]['barcode'] == d['barcodes'] and FPR_info[file]['lane'] == d['lane']:
+                if FPR_info[file]['instrument'].replace('_', ' ') == d['instrument'] \
+                    and FPR_info[file]['run_alias'] == d['run_alias'] \
+                    and FPR_info[file]['barcode'] == d['barcodes'] \
+                    and FPR_info[file]['lane'] == d['lane']:
                         # get sample name. edit to match sample name format in FPR
                         sample_name = d['sample'].split('_')
                         sample_name = '_'.join(sample_name[:2])
                         # check that sample is in file name
                         if sample_name in file:
                             # matched file between FPR and qc-etl. update file information
-                            
-                            
-                            print(sample_name, FPR_info[file]['read_count'], d['paired_reads'], d['total_reads'])
-                            
-                            
                             # add coverage
                             FPR_info[file]['coverage'] = round(d['coverage'] * 100, 2)
                             # add percent duplicate
@@ -764,7 +762,11 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                             # fix floating point approximations
                             if math.ceil(FPR_info[file]['on_target']) == 100:
                                 FPR_info[file]['on_target'] = math.ceil(FPR_info[file]['on_target'])
-
+                            found_qc = True
+        if found_qc == False:
+            print('WARNING. Cannot find bamQC for {0}'.format(os.path.basename(file)))
+                    
+                    
 
 def rename_metrics_FPR(FPR_info):
     '''
@@ -1195,9 +1197,9 @@ def generate_project_table(project_name, project_code, current_date, name, email
     return ''.join(table)
 
 
-def generate_header_table(logo, width, height):
+def generate_header_table(logo, width, height, level):
     '''
-    (str, int, int) -> str
+    (str, int, int, str) -> str
 
     Returns a html string representing a table with logo and report title
 
@@ -1206,7 +1208,13 @@ def generate_header_table(logo, width, height):
     - logo (str): Path to the OICR logo
     - width (int): Width of the logo figure
     - height (int): Height of the logo figure
+    - level (str): Single release or cumulative project report. Values: single or cumulative 
     '''
+
+    if level == 'single':
+        title = 'Data Release Report'
+    elif level == 'cumulative':
+        title = 'Cumulative Project Report'
 
     table = []
     # add table style
@@ -1215,7 +1223,7 @@ def generate_header_table(logo, width, height):
     table.append('</tr>')
     table.append('<tr>')
     table.append('<td style="width: 40%; padding: 3px; text-align: left"><img src="{0}" alt="{1}" title="{1}" style="padding-right: 0px; padding-left:0px; width:{2}; height:{3}"></td>'.format(logo, 'logo', width, height))
-    table.append('<td style="width: 60%; padding: 3px; text-align: left"><p style="text-align: left; color: black; font-size:30px; font-family: Arial, Verdana, sans-serif; font-weight:bold">  Data Release Report</p></td>')
+    table.append('<td style="width: 60%; padding: 3px; text-align: left"><p style="text-align: left; color: black; font-size:30px; font-family: Arial, Verdana, sans-serif; font-weight:bold">  {0}</p></td>'.format(title))
     table.append('</tr>')
     table.append('</table>')
     
@@ -1254,9 +1262,9 @@ def generate_figure_table(file1, file2):
     return ''.join(table)
 
 
-def list_file_count(sequencers, fastq_counts):
+def list_file_count(sequencers, fastq_counts, level):
     '''
-    (list, dict) -> list
+    (list, dict, str) -> list
     
     Returns a list of htm strings with counts of released fastqs by instrument and run
     
@@ -1264,6 +1272,7 @@ def list_file_count(sequencers, fastq_counts):
     ----------
     - sequencers (list): List of sequencing instruments
     - fastq_counts (dict): Counts of released fastqs for each run and instrument
+    - level (str): Single release or cumulative project report. Values: single or cumulative 
     '''
     
     # count all files
@@ -1274,8 +1283,10 @@ def list_file_count(sequencers, fastq_counts):
     # store html in list
     L = []
     L.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
-    L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} fastqs. File count is broken down by instrument and run as follow.</p>'.format(c))
-                 
+    if level == 'single':
+        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} fastqs. File count is broken down by instrument and run as follow.</p>'.format(c))
+    elif level == 'cumulative':
+        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} fastqs have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
     # add file count broken down by instrument and run
     for instrument in sequencers:
         if instrument in fastq_counts:
@@ -1287,23 +1298,6 @@ def list_file_count(sequencers, fastq_counts):
                 L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run_name, fastq_counts[instrument][run]))
     return L            
     
-
-
-
-
-    
-    # apply consistent ticket naming scheme by removing URL if present 
-    # remove 'NA' if at least 1 ticket is found.
-    # this is because 'NA' is added if the QC status cannot be retrieved from Nabu    
-    if any(map(lambda x: x.startswith('GDR'), T)):
-        while 'NA' in T:
-            T.remove('NA')
-    return T
-
-
-
-
-
 
 
 def get_QC_status_from_nabu(api, file_swid):
@@ -1364,7 +1358,7 @@ def list_released_fastqs_project(api, FPR_info):
         if qcstatus == 'PASS' and ticket.startswith('GDR'):
             L.append(file)
         elif qcstatus is None:
-            print('Warning. Could not retrieve QC status from Nabu for {0}'.format(file))
+            print('WARNING. Could not retrieve QC status from Nabu for {0}'.format(file))
     return L
 
 
@@ -1405,7 +1399,7 @@ def write_report(args):
     # map file names to their workflow accession
     file_names = map_filename_workflow_accession(files)
     # keep information about the listed fastqs
-    to_remove = [i for i in FPR_info if i not in file_names or file_names[i] != FPR_info[i]['workflow_id']]
+    to_remove = [i for i in FPR_info if os.path.basename(i) not in file_names or file_names[os.path.basename(i)] != FPR_info[i]['workflow_id']]
     for i in to_remove:
         del FPR_info[i]
     # collect information from bamqc table
@@ -1446,13 +1440,13 @@ def write_report(args):
     # add title and logo
     logo = 'OICR_Logo_RGB_ENGLISH.png'
     height, width = resize_figure(logo, 0.085)
-    Text.append(generate_header_table(logo, width, height))
+    Text.append(generate_header_table(logo, width, height, args.level))
     Text.append('<br />' * 3)
     # add information about project and contact personn
     Text.append(generate_project_table(args.project_name, args.project_code, current_date, args.contact_name, args.contact_email))
     Text.append('<br />' * 2)           
     # list the file count            
-    Text.extend(list_file_count(sequencers, fastq_counts))
+    Text.extend(list_file_count(sequencers, fastq_counts, args.level))
     Text.append('<br />')           
     # add QC plots
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
@@ -1483,11 +1477,12 @@ def write_report(args):
     Text.append('<div style="page-break-after: always;"></div>')
     
     # add md5sums
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
-    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
-    header = ['filename', 'md5sum']       
-    column_size = {'filename': '70%', 'md5sum': '30%'}
-    Text.append(generate_table(FPR_info, header, column_size, 'md5sum'))            
+    if args.level == 'single':
+        Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
+        header = ['filename', 'md5sum']       
+        column_size = {'filename': '70%', 'md5sum': '30%'}
+        Text.append(generate_table(FPR_info, header, column_size, 'md5sum'))            
 
     # convert to html
     renderer = mistune.Markdown()
