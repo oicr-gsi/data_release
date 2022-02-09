@@ -1363,6 +1363,41 @@ def list_released_fastqs_project(api, FPR_info):
 
 
 
+def get_cumulative_metrics(FPR_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with the total number of reads for each sequenced library
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Dictionary with information for released fastqs pulled from FPR and qc-etl
+    '''
+    
+    # create a dictionary for each library with cumulative number of reads, cumulative coverage, release dates
+    D = {}
+
+    for file in FPR_info:
+        ID = FPR_info[file]['ID']
+        run = FPR_info[file]['run']
+        library = FPR_info[file]['library']
+        reads =  FPR_info[file]['reads']      
+        if library in D:
+            assert D[library]['ID'] == ID
+            D[library]['reads'] += reads
+            D[library]['run'].append(run)
+        else:
+            D[library] = {'reads': reads, 'ID': ID, 'run': [run]}
+    
+    return D
+
+
+
+
+
+
+
+
 def write_report(args):
     '''
     (str, str, str, str, str, str, str, list)
@@ -1419,6 +1454,10 @@ def write_report(args):
     for i in to_remove:
         sequencers.remove(i)
     
+    # compute cumulative read count and coverage for project level report
+    if args.level == 'cumulative':
+        cumulative_data = get_cumulative_metrics(FPR_info)
+    
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
@@ -1428,12 +1467,13 @@ def write_report(args):
     current_date = datetime.today().strftime('%Y-%m-%d')
     
     # write md5sums to separate text file
-    md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
-    newfile = open(md5_file, 'w')
-    newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
-    for file in sorted(list(FPR_info.keys())):
-        newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
-    newfile.close()       
+    if args.level == 'single':
+        md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
+        newfile = open(md5_file, 'w')
+        newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
+        for file in sorted(list(FPR_info.keys())):
+            newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
+        newfile.close()       
     
     # make a list to store report
     Text = []
