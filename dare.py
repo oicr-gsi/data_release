@@ -1159,6 +1159,61 @@ def generate_table(FPR_info, header, column_size, table_type=None):
     return ''.join(table)
 
 
+
+def generate_cumulative_project_table(library_metrics, header, column_size):
+    '''
+    (dict, list, dict) -> str
+    
+    Returns a html string representing a table
+    
+    Parameters
+    ----------
+    - library_metrics (dict): QC metrics and other information for each sequenced library
+    - header (list):
+    - column_size (dict):
+    - table_type (str | None):
+    '''
+    
+    # count the expected number of cells (excluding header) in tables
+    cells = len(list(library_metrics.keys()))
+    
+    # add padding around text in cells    
+    padding = '3px'
+    
+    # set up counter to track odd and even lines
+    counter = 0
+
+    table = []
+    # add table style
+    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
+    # add header
+    table.append('<tr>')
+    for i in header:
+        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
+    table.append('</tr>')
+    # add lines in table
+    for library in library_metrics:
+        
+        if counter % 2 == 0:
+            table.append('<tr style="background-color: #eee">')
+        else:
+            table.append('<tr style="background-color: #fff">')
+        for i in header:
+            j = str(library_metrics[library][i])
+            if counter + 1 == cells:
+                table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; text-align: left;">{1}</td>'.format(padding, j))
+            else:
+                table.append('<td style="padding: {0}; text-align: left;">{1}</td>'.format(padding, j))
+        table.append('</tr>')
+        # update counter
+        counter += 1
+    table.append('</table>')
+    return ''.join(table)
+
+
+
+
+
 def generate_project_table(project_name, project_code, current_date, name, email):
     '''
     (str, str, str, str, str) -> str
@@ -1394,6 +1449,56 @@ def get_cumulative_metrics(FPR_info):
 
 
 
+def transform_metrics(FPR_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with the total number of reads, and other information for each sequenced library
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Dictionary with information for released fastqs pulled from FPR and qc-etl
+    '''
+    
+    # create a dictionary for each library with cumulative number of reads, cumulative coverage, release dates
+    D = {}
+
+    for file in FPR_info:
+        ID = FPR_info[file]['ID']
+        run = FPR_info[file]['run']
+        library = FPR_info[file]['library']
+        reads =  FPR_info[file]['reads']      
+        md5sum = FPR_info[file]['md5sum']
+        barcode = FPR_info[file]['barcode']
+        external_id = FPR_info[file]['external_id']
+        instrument =  FPR_info[file]['instrument']
+        tube_id = FPR_info[file]['tube_id']
+        coverage = FPR_info[file]['coverage']
+        on_target = FPR_info[file]['on_target']
+        duplicate = FPR_info[file]['duplicate (%)']
+        if library in D:
+            assert D[library]['ID'] == ID
+            D[library]['reads'] += reads
+            D[library]['run'].append(run)
+            D[library]['files'].append([os.path.basename(file), md5sum])
+            D[library]['barcode'].append(barcode)
+            D[library]['external_id'].append(external_id)
+            D[library]['instrument'].append(instrument)
+            D[library]['tube_id'].append(tube_id)     
+            D[library]['coverage'].append(coverage)
+            D[library]['on_target'].append(on_target)
+            D[library]['duplicate (%)'].append(duplicate)
+        else:
+            D[library] = {'reads': reads, 'ID': ID, 'run': [run], 'files': [[os.path.basename(file), md5sum]],
+                          'barcode': [barcode], 'external_id': [external_id], 'instrument': [instrument],
+                          'tube_id': [tube_id], 'coverage': [coverage], 'on_target': [on_target], 'duplicate (%)': [duplicate]}
+    
+    for library in D:
+        for j in ['run', 'barcode', 'external_id', 'instrument', 'tube_id']:
+            D[library][j] = ';'.join(list(set(D[library][j])))
+       
+    return D
+
 
 
 
@@ -1456,7 +1561,10 @@ def write_report(args):
     
     # compute cumulative read count and coverage for project level report
     if args.level == 'cumulative':
-        cumulative_data = get_cumulative_metrics(FPR_info)
+        #cumulative_data = get_cumulative_metrics(FPR_info)
+        library_metrics = transform_metrics(FPR_info)
+    
+    
     
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
@@ -1510,11 +1618,19 @@ def write_report(args):
                 
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
-    column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
-    Text.append(generate_table(FPR_info, header, column_size))            
-    # add page break between plots and tables
+    if args.level == 'single':
+        header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
+        column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+        Text.append(generate_table(FPR_info, header, column_size))            
+        # add page break between plots and tables
+    elif args.level == 'cumulative':
+        header = ['ID', 'library', 'run', 'reads', 'coverage']
+        column_size = {'ID': '10%', 'library': '24%', 'run': '49%', 'reads': '9%', 'coverage': '9%'}
+        Text.append(generate_cumulative_project_table(library_metrics, header, column_size))
     Text.append('<div style="page-break-after: always;"></div>')
+    
+    
+    
     
     # add md5sums
     if args.level == 'single':
