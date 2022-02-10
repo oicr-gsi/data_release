@@ -1521,6 +1521,10 @@ def write_report(args):
     - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
     '''
     
+    # check that runs are specified for single data release report
+    if args.level == 'single' and args.runs is None:
+        raise ValueError('Please provide a list of run folders')
+        
     # get the project directory with release run folders
     project_dir = os.path.join(args.working_dir, args.project_name)
     # get the records for the project of interest
@@ -1916,7 +1920,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-d', '--directory', dest='working_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Project name as it appears in File Provenance Report')
     r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required = True)
     r_parser.add_argument('-c', '--code', dest='project_code', help='Project code from MISO', required = True)
-    r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs', required=True)
+    r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
     r_parser.add_argument('-q', '--qc_table', dest='bamqc_table', help='Path to the bamqc table', required=True)
     r_parser.add_argument('-ct', '--contact', dest='contact_name', help='Name of the contact personn releasing the data', required=True)
     r_parser.add_argument('-e', '--email', dest='contact_email', help='Email of the contact personn releasing the data', required=True)
