@@ -1507,7 +1507,24 @@ def transform_metrics(FPR_info):
     return D
 
 
-
+def list_sequencers(fastq_counts):
+    '''
+    (dict) -> list
+    
+    Returns a list of sequencer instruments used to sequence the released fastqs
+    
+    Parameters
+    ----------
+    - fastq_counts (dict): Dictionary with counts of released files per run and instrument
+    '''
+        
+    # make a list of possible sequencers
+    sequencers = ['MiSeq', 'NextSeq', 'HiSeq', 'NovaSeq']
+    # remove sequencers if not part of release
+    to_remove = [i for i in sequencers if i not in fastq_counts]
+    for i in to_remove:
+        sequencers.remove(i)
+    return sequencers
 
 
 def write_report(args):
@@ -1556,6 +1573,8 @@ def write_report(args):
     
     # count the number of released fastqs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
+    # make a list sequencers used to sequence released fastqs
+    sequencers = list_sequencers(fastq_counts)
         
     # collect information from bamqc table
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
@@ -1564,13 +1583,6 @@ def write_report(args):
     # rename QC metrics for tables
     rename_metrics_FPR(FPR_info)
     
-    
-    # make a list of possible sequencers
-    sequencers = ['MiSeq', 'NextSeq', 'HiSeq', 'NovaSeq']
-    # remove sequencers if not part of release
-    to_remove = [i for i in sequencers if i not in fastq_counts]
-    for i in to_remove:
-        sequencers.remove(i)
     
     # compute cumulative read count and coverage for project level report
     if args.level == 'cumulative':
