@@ -754,7 +754,7 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                         if sample_name in file:
                             # matched file between FPR and qc-etl. update file information
                             # add coverage
-                            FPR_info[file]['coverage'] = round(d['coverage'] * 100, 2)
+                            FPR_info[file]['coverage'] = round(d['coverage'], 2)
                             # add percent duplicate
                             FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'], 2)
                             # add on_target
