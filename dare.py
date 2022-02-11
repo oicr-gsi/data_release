@@ -719,16 +719,19 @@ def parse_qc_etl(bamqc_table, project):
 
 def update_information_released_fastqs(FPR_info, bamqc_info):
     '''
-    (dict, dict) -> None
+    (dict, dict) -> dict
     
     Update the information obtained from File Provenance Report in place with information
-    collected from bamqc
+    collected from bamqc and returns a dictionary with file information when QC is missing from the bamqc table
     
     Parameters
     ----------
     - FPR_info (dict): Information for each released fastq collected from File Provenance Report
     - bamqc_info (dict): Information for each file and run for a given project collected from bamqc table
     '''
+    
+    # collect file info for files with missing QC 
+    D = {}
     
     # map files to qc-etl data
     for file in FPR_info:
@@ -765,7 +768,10 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                             found_qc = True
         if found_qc == False:
             print('WARNING. Cannot find bamQC for {0}'.format(os.path.basename(file)))
-                    
+            D[file] = FPR_info[file]
+    # remove files with missing info
+    for i in D:
+        del FPR_info[i]
                     
 
 def rename_metrics_FPR(FPR_info):
@@ -1549,7 +1555,7 @@ def write_report(args):
     # collect information from bamqc table
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
     # update FPR info with QC info from bamqc table
-    update_information_released_fastqs(FPR_info, bamqc_info)
+    files_missing_qc = update_information_released_fastqs(FPR_info, bamqc_info)
     # rename QC metrics for tables
     rename_metrics_FPR(FPR_info)
     
