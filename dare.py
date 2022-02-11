@@ -1484,6 +1484,7 @@ def transform_metrics(FPR_info):
         duplicate = FPR_info[file]['duplicate (%)']
         if library in D:
             assert D[library]['ID'] == ID
+            assert D[library]['library'] == library
             D[library]['reads'] += reads
             D[library]['run'].append(run)
             D[library]['files'].append([os.path.basename(file), md5sum])
@@ -1495,7 +1496,7 @@ def transform_metrics(FPR_info):
             D[library]['on_target'].append(on_target)
             D[library]['duplicate (%)'].append(duplicate)
         else:
-            D[library] = {'reads': reads, 'ID': ID, 'run': [run], 'files': [[os.path.basename(file), md5sum]],
+            D[library] = {'reads': reads, 'ID': ID, 'library': library, 'run': [run], 'files': [[os.path.basename(file), md5sum]],
                           'barcode': [barcode], 'external_id': [external_id], 'instrument': [instrument],
                           'tube_id': [tube_id], 'coverage': [coverage], 'on_target': [on_target], 'duplicate (%)': [duplicate]}
     
@@ -1552,15 +1553,17 @@ def write_report(args):
     to_remove = [i for i in FPR_info if os.path.basename(i) not in file_names or file_names[os.path.basename(i)] != FPR_info[i]['workflow_id']]
     for i in to_remove:
         del FPR_info[i]
+    
+    # count the number of released fastqs for each run and instrument
+    fastq_counts = count_released_fastqs_by_instrument(FPR_info)
+        
     # collect information from bamqc table
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
-    # update FPR info with QC info from bamqc table
+    # update FPR info with QC info from bamqc table and remove files with missing QC
     files_missing_qc = update_information_released_fastqs(FPR_info, bamqc_info)
     # rename QC metrics for tables
     rename_metrics_FPR(FPR_info)
     
-    # count the number of released fastqs for each run and instrument
-    fastq_counts = count_released_fastqs_by_instrument(FPR_info)
     
     # make a list of possible sequencers
     sequencers = ['MiSeq', 'NextSeq', 'HiSeq', 'NovaSeq']
@@ -1573,7 +1576,8 @@ def write_report(args):
     if args.level == 'cumulative':
         #cumulative_data = get_cumulative_metrics(FPR_info)
         library_metrics = transform_metrics(FPR_info)
-    
+        
+        print(library_metrics)
     
     
     # generate figure files
