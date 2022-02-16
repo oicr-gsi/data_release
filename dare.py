@@ -23,7 +23,7 @@ from PIL import Image
 import math
 import requests
 import gzip
-
+from itertools import zip_longest
 
 
 def get_libraries(library_file):
@@ -690,24 +690,23 @@ def parse_qc_etl(bamqc_table, project):
             lane = i[header.index('Lane Number')]
             sample = i[header.index('sample')]
             percent_duplicate = float(i[header.index('mark duplicates_PERCENT_DUPLICATION')])
+            read_length = float(i[header.index('average read length')])
             
             total_bases_on_target = int(i[header.index('total bases on target')])
             total_reads = int(i[header.index('total reads')])
             
             paired_reads = int(i[header.index('paired reads')])
                         
-            if bases_mapped == 0:
-                on_target = 'NA'
-            else:
-                on_target = total_bases_on_target / bases_mapped * 100
+            total_target_size = int(i[header.index('total target size')])
+            
             # map file information
             d = {'run_alias': run_alias, 'instrument': instrument,
                  'bases_mapped': bases_mapped, 'coverage': coverage,
                  'mapped_reads': mapped_reads, 'sample': sample,
                  'total_bases_on_target': total_bases_on_target,
-                 'total_reads': total_reads, 'on_target': on_target,
-                 'barcodes':barcodes, 'lane': lane, 'percent_duplicate': percent_duplicate,
-                 'paired_reads': paired_reads}
+                 'total_reads': total_reads, 'barcodes':barcodes, 'lane': lane,
+                 'percent_duplicate': percent_duplicate, 'paired_reads': paired_reads,
+                 'read_length': read_length, 'total_target_size': total_target_size}
             # collect information at the run level
             if run_alias in B:
                 B[run_alias].append(d)
@@ -722,7 +721,7 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
     (dict, dict) -> dict
     
     Update the information obtained from File Provenance Report in place with information
-    collected from bamqc and returns a dictionary with file information when QC is missing from the bamqc table
+    collected from bamqc and returns a dictionary of libraries, runs for which QC is missing from the bamqc table
     
     Parameters
     ----------
@@ -730,7 +729,7 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
     - bamqc_info (dict): Information for each file and run for a given project collected from bamqc table
     '''
     
-    # collect file info for files with missing QC 
+    # collect file info for libraries with missing QC 
     D = {}
     
     # map files to qc-etl data
@@ -754,45 +753,33 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
                         if sample_name in file:
                             # matched file between FPR and qc-etl. update file information
                             # add coverage
+                            FPR_info[file]['bases_mapped'] = d['bases_mapped']
+                            FPR_info[file]['mapped_reads'] = d['mapped_reads']
+                            FPR_info[file]['total_bases_on_target'] = d['total_bases_on_target']
                             FPR_info[file]['coverage'] = round(d['coverage'], 2)
                             # add percent duplicate
                             FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'], 2)
-                            # add on_target
-                            if d['on_target'] > 100:
-                                FPR_info[file]['on_target'] = 100
-                            else:
-                                FPR_info[file]['on_target'] = round(d['on_target'], 2)
-                            # fix floating point approximations
-                            if math.ceil(FPR_info[file]['on_target']) == 100:
-                                FPR_info[file]['on_target'] = math.ceil(FPR_info[file]['on_target'])
+                            FPR_info[file]['read_length'] = d['read_length']
+                            FPR_info[file]['total_target_size'] = d['total_target_size']
                             found_qc = True
         if found_qc == False:
             print('WARNING. Cannot find bamQC for {0}'.format(os.path.basename(file)))
-            D[file] = FPR_info[file]
-    # remove files with missing info
-    for i in D:
-        del FPR_info[i]
-                    
+            if FPR_info[file]['lid'] in D:
+                D[FPR_info[file]['lid']].append(FPR_info[file]['run'])
+            else:
+                D[FPR_info[file]['lid']] = [FPR_info[file]['run']]
+            FPR_info[file]['bases_mapped'] = 'NA'
+            FPR_info[file]['mapped_reads'] = 'NA'
+            FPR_info[file]['total_bases_on_target'] = 'NA'
+            FPR_info[file]['coverage'] = 'NA'
+            FPR_info[file]['percent_duplicate'] = 'NA'
+            FPR_info[file]['read_length'] = 'NA'
+            FPR_info[file]['total_target_size'] = 'NA'
+    return D
 
-def rename_metrics_FPR(FPR_info):
-    '''
-    (dict) -> None
-    
-    Rename fields of interest with final metric name in report. Update dictionary in place 
-        
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    '''
-    
-    for file in FPR_info:
-        FPR_info[file]['duplicate (%)'] =  FPR_info[file]['percent_duplicate']
-        FPR_info[file]['library'] =  FPR_info[file]['lid']
-        FPR_info[file]['reads'] =  FPR_info[file]['read_count']
-        
-        for  i in ['percent_duplicate', 'lid', 'read_count']:
-            del FPR_info[file][i]
-    
+            
+
+
 
 def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = None):
     '''
@@ -1454,6 +1441,53 @@ def get_cumulative_metrics(FPR_info):
 
 
 
+def get_read(fastq_file):
+    """
+    (file) -- > itertools.zip_longest
+    :param fastq_file: a fastq file open for reading in plain text mode
+    
+    Returns an iterator slicing the fastq into 4-line reads.
+    Each element of the iterator is a tuple containing read information
+    """
+    args = [iter(fastq_file)] * 4
+    return zip_longest(*args, fillvalue=None)
+
+
+
+def compute_average_read_length(fastq):
+    '''
+    (str) -> float
+    
+    Returns the mean read length in the fastq file
+    
+    Parameters
+    - fastq (str): Path to fastq file 
+    '''
+    
+    # open file for reading
+    if is_gzipped(fastq):
+        infile = gzip.open(fastq, 'rt', errors='ignore')
+    else:
+        infile = open(fastq)
+
+    # create an iterator with the reads
+    reads = get_read(infile)
+    
+    # count read length
+    d = {}
+    
+    for i in reads:
+        seq = i[1]
+        if len(seq) in d:
+            d[len(seq)] += 1
+        else:
+            d[len(seq)] = 1
+    
+    mean = sum([i*d[i] for i in d.keys()]) / sum(list(d.values()))
+    
+    infile.close()
+    return mean
+
 
 def transform_metrics(FPR_info):
     '''
@@ -1472,40 +1506,134 @@ def transform_metrics(FPR_info):
     for file in FPR_info:
         ID = FPR_info[file]['ID']
         run = FPR_info[file]['run']
-        library = FPR_info[file]['library']
-        reads =  FPR_info[file]['reads']      
+        library = FPR_info[file]['lid']
+        reads =  FPR_info[file]['read_count']      
         md5sum = FPR_info[file]['md5sum']
         barcode = FPR_info[file]['barcode']
         external_id = FPR_info[file]['external_id']
         instrument =  FPR_info[file]['instrument']
         tube_id = FPR_info[file]['tube_id']
+                
+        bases_mapped = FPR_info[file]['bases_mapped']
+        mapped_reads = FPR_info[file]['mapped_reads']
+        total_bases_on_target = FPR_info[file]['total_bases_on_target']
         coverage = FPR_info[file]['coverage']
-        on_target = FPR_info[file]['on_target']
-        duplicate = FPR_info[file]['duplicate (%)']
+        duplicate = FPR_info[file]['percent_duplicate']
+        read_length = FPR_info[file]['read_length']
+        total_target_size = FPR_info[file]['total_target_size']
+                
+        if read_length == 'NA':
+            # compute read length
+            read_length = compute_average_read_length(file)
+
         if library in D:
             assert D[library]['ID'] == ID
             assert D[library]['library'] == library
-            D[library]['reads'] += reads
+            D[library]['reads'].append(reads)
+            
+            D[library]['bases_mapped'].append(bases_mapped) 
+            D[library]['mapped_reads'].append(mapped_reads)
+            D[library]['total_bases_on_target'].append(total_bases_on_target)
+            D[library]['duplicate {%}'].append(duplicate) 
+            D[library]['read_length'].append(read_length)
+            
+            assert total_target_size == D[library]['total_target_size']
+            
             D[library]['run'].append(run)
             D[library]['files'].append([os.path.basename(file), md5sum])
             D[library]['barcode'].append(barcode)
             D[library]['external_id'].append(external_id)
             D[library]['instrument'].append(instrument)
             D[library]['tube_id'].append(tube_id)     
-            D[library]['coverage'].append(coverage)
-            D[library]['on_target'].append(on_target)
-            D[library]['duplicate (%)'].append(duplicate)
+                
         else:
-            D[library] = {'reads': reads, 'ID': ID, 'library': library, 'run': [run], 'files': [[os.path.basename(file), md5sum]],
-                          'barcode': [barcode], 'external_id': [external_id], 'instrument': [instrument],
-                          'tube_id': [tube_id], 'coverage': [coverage], 'on_target': [on_target], 'duplicate (%)': [duplicate]}
-    
+            D[library] = {'reads': [reads], 'ID': ID, 'library': library, 'run': [run],
+                          'files': [[os.path.basename(file), md5sum]], 'barcode': [barcode],
+                          'external_id': [external_id], 'instrument': [instrument],
+                          'tube_id': [tube_id], 'duplicate (%)': [duplicate],
+                          'bases_mapped': [bases_mapped], 'mapped_reads': [mapped_reads],
+                          'total_bases_on_target': [total_bases_on_target],
+                          'duplicate {%}': [duplicate], 'read_length': [read_length],
+                          'total_target_size': total_target_size}
+                          
     for library in D:
         for j in ['run', 'barcode', 'external_id', 'instrument', 'tube_id']:
             D[library][j] = ';'.join(list(set(D[library][j])))
-       
+
     return D
 
+
+def compute_coverage(library_metrics):
+    '''
+    (dict) -> None
+    
+    Update dictionary with library-level metrics with average coverage
+    
+    Parameters
+    ----------
+    - library_metrics (dict): Dictionary with library-level metrics 
+    '''
+         
+    
+    for library in library_metrics:
+        # get read length
+        read_length = sum(library_metrics[library]['read_length']) / len(library_metrics[library]['read_length'])
+        # get coverage
+        if library_metrics[library]['total_target_size'] != 'NA':
+            coverage = read_length * sum(library_metrics[library]['reads']) / library_metrics[library]['total_target_size']
+        else:
+            coverage = 'NA'
+        library_metrics[library]['coverage'] = coverage
+        
+
+
+def compute_on_target(library_metrics):
+    '''
+    (dict) -> None
+    
+    Update dictionary with library-level metrics with on target rate
+    
+    Parameters
+    ----------
+    - library_metrics (dict): Dictionary with library-level metrics 
+    '''
+    
+    for library in library_metrics:
+        if 'NA' not in library_metrics[library]['total_bases_on_target'] and 'NA' not in library_metrics[library]['bases_mapped']:
+            total_bases_on_target = sum(library_metrics[library]['total_bases_on_target'])
+            bases_mapped = sum(library_metrics[library]['bases_mapped'])
+            if bases_mapped == 0:
+                on_target = 'NA'
+            else:
+                on_target = total_bases_on_target / bases_mapped * 100
+                if on_target:
+                    on_target = 100
+                else:
+                    on_target = round(on_target, 2)
+                    # fix floating point approximations
+                    if math.ceil(on_target) == 100:
+                        on_target = math.ceil(on_target)
+        else:
+            on_target = 'NA'
+        library_metrics[library]['on_target'] = on_target
+
+
+def update_missing_values(library_metrics):
+    '''
+    (dict) -> None
+    
+    Update library metrics to 'NA' when missing values are present
+    
+    Parameters
+    ----------
+    - library_metrics (dict): Dictionary with library-level metrics
+    '''
+    
+    for library in library_metrics:
+        for i in ['duplicate (%)', 'bases_mapped', 'total_bases_on_target', 'total_target_size']:
+            if 'NA' in library_metrics[library][i]:
+                library_metrics[library][i] = 'NA'
+   
 
 def list_sequencers(fastq_counts):
     '''
@@ -1578,19 +1706,22 @@ def write_report(args):
         
     # collect information from bamqc table
     bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
-    # update FPR info with QC info from bamqc table and remove files with missing QC
-    files_missing_qc = update_information_released_fastqs(FPR_info, bamqc_info)
-    # rename QC metrics for tables
-    rename_metrics_FPR(FPR_info)
     
+    # update FPR info with QC info from bamqc table and list libraries with missing QC
+    missing_qc = update_information_released_fastqs(FPR_info, bamqc_info)
     
-    # compute cumulative read count and coverage for project level report
-    if args.level == 'cumulative':
-        #cumulative_data = get_cumulative_metrics(FPR_info)
-        library_metrics = transform_metrics(FPR_info)
+    # transform metrics per library instead of files
+    library_metrics = transform_metrics(FPR_info)
+    # add coverage for each library
+    compute_coverage(library_metrics)
+    # add on_target rate
+    compute_on_target(library_metrics)
+    # update metrics missing qc
+    update_missing_values(library_metrics)
+
         
-        print(library_metrics)
     
+       
     
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
