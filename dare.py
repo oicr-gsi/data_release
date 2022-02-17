@@ -986,7 +986,7 @@ def group_qc_metric_by_instrument(library_metrics, metric):
     '''
     (dict, str) - > dict 
     
-    Returns sorted metric across runs by instrument
+    Returns metric for each library across runs by instrument
     Uses a generic intrument collapsing sequencer models into a generic name
     
     Parameters
@@ -1003,9 +1003,6 @@ def group_qc_metric_by_instrument(library_metrics, metric):
             D[instrument].append([library_metrics[library][metric], library])
         else:
             D[instrument] = [[library_metrics[library][metric], library]]
-    # sort metric for lowest to highest value
-    for i in D:
-        D[i].sort(key=lambda x: x[0])
     return D
 
 
@@ -1568,7 +1565,7 @@ def transform_metrics(FPR_info):
             D[library]['bases_mapped'].append(bases_mapped) 
             D[library]['mapped_reads'].append(mapped_reads)
             D[library]['total_bases_on_target'].append(total_bases_on_target)
-            D[library]['duplicate {%}'].append(duplicate) 
+            D[library]['duplicate (%)'].append(duplicate) 
             D[library]['read_length'].append(read_length)
             
             assert total_target_size == D[library]['total_target_size']
@@ -1587,13 +1584,24 @@ def transform_metrics(FPR_info):
                           'tube_id': [tube_id], 'duplicate (%)': [duplicate],
                           'bases_mapped': [bases_mapped], 'mapped_reads': [mapped_reads],
                           'total_bases_on_target': [total_bases_on_target],
-                          'duplicate {%}': [duplicate], 'read_length': [read_length],
-                          'total_target_size': total_target_size}
-                          
+                          'read_length': [read_length], 'total_target_size': total_target_size}
+    
     for library in D:
-        for j in ['run', 'barcode', 'external_id', 'instrument', 'tube_id']:
-            D[library][j] = ';'.join(list(set(D[library][j])))
-
+        # collpase these fields
+        for i in ['run', 'barcode', 'external_id', 'instrument', 'tube_id']:
+            D[library][i] = ';'.join(list(set(D[library][i])))
+        # add read counts
+        for i in ['reads', 'bases_mapped', 'mapped_reads', 'total_bases_on_target']:
+            if 'NA' not in D[library][i]:
+                D[library][i] = sum(D[library][i])
+            else:
+                D[library][i] = 'NA'
+        # compute average read length
+        D[library]['read_length'] = sum(D[library]['read_length']) / len(D[library]['read_length'])
+        # replace with missing qc 
+        if 'NA' in D[library]['duplicate (%)']:
+            D[library]['duplicate (%)'] = 'NA'
+        
     return D
 
 
@@ -1610,11 +1618,9 @@ def compute_coverage(library_metrics):
          
     
     for library in library_metrics:
-        # get read length
-        read_length = sum(library_metrics[library]['read_length']) / len(library_metrics[library]['read_length'])
         # get coverage
         if library_metrics[library]['total_target_size'] != 'NA':
-            coverage = read_length * sum(library_metrics[library]['reads']) / library_metrics[library]['total_target_size']
+            coverage = library_metrics[library]['read_length'] * library_metrics[library]['reads'] / library_metrics[library]['total_target_size']
         else:
             coverage = 'NA'
         library_metrics[library]['coverage'] = coverage
@@ -1633,9 +1639,9 @@ def compute_on_target(library_metrics):
     '''
     
     for library in library_metrics:
-        if 'NA' not in library_metrics[library]['total_bases_on_target'] and 'NA' not in library_metrics[library]['bases_mapped']:
-            total_bases_on_target = sum(library_metrics[library]['total_bases_on_target'])
-            bases_mapped = sum(library_metrics[library]['bases_mapped'])
+        if library_metrics[library]['total_bases_on_target'] != 'NA' and library_metrics[library]['bases_mapped'] != 'NA':
+            total_bases_on_target = library_metrics[library]['total_bases_on_target']
+            bases_mapped = library_metrics[library]['bases_mapped']
             if bases_mapped == 0:
                 on_target = 'NA'
             else:
@@ -1652,22 +1658,6 @@ def compute_on_target(library_metrics):
         library_metrics[library]['on_target'] = on_target
 
 
-def update_missing_values(library_metrics):
-    '''
-    (dict) -> None
-    
-    Update library metrics to 'NA' when missing values are present
-    
-    Parameters
-    ----------
-    - library_metrics (dict): Dictionary with library-level metrics
-    '''
-    
-    for library in library_metrics:
-        for i in ['duplicate (%)', 'bases_mapped', 'total_bases_on_target']:
-            if 'NA' in library_metrics[library][i]:
-                library_metrics[library][i] = 'NA'
-   
 
 def list_sequencers(fastq_counts):
     '''
@@ -1750,12 +1740,13 @@ def write_report(args):
     compute_coverage(library_metrics)
     # add on_target rate
     compute_on_target(library_metrics)
-    # update metrics missing qc
-    update_missing_values(library_metrics)
-
+    
         
     print('sucess')
        
+    print(library_metrics['KLCS_0115_Pl_P_PE_325_TS'])
+    
+    
     
        
     # generate figure files
