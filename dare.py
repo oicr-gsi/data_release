@@ -907,7 +907,7 @@ def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, c
 
 
 
-def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, metric2, YLabel1, YLabel2, color1, color2):
+def generate_figures(project_dir, project_name,  sequencers, library_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
     '''
     (project_dir, str, list, dict, str, str, str, str, str, str) -> list
     
@@ -918,7 +918,7 @@ def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, 
     - project_dir (str): Path to the folder where figure files are written
     - project_name (str): name of the project
     - sequencers (list): List of intruments
-    - FPR_info (dict): Dictionary with QC metrics of interest from FPR and bamQC 
+    - library_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
     - metric1 (str): Metrics of interest 1
     - metric2 (str): Metrics of interest 2
     - YLabel1 (str): Label of the Y axis for Data1
@@ -932,7 +932,7 @@ def generate_figures(project_dir, project_name,  sequencers, FPR_info, metric1, 
     for i in sequencers:
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
-        Q1, Q2 = sort_metrics(FPR_info, i, metric1, metric2)
+        Q1, Q2 = sort_metrics(library_metrics, i, metric1, metric2)
         plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
         if i not in figure_files:
             figure_files[i] = []
@@ -982,7 +982,7 @@ def map_instrument_type(sequencer):
     return instrument
 
 
-def group_qc_metric_by_instrument(FPR_info, metric):
+def group_qc_metric_by_instrument(library_metrics, metric):
     '''
     (dict, str) - > dict 
     
@@ -991,26 +991,25 @@ def group_qc_metric_by_instrument(FPR_info, metric):
     
     Parameters
     ----------
-    - FPR_info (dict): Dictionary with information from FPR updated with information from QC-ETL
-                       for each released fastq of a given project
+    - library_metrics (dict): Dictionary with library-level metrics from FPR and qc-etl 
     - metric (str): Metric of interest
     '''
     
     # collect read_counts across runs for each instrument and file
     D = {}
-    for file in FPR_info:
-        instrument = map_instrument_type(FPR_info[file]['instrument'])
+    for library in library_metrics:
+        instrument = map_instrument_type(library_metrics[library]['instrument'])
         if instrument in D:
-            D[instrument].append([FPR_info[file][metric], file])
+            D[instrument].append([library_metrics[library][metric], library])
         else:
-            D[instrument] = [[FPR_info[file][metric], file]]
+            D[instrument] = [[library_metrics[library][metric], library]]
     # sort metric for lowest to highest value
     for i in D:
         D[i].sort(key=lambda x: x[0])
     return D
 
 
-def sort_metrics(FPR_info, instrument, metric1, metric2):
+def sort_metrics(library_metrics, instrument, metric1, metric2):
     '''
     (dict, str, str, str) -> (list, list)
     
@@ -1019,28 +1018,34 @@ def sort_metrics(FPR_info, instrument, metric1, metric2):
     Parameters
     ----------
     
-    - FPR_info (dict): QC metrics extracted from the File provenance Report and bamqc
+    - library_metrics (dict): QC metrics extracted from the File provenance Report and bamqc for each library
     - instrument (str): Sequencing intrument
     - metric1 (str): Name of QC metric 1
     - metric2 (str): Name of QC metric 2
     '''
     
     # group metric 1 by instrument
-    D1 = group_qc_metric_by_instrument(FPR_info, metric1)
+    D1 = group_qc_metric_by_instrument(library_metrics, metric1)
     # make a sorted list of metric1 in ascending order
-    Q1 = [i[0] for i in D1[instrument] if 'R1' in i[1]]
-    # make a list of files corresponding to the sorted metric1 values
-    files = [i[1] for i in D1[instrument] if 'R1' in i[1]]
+    Q1 = [i[0] for i in D1[instrument]]
+    # make a list of libraries corresponding to the sorted metric1 values
+    libraries = [i[1] for i in D1[instrument]]
     
     # group metric 2 by instrument
-    D2 = group_qc_metric_by_instrument(FPR_info, metric2)
-    # make a list of metric 2sorted according to the order of metric1
+    D2 = group_qc_metric_by_instrument(library_metrics, metric2)
+    # make a list of metric2 sorted according to the order of metric1
     Q2 = []
-    for i in files:
+    for i in libraries:
         for j in D2[instrument]:
             if j[1] == i:
                 Q2.append(j[0])
     assert len(Q1) == len(Q2)
+
+
+    print(Q1)
+    print('---')
+    print(Q2)
+
 
     return Q1, Q2
 
@@ -1749,12 +1754,13 @@ def write_report(args):
     update_missing_values(library_metrics)
 
         
-    
+    print('sucess')
        
     
+       
     # generate figure files
-    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
-    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, FPR_info, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
+    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
+    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
     figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     
     # get current date (year-month-day)
