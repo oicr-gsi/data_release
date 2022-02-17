@@ -1453,6 +1453,36 @@ def get_read(fastq_file):
     return zip_longest(*args, fillvalue=None)
 
 
+def get_read_length(fastq):
+    '''
+    
+    '''
+
+    # open file for reading
+    if is_gzipped(fastq):
+        infile = gzip.open(fastq, 'rt', errors='ignore')
+    else:
+        infile = open(fastq)
+
+    # create an iterator with the reads
+    reads = get_read(infile)
+    
+    for i in reads:
+        read_length = len(i[1])
+        # assume all the reads have same length
+        break
+    
+    infile.close()    
+    return read_length
+    
+ 
+ 
+
+
+
+
+
+
 
 def compute_average_read_length(fastq):
     '''
@@ -1517,14 +1547,13 @@ def transform_metrics(FPR_info):
         bases_mapped = FPR_info[file]['bases_mapped']
         mapped_reads = FPR_info[file]['mapped_reads']
         total_bases_on_target = FPR_info[file]['total_bases_on_target']
-        coverage = FPR_info[file]['coverage']
         duplicate = FPR_info[file]['percent_duplicate']
         read_length = FPR_info[file]['read_length']
         total_target_size = FPR_info[file]['total_target_size']
                 
         if read_length == 'NA':
             # compute read length
-            read_length = compute_average_read_length(file)
+            read_length = get_read_length(file)
 
         if library in D:
             assert D[library]['ID'] == ID
@@ -1630,7 +1659,7 @@ def update_missing_values(library_metrics):
     '''
     
     for library in library_metrics:
-        for i in ['duplicate (%)', 'bases_mapped', 'total_bases_on_target', 'total_target_size']:
+        for i in ['duplicate (%)', 'bases_mapped', 'total_bases_on_target']:
             if 'NA' in library_metrics[library][i]:
                 library_metrics[library][i] = 'NA'
    
