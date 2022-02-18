@@ -1066,7 +1066,7 @@ def count_released_fastqs_by_instrument(FPR_info):
     D = {}
     for file in FPR_info:
         instrument = map_instrument_type(FPR_info[file]['instrument'])
-        run = FPR_info[file]['run']
+        run = FPR_info[file]['run_alias']
         if instrument not in D:
             D[instrument] = {}
         if run not in D[instrument]:
@@ -1404,9 +1404,7 @@ def list_file_count(sequencers, fastq_counts, level):
             L.append('<p style="text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal">{0}</p>'.format(instrument + ':'))
             #Text.append('### {0}'.format(instrument))
             for run in fastq_counts[instrument]:
-                # remove lane
-                run_name = run[:run.index('_lane')]
-                L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run_name, fastq_counts[instrument][run]))
+                L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run, fastq_counts[instrument][run]))
     return L            
     
 
@@ -1786,6 +1784,7 @@ def write_report(args):
     
     # count the number of released fastqs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
+    
     # make a list sequencers used to sequence released fastqs
     sequencers = list_sequencers(fastq_counts)
         
@@ -1802,7 +1801,6 @@ def write_report(args):
     # add on_target rate
     compute_on_target(library_metrics)
     
-        
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
