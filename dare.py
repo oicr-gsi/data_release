@@ -1095,7 +1095,7 @@ def encode_image(filename):
 
 
 
-def generate_table(FPR_info, header, column_size, table_type=None):
+def generate_table(library_metrics, header, column_size, table_type=None):
     '''
     (dict, list, dict, str) -> str
     
@@ -1103,7 +1103,7 @@ def generate_table(FPR_info, header, column_size, table_type=None):
     
     Parameters
     ----------
-    - FPR_info (dict):
+    - library_metrics (dict): Dictionary with library-level metrics
     - header (list):
     - column_size (dict):
     - table_type (str | None):
@@ -1111,9 +1111,11 @@ def generate_table(FPR_info, header, column_size, table_type=None):
     
     # count the expected number of cells (excluding header) in tables
     if table_type == 'md5sum':
-        cells = len(list(FPR_info.keys()))
+        cells = 0
+        for library in library_metrics:
+            cells += len(library_metrics[library]['files'])
     else:
-        cells = len(list(FPR_info.keys())) / 2
+        cells = len(list(library_metrics.keys()))
     
     # add padding around text in cells    
     padding = '3px'
@@ -1130,13 +1132,9 @@ def generate_table(FPR_info, header, column_size, table_type=None):
         table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
     table.append('</tr>')
     # add lines in table
-    for file in FPR_info:
-        add_cells = False
-        if table_type == 'md5sum':
+    for library in library_metrics:
+        if 'R1' in file:
             add_cells = True
-        else:
-            if 'R1' in file:
-                add_cells = True
         if add_cells:
             if counter % 2 == 0:
                 table.append('<tr style="background-color: #eee">')
@@ -1154,6 +1152,64 @@ def generate_table(FPR_info, header, column_size, table_type=None):
             table.append('</tr>')
             # update counter
             counter += 1
+    table.append('</table>')
+    return ''.join(table)
+
+
+
+def generate_table_md5sum(library_metrics, header, column_size):
+    '''
+    (dict, list, dict, str) -> str
+    
+    Returns a html string representing a table
+    
+    Parameters
+    ----------
+    - library_metrics (dict): Dictionary with library-level metrics
+    - header (list): List of table column names
+    - column_size (dict): Dictionary of column name, column width key, value pairs
+    '''
+    
+    # count the expected number of cells (excluding header) in tables
+    cells = 0
+    for library in library_metrics:
+        cells += len(library_metrics[library]['files'])
+        
+    # add padding around text in cells    
+    padding = '3px'
+    
+    # set up counter to track odd and even lines
+    counter = 0
+
+    table = []
+    # add table style
+    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
+    # add header
+    table.append('<tr>')
+    for i in header:
+        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
+    table.append('</tr>')
+    # add lines in table
+    # create a list of file and md5sum
+    files = []
+    for library in library_metrics:
+        for i in library_metrics[library]['files']:
+            files.append(i)
+    
+    for file in files:
+        if counter % 2 == 0:
+            table.append('<tr style="background-color: #eee">')
+        else:
+            table.append('<tr style="background-color: #fff">')
+        for i in range(len(header)):
+            j = str(file[i])
+            if counter + 1 == cells:
+                table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 9.3px; text-align: left;">{1}</td>'.format(padding, j))
+            else:
+                table.append('<td style="padding: {0}; font-size: 9.3px;; text-align: left;">{1}</td>'.format(padding, j))
+        table.append('</tr>')
+        # update counter
+        counter += 1
     table.append('</table>')
     return ''.join(table)
 
@@ -1703,7 +1759,7 @@ def write_report(args):
     '''
     
     # check that runs are specified for single data release report
-    if args.level == 'single' and args.runs is None:
+    if args.level == 'single' and args.run_directories is None:
         raise ValueError('Please provide a list of run folders')
         
     # get the project directory with release run folders
@@ -1801,22 +1857,27 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
     header = ['ID', 'library', 'run', 'barcode', 'external_id']       
     column_size = {'ID': '10%', 'library': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
-    Text.append(generate_table(FPR_info, header, column_size))            
+    
+    
+    
+    #Text.append(generate_table(FPR_info, header, column_size))            
+    
+    
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
                 
-    # add QC metrics table
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    if args.level == 'single':
-        header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
-        column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
-        Text.append(generate_table(FPR_info, header, column_size))            
-        # add page break between plots and tables
-    elif args.level == 'cumulative':
-        header = ['ID', 'library', 'run', 'reads', 'coverage']
-        column_size = {'ID': '10%', 'library': '24%', 'run': '49%', 'reads': '9%', 'coverage': '9%'}
-        Text.append(generate_cumulative_project_table(library_metrics, header, column_size))
-    Text.append('<div style="page-break-after: always;"></div>')
+    # # add QC metrics table
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
+    # if args.level == 'single':
+    #     header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
+    #     column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+    #     Text.append(generate_table(FPR_info, header, column_size))            
+    #     # add page break between plots and tables
+    # elif args.level == 'cumulative':
+    #     header = ['ID', 'library', 'run', 'reads', 'coverage']
+    #     column_size = {'ID': '10%', 'library': '24%', 'run': '49%', 'reads': '9%', 'coverage': '9%'}
+    #     Text.append(generate_cumulative_project_table(library_metrics, header, column_size))
+    # Text.append('<div style="page-break-after: always;"></div>')
     
     
     
@@ -1827,8 +1888,7 @@ def write_report(args):
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
         header = ['filename', 'md5sum']       
         column_size = {'filename': '70%', 'md5sum': '30%'}
-        Text.append(generate_table(FPR_info, header, column_size, 'md5sum'))            
-
+        Text.append(generate_table_md5sum(library_metrics, header, column_size))
     # convert to html
     renderer = mistune.Markdown()
     Text = '\n'.join(Text)
