@@ -1084,7 +1084,7 @@ def encode_image(filename):
 
 
 
-def generate_table(library_metrics, header, column_size, table_type=None):
+def generate_table(library_metrics, header, column_size):
     '''
     (dict, list, dict, str) -> str
     
@@ -1095,16 +1095,10 @@ def generate_table(library_metrics, header, column_size, table_type=None):
     - library_metrics (dict): Dictionary with library-level metrics
     - header (list):
     - column_size (dict):
-    - table_type (str | None):
     '''
     
     # count the expected number of cells (excluding header) in tables
-    if table_type == 'md5sum':
-        cells = 0
-        for library in library_metrics:
-            cells += len(library_metrics[library]['files'])
-    else:
-        cells = len(list(library_metrics.keys()))
+    cells = len(list(library_metrics.keys()))
     
     # add padding around text in cells    
     padding = '3px'
@@ -1122,25 +1116,27 @@ def generate_table(library_metrics, header, column_size, table_type=None):
     table.append('</tr>')
     # add lines in table
     for library in library_metrics:
-        if 'R1' in file:
-            add_cells = True
-        if add_cells:
-            if counter % 2 == 0:
-                table.append('<tr style="background-color: #eee">')
+        if counter % 2 == 0:
+            table.append('<tr style="background-color: #eee">')
+        else:
+            table.append('<tr style="background-color: #fff">')
+        for i in header:
+            if i == 'run' and 'run_alias' in library_metrics[library]:
+                j = str(library_metrics[library]['run_alias'])
+            elif i == 'barcode':
+                j = str(library_metrics[library][i])
+                if '-' in j:
+                    j = j.replace('-', '-\n')
             else:
-                table.append('<tr style="background-color: #fff">')
-            for i in header:
-                if i == 'run' and 'run_alias' in FPR_info[file]:
-                    j = str(FPR_info[file]['run_alias'])
-                else:
-                    j = str(FPR_info[file][i])
-                if counter + 1 == cells:
-                    table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; text-align: left;">{1}</td>'.format(padding, j))
-                else:
-                    table.append('<td style="padding: {0}; text-align: left;">{1}</td>'.format(padding, j))
-            table.append('</tr>')
-            # update counter
-            counter += 1
+                j = str(library_metrics[library][i])
+            # j = str(library_metrics[library][i])
+            if counter + 1 == cells:
+                table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+            else:
+                table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+        table.append('</tr>')
+        # update counter
+        counter += 1
     table.append('</table>')
     return ''.join(table)
 
@@ -1728,6 +1724,11 @@ def list_sequencers(fastq_counts):
     return sequencers
 
 
+
+
+
+
+
 def write_report(args):
     '''
     (str, str, str, str, str, str, str, list)
@@ -1844,11 +1845,8 @@ def write_report(args):
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
     header = ['ID', 'library', 'run', 'barcode', 'external_id']       
-    column_size = {'ID': '10%', 'library': '30%', 'run': '30%', 'barcode': '10%', 'external_id': '20%'}
-    
-    
-    
-    #Text.append(generate_table(FPR_info, header, column_size))            
+    column_size = {'ID': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
+    Text.append(generate_table(library_metrics, header, column_size))            
     
     
     # add page break between plots and tables
