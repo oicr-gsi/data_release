@@ -1024,9 +1024,11 @@ def sort_metrics(library_metrics, instrument, metric1, metric2):
     # group metric 1 by instrument
     D1 = group_qc_metric_by_instrument(library_metrics, metric1)
     # make a sorted list of metric1 in ascending order
-    Q1 = [i[0] for i in D1[instrument]]
+    M = [i for i in D1[instrument] if i[0] != 'NA']
+    M.sort(key = lambda x: x[0])
+    Q1 = [i[0] for i in M]
     # make a list of libraries corresponding to the sorted metric1 values
-    libraries = [i[1] for i in D1[instrument]]
+    libraries = [i[1] for i in M]
     
     # group metric 2 by instrument
     D2 = group_qc_metric_by_instrument(library_metrics, metric2)
@@ -1036,13 +1038,15 @@ def sort_metrics(library_metrics, instrument, metric1, metric2):
         for j in D2[instrument]:
             if j[1] == i:
                 Q2.append(j[0])
+    # remove missing QC values for each list
+    while 'NA' in Q1 or 'NA' in Q2:
+        if 'NA' in Q1:
+            del Q1[Q1.index('NA')]
+            del Q2[Q1.index('NA')]
+        if 'NA' in Q2:
+            del Q1[Q2.index('NA')]
+            del Q2[Q2.index('NA')]
     assert len(Q1) == len(Q2)
-
-
-    print(Q1)
-    print('---')
-    print(Q2)
-
 
     return Q1, Q2
 
@@ -1281,17 +1285,17 @@ def generate_header_table(logo, width, height, level):
 
 
 
-def generate_figure_table(file1, file2):
+def generate_figure_table(file1, file2=None):
    
     '''
-    (str, str) -> str
+    (str, str | None) -> str
 
     Returns a html string representing a table with figure files
 
     Parameters
     ----------
     - file1 (str): Path to the figure file with metrics 1 and 2 
-    - file2 (str): Path to the figure file with metrics 3 and 4
+    - file2 (str | None): Path to the figure file with metrics 3 and 4 if exists
     '''
 
     table = []
@@ -1303,9 +1307,10 @@ def generate_figure_table(file1, file2):
     # resize figure 1
     height1, width1 = resize_figure(file1, 0.3)
     table.append('<td style="width: 50%; padding: 3px; text-align: left"><img src="{0}" alt="{1}" title="{1}" style="padding-right: 0px; padding-left:0px; width:{2}; height:{3}"></td>'.format(file1, os.path.basename(file1), width1, height1))
-    # resize figure 1
-    height2, width2 = resize_figure(file2, 0.3)
-    table.append('<td style="width: 50%; padding: 3px; text-align: left"><img src="{0}" alt="{1}" title="{1}" style="padding-right: 0px; padding-left:0px; width:{2}; height:{3}"></td>'.format(file2, os.path.basename(file2), width2, height2))
+    if file2:
+        # resize figure 
+        height2, width2 = resize_figure(file2, 0.3)
+        table.append('<td style="width: 50%; padding: 3px; text-align: left"><img src="{0}" alt="{1}" title="{1}" style="padding-right: 0px; padding-left:0px; width:{2}; height:{3}"></td>'.format(file2, os.path.basename(file2), width2, height2))
     table.append('</tr>')
     table.append('</table>')
     
@@ -1742,17 +1747,14 @@ def write_report(args):
     compute_on_target(library_metrics)
     
         
-    print('sucess')
-       
-    print(library_metrics['KLCS_0115_Pl_P_PE_325_TS'])
-    
-    
-    
-       
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
-    figure_files2= generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
-    figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
+    if args.level == 'single':
+        # plot on target and duplicate rate
+        figure_files2= generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
+        figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
+    elif args.level == 'cumulative':
+        figure_files = figure_files1
     
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
@@ -1765,6 +1767,7 @@ def write_report(args):
         for file in sorted(list(FPR_info.keys())):
             newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
         newfile.close()       
+    
     
     # make a list to store report
     Text = []
@@ -1785,7 +1788,10 @@ def write_report(args):
     Text.append('<br />')
     for i in sequencers:
         Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
-        Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1]))
+        if args.level == 'single':
+            Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1]))
+        elif args.level == 'cumulative':
+            Text.append(generate_figure_table(figure_files[i][0]))
         Text.append('<br />')
 
     # add page break between plots and tables
