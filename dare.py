@@ -808,14 +808,14 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
 
     # plot data 1 and median  
     xcoord = [i/10 for i in range(len(Data1))]
-    ax1.plot(xcoord, Data1, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color1, markeredgecolor = color1, markeredgewidth = 1, markersize = 10)
+    ax1.plot(xcoord, Data1, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color1, markeredgecolor = color1, markeredgewidth = 1, markersize = 10, alpha=0.5)
     # compute median the data
     median1 = np.median(Data1)
     # plot median and mean. use zorder to bring line to background
     ax1.axhline(y=median1, color=color1, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
     
     # plot data 2 and median  
-    ax2.plot(xcoord, Data2, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color2, markeredgecolor = color2, markeredgewidth = 1, markersize = 10)
+    ax2.plot(xcoord, Data2, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color2, markeredgecolor = color2, markeredgewidth = 1, markersize = 10, alpha=0.5)
     # compute median the data
     median2 = np.median(Data2)
     # plot median and mean. use zorder to bring line to background
@@ -856,18 +856,6 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
             spine.set_position(('outward', 5))
             spine.set_smart_bounds(True)
     
-    # keep ticks only along the x axis, edit font size and change tick direction
-#    if XLabel is not None:
-#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out')
-#        plt.tick_params(axis='x', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 12, direction = 'out', labelrotation=90)
-#        plt.tick_params(axis='y', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=True, colors = 'black', labelsize = 14, direction = 'out')
-#    else:
-#        plt.tick_params(axis='both', which='both', bottom=True, top=False, right=False, left=False,
-#                    labelbottom=False, colors = 'black', labelsize = 14, direction = 'out')
-#    
     # disable scientific notation
     ax1.ticklabel_format(style='plain', axis='y')
     
@@ -933,6 +921,7 @@ def generate_figures(project_dir, project_name,  sequencers, library_metrics, me
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
         Q1, Q2 = sort_metrics(library_metrics, i, metric1, metric2)
+        
         plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
         if i not in figure_files:
             figure_files[i] = []
@@ -1660,7 +1649,8 @@ def transform_metrics(FPR_info):
         # replace with missing qc 
         if 'NA' in D[library]['duplicate (%)']:
             D[library]['duplicate (%)'] = 'NA'
-        
+        else:
+            D[library]['duplicate (%)'] = list(set(D[library]['duplicate (%)']))[0]
     return D
 
 
