@@ -1841,7 +1841,8 @@ def write_report(args):
     html_str = renderer(Text)
     
     # convert html to pdf    
-    report_file = os.path.join(project_dir, '{0}_Fastq_data_release_report.{1}.pdf'.format(args.project_name, current_date))
+    report_name = '{0}_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
+    report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
     newfile = open(report_file, "wb")
     pisa.CreatePDF(html_str, newfile)
     newfile.close()
