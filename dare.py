@@ -1121,15 +1121,16 @@ def generate_table(library_metrics, header, column_size):
         else:
             table.append('<tr style="background-color: #fff">')
         for i in header:
-            if i == 'run' and 'run_alias' in library_metrics[library]:
+            if i == 'run':
                 j = str(library_metrics[library]['run_alias'])
+                if ';' in j:
+                    j = j.replace(';', ';\n')
             elif i == 'barcode':
                 j = str(library_metrics[library][i])
                 if '-' in j:
                     j = j.replace('-', '-\n')
             else:
                 j = str(library_metrics[library][i])
-            # j = str(library_metrics[library][i])
             if counter + 1 == cells:
                 table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
             else:
@@ -1197,61 +1198,6 @@ def generate_table_md5sum(library_metrics, header, column_size):
         counter += 1
     table.append('</table>')
     return ''.join(table)
-
-
-
-def generate_cumulative_project_table(library_metrics, header, column_size):
-    '''
-    (dict, list, dict) -> str
-    
-    Returns a html string representing a table
-    
-    Parameters
-    ----------
-    - library_metrics (dict): QC metrics and other information for each sequenced library
-    - header (list):
-    - column_size (dict):
-    - table_type (str | None):
-    '''
-    
-    # count the expected number of cells (excluding header) in tables
-    cells = len(list(library_metrics.keys()))
-    
-    # add padding around text in cells    
-    padding = '3px'
-    
-    # set up counter to track odd and even lines
-    counter = 0
-
-    table = []
-    # add table style
-    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
-    # add header
-    table.append('<tr>')
-    for i in header:
-        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
-    table.append('</tr>')
-    # add lines in table
-    for library in library_metrics:
-        
-        if counter % 2 == 0:
-            table.append('<tr style="background-color: #eee">')
-        else:
-            table.append('<tr style="background-color: #fff">')
-        for i in header:
-            j = str(library_metrics[library][i])
-            if counter + 1 == cells:
-                table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; text-align: left;">{1}</td>'.format(padding, j))
-            else:
-                table.append('<td style="padding: {0}; text-align: left;">{1}</td>'.format(padding, j))
-        table.append('</tr>')
-        # update counter
-        counter += 1
-    table.append('</table>')
-    return ''.join(table)
-
-
-
 
 
 def generate_project_table(project_name, project_code, current_date, name, email):
@@ -1582,6 +1528,7 @@ def transform_metrics(FPR_info):
     for file in FPR_info:
         ID = FPR_info[file]['ID']
         run = FPR_info[file]['run']
+        run_alias = FPR_info[file]['run_alias']
         library = FPR_info[file]['lid']
         reads =  FPR_info[file]['read_count']      
         md5sum = FPR_info[file]['md5sum']
@@ -1615,6 +1562,7 @@ def transform_metrics(FPR_info):
             assert total_target_size == D[library]['total_target_size']
             
             D[library]['run'].append(run)
+            D[library]['run_alias'].append(run_alias)
             D[library]['files'].append([os.path.basename(file), md5sum])
             D[library]['barcode'].append(barcode)
             D[library]['external_id'].append(external_id)
@@ -1622,7 +1570,7 @@ def transform_metrics(FPR_info):
             D[library]['tube_id'].append(tube_id)     
                 
         else:
-            D[library] = {'reads': [reads], 'ID': ID, 'library': library, 'run': [run],
+            D[library] = {'reads': [reads], 'ID': ID, 'library': library, 'run': [run], 'run_alias': [run_alias],
                           'files': [[os.path.basename(file), md5sum]], 'barcode': [barcode],
                           'external_id': [external_id], 'instrument': [instrument],
                           'tube_id': [tube_id], 'duplicate (%)': [duplicate],
@@ -1632,7 +1580,7 @@ def transform_metrics(FPR_info):
     
     for library in D:
         # collpase these fields
-        for i in ['run', 'barcode', 'external_id', 'instrument', 'tube_id']:
+        for i in ['run', 'run_alias', 'barcode', 'external_id', 'instrument', 'tube_id']:
             D[library][i] = ';'.join(list(set(D[library][i])))
         # add read counts
         for i in ['reads', 'bases_mapped', 'mapped_reads', 'total_bases_on_target']:
@@ -1666,6 +1614,7 @@ def compute_coverage(library_metrics):
         # get coverage
         if library_metrics[library]['total_target_size'] != 'NA':
             coverage = library_metrics[library]['read_length'] * library_metrics[library]['reads'] / library_metrics[library]['total_target_size']
+            coverage = round(coverage, 2)
         else:
             coverage = 'NA'
         library_metrics[library]['coverage'] = coverage
@@ -1852,22 +1801,18 @@ def write_report(args):
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
                 
-    # # add QC metrics table
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    # if args.level == 'single':
-    #     header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
-    #     column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
-    #     Text.append(generate_table(FPR_info, header, column_size))            
-    #     # add page break between plots and tables
-    # elif args.level == 'cumulative':
-    #     header = ['ID', 'library', 'run', 'reads', 'coverage']
-    #     column_size = {'ID': '10%', 'library': '24%', 'run': '49%', 'reads': '9%', 'coverage': '9%'}
-    #     Text.append(generate_cumulative_project_table(library_metrics, header, column_size))
-    # Text.append('<div style="page-break-after: always;"></div>')
-    
-    
-    
-    
+    # add QC metrics table
+    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
+    if args.level == 'single':
+        header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
+        column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+    elif args.level == 'cumulative':
+        header = ['ID', 'library', 'run', 'reads', 'coverage']
+        column_size = {'ID': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
+    Text.append(generate_table(library_metrics, header, column_size))            
+    # add page break between plots and tables
+    Text.append('<div style="page-break-after: always;"></div>')
+        
     # add md5sums
     if args.level == 'single':
         Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
