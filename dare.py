@@ -1121,8 +1121,11 @@ def generate_table(library_metrics, header, column_size):
     for i in header:
         table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
     table.append('</tr>')
+    
+    # sort libraries
+    libraries = sorted(list(library_metrics.keys()))
     # add lines in table
-    for library in library_metrics:
+    for library in libraries:
         if counter % 2 == 0:
             table.append('<tr style="background-color: #eee">')
         else:
@@ -1188,6 +1191,7 @@ def generate_table_md5sum(library_metrics, header, column_size):
     for library in library_metrics:
         for i in library_metrics[library]['files']:
             files.append(i)
+    files.sort()
     
     for file in files:
         if counter % 2 == 0:
@@ -1207,7 +1211,7 @@ def generate_table_md5sum(library_metrics, header, column_size):
     return ''.join(table)
 
 
-def generate_project_table(project_name, project_code, current_date, name, email):
+def generate_project_table(project_name, project_full_name, current_date, name, email):
     '''
     (str, str, str, str, str) -> str
 
@@ -1215,14 +1219,15 @@ def generate_project_table(project_name, project_code, current_date, name, email
 
     Parameters
     ----------
-    - project_name (str): Name of the project
-    - project_code (str): Project code (PROXXXX) available in MISO
+    - project_name (str): Acronym of the project
+    - project_full_name (str): Full name of the project 
     - current_date (str): Date of the release (Y-M-D)
     - name (str): Name of contact personn releasing the data
     - email (str): Email of the contact personn releasing the data     
     '''
 
-    content = [project_name, project_code, current_date, name, email]
+
+    content = [project_name, project_full_name, current_date, name, email]
     column_width = [15, 15, 10, 30, 30]
 
     table = []
@@ -1230,7 +1235,7 @@ def generate_project_table(project_name, project_code, current_date, name, email
     table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
     # add header
     table.append('<tr>')
-    for i in ['project', 'code', 'date', 'Genome Sequence Informatics', 'contact']:
+    for i in ['Project', 'Name', 'Date', 'Genome Sequence Informatics', 'Contact']:
         table.append('<th style="padding: 3px; border: 0.75px solid grey; border-collapse:collapse; text-align: center; font-size:10px">{0}</th>'.format(i))
     table.append('</tr>')
     # add lines in table
@@ -1751,6 +1756,7 @@ def write_report(args):
     
     # transform metrics per library instead of files
     library_metrics = transform_metrics(FPR_info)
+    
     # add coverage for each library
     compute_coverage(library_metrics)
     # add on_target rate
@@ -1786,7 +1792,7 @@ def write_report(args):
     Text.append(generate_header_table(logo, width, height, args.level))
     Text.append('<br />' * 3)
     # add information about project and contact personn
-    Text.append(generate_project_table(args.project_name, args.project_code, current_date, args.contact_name, args.contact_email))
+    Text.append(generate_project_table(args.project_name, args.project_full_name, current_date, args.contact_name, args.contact_email))
     Text.append('<br />' * 2)           
     # list the file count            
     Text.extend(list_file_count(sequencers, fastq_counts, args.level))
@@ -2111,7 +2117,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-p', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
     r_parser.add_argument('-d', '--directory', dest='working_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Project name as it appears in File Provenance Report')
     r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required = True)
-    r_parser.add_argument('-c', '--code', dest='project_code', help='Project code from MISO', required = True)
+    r_parser.add_argument('-c', '--code', dest='project_full_name', help='Full name of the project', required = True)
     r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
     r_parser.add_argument('-q', '--qc_table', dest='bamqc_table', help='Path to the bamqc table', required=True)
     r_parser.add_argument('-ct', '--contact', dest='contact_name', help='Name of the contact personn releasing the data', required=True)
