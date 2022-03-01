@@ -601,9 +601,26 @@ def collect_info_fastqs(records):
                 tubeid = geo['geo_tube_id']
             else:
                 tubeid = 'NA'
+            if 'geo_library_source_template_type' in geo:
+                library_source = geo['geo_library_source_template_type']
+            else:
+                library_source = 'NA'
+            if 'geo_tissue_type' in geo:
+                tissue_type = geo['geo_tissue_type']
+            else:
+                tissue_type = 'NA'
+            if 'geo_tissue_origin' in geo:
+                tissue_origin = geo['geo_tissue_origin']
+            else:
+                tissue_origin = 'NA'
+            
+            sample_name = ID + '_' + tissue_origin + '_' + tissue_type +'_' + library_source + '_' + groupid
+            
             D[file] = {'filename': filename, 'workflow_id': workflow_accession, 'md5sum': md5sum, 'file_swid': file_swid, 'ID': ID, 'lid': lid,
                        'run': run, 'barcode': barcode, 'external_id': externalid, 'group_id': groupid, 'group_desc': groupdesc,
-                       'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias}       
+                       'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias,
+                       'library_source': library_source, 'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
+                       'sample_name': sample_name}
     return D
 
 
@@ -643,7 +660,31 @@ def stich_back_etl_record(record):
     return record
     
 
-def parse_qc_etl(bamqc_table, project):
+
+def compute_on_target_rate(bases_mapped, total_bases_on_target):
+    '''
+    (int, int) -> float
+    
+    Returns the percent on target rate
+    
+    Parameters
+    ----------
+    - bases_mapped (int): Number of bases mapping the reference
+    - total_bases_on_target (int): Number of bases mapping the target
+    '''
+    
+    try:
+        on_target = round(total_bases_on_target / bases_mapped * 100, 2)
+    except:
+        on_target = 'NA'
+    finally:
+        if on_target != 'NA':
+            if math.ceil(on_target) == 100:
+                on_target = math.ceil(on_target)
+    return on_target
+
+
+def parse_bamqc(bamqc_table, project):
     '''
     (str) -> dict
     
@@ -686,28 +727,27 @@ def parse_qc_etl(bamqc_table, project):
             instrument = i[header.index('instrument')]
             bases_mapped = int(i[header.index('bases mapped')])
             coverage = float(i[header.index('coverage')])
+            coverage_dedup = float(i[header.index('coverage deduplicated')])
+            library = i[header.index('library')]
             mapped_reads = int(i[header.index('mapped reads')])
             barcodes = i[header.index('Barcodes')]
             lane = i[header.index('Lane Number')]
             sample = i[header.index('sample')]
             percent_duplicate = float(i[header.index('mark duplicates_PERCENT_DUPLICATION')])
-            read_length = float(i[header.index('average read length')])
             
             total_bases_on_target = int(i[header.index('total bases on target')])
             total_reads = int(i[header.index('total reads')])
-            
-            paired_reads = int(i[header.index('paired reads')])
-                        
-            total_target_size = int(i[header.index('total target size')])
+                      
+            on_target = compute_on_target_rate(bases_mapped, total_bases_on_target)    
             
             # map file information
             d = {'run_alias': run_alias, 'instrument': instrument,
                  'bases_mapped': bases_mapped, 'coverage': coverage,
+                 'coverage_dedup': coverage_dedup, 'library': library,
                  'mapped_reads': mapped_reads, 'sample': sample,
                  'total_bases_on_target': total_bases_on_target,
-                 'total_reads': total_reads, 'barcodes':barcodes, 'lane': lane,
-                 'percent_duplicate': percent_duplicate, 'paired_reads': paired_reads,
-                 'read_length': read_length, 'total_target_size': total_target_size}
+                 'total_reads': total_reads, 'on_target': on_target,
+                 'barcodes':barcodes, 'lane': lane, 'percent_duplicate': percent_duplicate}
             # collect information at the run level
             if run_alias in B:
                 B[run_alias].append(d)
@@ -716,14 +756,11 @@ def parse_qc_etl(bamqc_table, project):
     return B
 
 
-
-
-
 def parse_merged_bamqc(merged_bamqc_table, project):
     '''
     (str) -> dict
     
-    Returns a dictionary with project-level relevant information from the bamqc table of qc-etl
+    Returns a dictionary with project-level relevant information from the bamqc4merged table of qc-etl
         
     Parameters
     ----------
@@ -749,6 +786,7 @@ def parse_merged_bamqc(merged_bamqc_table, project):
             # check that fields have been stiched back correctly
             assert len(i) == len(header)
             # collect relevant information
+            library = i[header.index('library')]
             instrument = i[header.index('instrument')]
             coverage = float(i[header.index('coverage')])
             coverage_dedup = float(i[header.index('coverage deduplicated')])
@@ -765,7 +803,7 @@ def parse_merged_bamqc(merged_bamqc_table, project):
             # map file information
             d = {'instrument': instrument, 'coverage': coverage, 'coverage_dedup': coverage_dedup,
                  'sample': sample, 'group_id': group_id, 'sample_name': sample_name,
-                 'library_design': library_design}
+                 'library_design': library_design, 'library': library}
             
             # collect information for each platform
             if instrument in B:
@@ -782,10 +820,10 @@ def parse_merged_bamqc(merged_bamqc_table, project):
 
 def update_information_released_fastqs(FPR_info, bamqc_info):
     '''
-    (dict, dict) -> dict
+    (dict, dict) -> None
     
     Update the information obtained from File Provenance Report in place with information
-    collected from bamqc and returns a dictionary of libraries, runs for which QC is missing from the bamqc table
+    collected from bamqc
     
     Parameters
     ----------
@@ -793,55 +831,32 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
     - bamqc_info (dict): Information for each file and run for a given project collected from bamqc table
     '''
     
-    # collect file info for libraries with missing QC 
-    D = {}
-    
-    # map files to qc-etl data
     for file in FPR_info:
-        found_qc = False
-        # bamqc info is reported for each run
+        qc_found = False
         run_alias = FPR_info[file]['run_alias']
-        # check that run information is present in bamqc
+        # check that run in recorded in bamqc
         if run_alias in bamqc_info:
-            # map FPR file info with bamqc file info
+            # map file info with bamqc info
             for d in bamqc_info[run_alias]:
-                # check if same file
-                if FPR_info[file]['instrument'].replace('_', ' ') == d['instrument'] \
-                    and FPR_info[file]['run_alias'] == d['run_alias'] \
+                if FPR_info[file]['lane'] == d['lane'] \
+                    and FPR_info[file]['sample_name'] == d['sample'] \
                     and FPR_info[file]['barcode'] == d['barcodes'] \
-                    and FPR_info[file]['lane'] == d['lane']:
-                        # get sample name. edit to match sample name format in FPR
-                        sample_name = d['sample'].split('_')
-                        sample_name = '_'.join(sample_name[:2])
-                        # check that sample is in file name
-                        if sample_name in file:
-                            # matched file between FPR and qc-etl. update file information
-                            # add coverage
-                            FPR_info[file]['bases_mapped'] = d['bases_mapped']
-                            FPR_info[file]['mapped_reads'] = d['mapped_reads']
-                            FPR_info[file]['total_bases_on_target'] = d['total_bases_on_target']
-                            FPR_info[file]['coverage'] = round(d['coverage'], 2)
-                            # add percent duplicate
-                            FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'], 2)
-                            FPR_info[file]['read_length'] = d['read_length']
-                            FPR_info[file]['total_target_size'] = d['total_target_size']
-                            found_qc = True
-        if found_qc == False:
-            print('WARNING. Cannot find bamQC for {0}'.format(os.path.basename(file)))
-            if FPR_info[file]['lid'] in D:
-                D[FPR_info[file]['lid']].append(FPR_info[file]['run'])
-            else:
-                D[FPR_info[file]['lid']] = [FPR_info[file]['run']]
-            FPR_info[file]['bases_mapped'] = 'NA'
-            FPR_info[file]['mapped_reads'] = 'NA'
-            FPR_info[file]['total_bases_on_target'] = 'NA'
-            FPR_info[file]['coverage'] = 'NA'
-            FPR_info[file]['percent_duplicate'] = 'NA'
-            FPR_info[file]['read_length'] = 'NA'
-            FPR_info[file]['total_target_size'] = 'NA'
-    return D
+                    and FPR_info[file]['instrument'].replace('_', ' ') == d['instrument']:
+                        assert FPR_info[file]['lid'] == d['library']    
+                        qc_found = True
+                        FPR_info[file]['coverage'] = d['coverage']
+                        FPR_info[file]['coverage_dedup'] = d['coverage_dedup']
+                        FPR_info[file]['on_target'] = d['on_target']                
+                        FPR_info[file]['percent_duplicate'] = d['percent_duplicate']
 
-            
+        if qc_found == False:
+            FPR_info[file]['coverage'] = 'NA'
+            FPR_info[file]['coverage_dedup'] = 'NA'
+            FPR_info[file]['on_target'] = 'NA'                
+            FPR_info[file]['percent_duplicate'] = 'NA'
+
+
+           
 
 
 
@@ -1673,61 +1688,6 @@ def transform_metrics(FPR_info):
     return D
 
 
-def compute_coverage(library_metrics):
-    '''
-    (dict) -> None
-    
-    Update dictionary with library-level metrics with average coverage
-    
-    Parameters
-    ----------
-    - library_metrics (dict): Dictionary with library-level metrics 
-    '''
-         
-    
-    for library in library_metrics:
-        # get coverage
-        if library_metrics[library]['total_target_size'] != 'NA':
-            coverage = library_metrics[library]['read_length'] * library_metrics[library]['reads'] / library_metrics[library]['total_target_size']
-            coverage = round(coverage, 2)
-        else:
-            coverage = 'NA'
-        library_metrics[library]['coverage'] = coverage
-        
-
-
-def compute_on_target(library_metrics):
-    '''
-    (dict) -> None
-    
-    Update dictionary with library-level metrics with on target rate
-    
-    Parameters
-    ----------
-    - library_metrics (dict): Dictionary with library-level metrics 
-    '''
-    
-    for library in library_metrics:
-        if library_metrics[library]['total_bases_on_target'] != 'NA' and library_metrics[library]['bases_mapped'] != 'NA':
-            total_bases_on_target = library_metrics[library]['total_bases_on_target']
-            bases_mapped = library_metrics[library]['bases_mapped']
-            if bases_mapped == 0:
-                on_target = 'NA'
-            else:
-                on_target = total_bases_on_target / bases_mapped * 100
-                if on_target:
-                    on_target = 100
-                else:
-                    on_target = round(on_target, 2)
-                    # fix floating point approximations
-                    if math.ceil(on_target) == 100:
-                        on_target = math.ceil(on_target)
-        else:
-            on_target = 'NA'
-        library_metrics[library]['on_target'] = on_target
-
-
-
 def list_sequencers(fastq_counts):
     '''
     (dict) -> list
@@ -1812,7 +1772,18 @@ def write_report(args):
     sequencers = list_sequencers(fastq_counts)
         
     # collect information from bamqc table
-    bamqc_info = parse_qc_etl(args.bamqc_table, args.project)
+    if args.level == 'single':
+        bamqc_info = parse_bamqc(args.bamqc_table, args.project)
+    elif args.level == 'cumulative':
+        bamqc_info = parse_merged_bamqc(args.bamqc_table, args.project)   
+    
+    
+    
+    
+    
+    
+    
+    
     
     # update FPR info with QC info from bamqc table and list libraries with missing QC
     missing_qc = update_information_released_fastqs(FPR_info, bamqc_info)
