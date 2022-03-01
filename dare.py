@@ -877,7 +877,7 @@ def map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info):
             sample_name = FPR_info[file]['sample_name']
             if sample_name in bamqc_info[instrument]:
                 # map file info with bamqc info
-                assert bamqc_info[instrument][sample_name]['sample'] == '_'.join([FPR_info[file]['ID'], FPR_info[file]['tissue_origin'], FPR_info[file]['tissue_type'], FPR_info[file]['library_source']])
+                assert bamqc_info[instrument][sample_name]['sample_name'] == '_'.join([FPR_info[file]['ID'], FPR_info[file]['tissue_origin'], FPR_info[file]['tissue_type'], FPR_info[file]['library_source']])
                 assert FPR_info[file]['lid'] in bamqc_info[instrument][sample_name]['library']
                 qc_found = True
                 FPR_info[file]['coverage'] = bamqc_info[instrument][sample_name]['coverage']
@@ -891,6 +891,116 @@ def map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info):
             FPR_info[file]['on_target'] = 'NA'                
             FPR_info[file]['percent_duplicate'] = 'NA'
 
+
+def get_run_level_sample_metrics(FPR_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with run-level QC metrics and read counts for each sample across instrument
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Run level bam QC metrics and file stats for each released fastq 
+    '''
+    
+    D = {}
+    
+    
+    for file in FPR_info:
+        sample = FPR_info[file]['sample_name']
+        lane = FPR_info[file]['lane']
+        run = FPR_info[file]['run_alias']
+        library = FPR_info[file]['lid']
+        instrument = FPR_info[file]['instrument']
+        barcode = FPR_info[file]['barcode']
+        ext_id = FPR_info[file]['external_id']
+        donor = FPR_info[file]['ID']
+        library_source = FPR_info[file]['library_source']
+        read_count = FPR_info[file]['read_count']
+        coverage = FPR_info[file]['coverage']
+        coverage_dedup = FPR_info[file]['coverage_dedup']
+        on_target = FPR_info[file]['on_target']
+        duplicate = FPR_info[file]['percent_duplicate']
+
+        if instrument not in D:
+            D[instrument] = {}
+        
+        if sample not in D[instrument]:
+            D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run, 'library': library,
+                         'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
+                         'donor': donor, 'library_source': library_source,
+                         'read_count': read_count, 'coverage': coverage,
+                         'coverage_dedup': coverage_dedup, 'on_target': on_target,
+                         'duplicate': duplicate, 'files': [file]}
+        else:
+            if run == D[instrument][sample]['run'] and lane == D[instrument][sample]['lane'] and library == D[instrument][sample]['library'] \
+                and instrument == D[instrument][sample]['instrument'] and barcode == D[instrument][sample]['barcode'] \
+                and ext_id == D[instrument][sample]['ext_id'] and donor == D[instrument][sample]['donor'] and library_source == D[instrument][sample]['library_source']:
+                    D[instrument][sample]['read_count'] += read_count
+                    assert coverage == D[instrument][sample]['coverage']
+                    assert coverage_dedup == D[instrument][sample]['coverage_dedup']
+                    assert duplicate == D[instrument][sample]['duplicate']
+                    assert on_target == D[instrument][sample]['on_target']
+                    D[instrument][sample]['files'].append(file)
+    return D                         
+                                           
+            
+def get_cumulative_level_sample_metrics(FPR_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with cumulative QC metrics and read counts for each sample across instrument
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Cumulative bam QC metrics and file stats for each released fastq 
+    '''
+    
+    D = {}
+    
+    
+    for file in FPR_info:
+        sample = FPR_info[file]['sample_name']
+        lane = FPR_info[file]['lane']
+        run = FPR_info[file]['run_alias']
+        library = FPR_info[file]['lid']
+        instrument = FPR_info[file]['instrument']
+        barcode = FPR_info[file]['barcode']
+        ext_id = FPR_info[file]['external_id']
+        donor = FPR_info[file]['ID']
+        library_source = FPR_info[file]['library_source']
+        read_count = FPR_info[file]['read_count']
+        coverage = FPR_info[file]['coverage']
+        coverage_dedup = FPR_info[file]['coverage_dedup']
+        on_target = FPR_info[file]['on_target']
+        duplicate = FPR_info[file]['percent_duplicate']
+        
+        if instrument not in D:
+            D[instrument] = {}
+               
+        
+        if sample not in D[instrument]:
+            D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run, 'library': [library],
+                              'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
+                              'donor': donor, 'library_source': library_source,
+                              'read_count': read_count, 'coverage': coverage,
+                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
+                              'duplicate': duplicate, 'files': [file]}
+        else:
+            assert barcode == D[instrument][sample]['barcode']
+            assert ext_id == D[instrument][sample]['ext_id']
+            assert donor == D[instrument][sample]['donor']
+            assert library_source == D[sample]['library_source']
+            D[instrument][sample]['library'].append(library)  
+            D[instrument][sample]['read_count'] += read_count
+            assert coverage == D[sample]['coverage']
+            assert coverage_dedup == D[sample]['coverage_dedup']
+            assert duplicate == D[sample]['duplicate']
+            assert on_target == D[sample]['on_target']
+            
+    return D                         
+
+                                           
 
 def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = None):
     '''
@@ -1525,201 +1635,6 @@ def list_released_fastqs_project(api, FPR_info):
 
 
 
-def get_cumulative_metrics(FPR_info):
-    '''
-    (dict) -> dict
-    
-    Returns a dictionary with the total number of reads for each sequenced library
-        
-    Parameters
-    ----------
-    - FPR_info (dict): Dictionary with information for released fastqs pulled from FPR and qc-etl
-    '''
-    
-    # create a dictionary for each library with cumulative number of reads, cumulative coverage, release dates
-    D = {}
-
-    for file in FPR_info:
-        ID = FPR_info[file]['ID']
-        run = FPR_info[file]['run']
-        library = FPR_info[file]['library']
-        reads =  FPR_info[file]['reads']      
-        if library in D:
-            assert D[library]['ID'] == ID
-            D[library]['reads'] += reads
-            D[library]['run'].append(run)
-        else:
-            D[library] = {'reads': reads, 'ID': ID, 'run': [run]}
-    
-    return D
-
-
-
-def get_read(fastq_file):
-    """
-    (file) -- > itertools.zip_longest
-    :param fastq_file: a fastq file open for reading in plain text mode
-    
-    Returns an iterator slicing the fastq into 4-line reads.
-    Each element of the iterator is a tuple containing read information
-    """
-    args = [iter(fastq_file)] * 4
-    return zip_longest(*args, fillvalue=None)
-
-
-def get_read_length(fastq):
-    '''
-    
-    '''
-
-    # open file for reading
-    if is_gzipped(fastq):
-        infile = gzip.open(fastq, 'rt', errors='ignore')
-    else:
-        infile = open(fastq)
-
-    # create an iterator with the reads
-    reads = get_read(infile)
-    
-    for i in reads:
-        read_length = len(i[1])
-        # assume all the reads have same length
-        break
-    
-    infile.close()    
-    return read_length
-    
- 
- 
-
-
-
-
-
-
-
-def compute_average_read_length(fastq):
-    '''
-    (str) -> float
-    
-    Returns the mean read length in the fastq file
-    
-    Parameters
-    - fastq (str): Path to fastq file 
-    '''
-    
-    # open file for reading
-    if is_gzipped(fastq):
-        infile = gzip.open(fastq, 'rt', errors='ignore')
-    else:
-        infile = open(fastq)
-
-    # create an iterator with the reads
-    reads = get_read(infile)
-    
-    # count read length
-    d = {}
-    
-    for i in reads:
-        seq = i[1]
-        if len(seq) in d:
-            d[len(seq)] += 1
-        else:
-            d[len(seq)] = 1
-    
-    mean = sum([i*d[i] for i in d.keys()]) / sum(list(d.values()))
-    
-    infile.close()
-    return mean
-
-
-def transform_metrics(FPR_info):
-    '''
-    (dict) -> dict
-    
-    Returns a dictionary with the total number of reads, and other information for each sequenced library
-        
-    Parameters
-    ----------
-    - FPR_info (dict): Dictionary with information for released fastqs pulled from FPR and qc-etl
-    '''
-    
-    # create a dictionary for each library with cumulative number of reads, cumulative coverage, release dates
-    D = {}
-
-    for file in FPR_info:
-        ID = FPR_info[file]['ID']
-        run = FPR_info[file]['run']
-        run_alias = FPR_info[file]['run_alias']
-        library = FPR_info[file]['lid']
-        reads =  FPR_info[file]['read_count']      
-        md5sum = FPR_info[file]['md5sum']
-        barcode = FPR_info[file]['barcode']
-        external_id = FPR_info[file]['external_id']
-        instrument =  FPR_info[file]['instrument']
-        tube_id = FPR_info[file]['tube_id']
-                
-        bases_mapped = FPR_info[file]['bases_mapped']
-        mapped_reads = FPR_info[file]['mapped_reads']
-        total_bases_on_target = FPR_info[file]['total_bases_on_target']
-        duplicate = FPR_info[file]['percent_duplicate']
-        read_length = FPR_info[file]['read_length']
-        total_target_size = FPR_info[file]['total_target_size']
-                
-        if read_length == 'NA':
-            # compute read length
-            read_length = get_read_length(file)
-
-        if library in D:
-            assert D[library]['ID'] == ID
-            assert D[library]['library'] == library
-            D[library]['reads'].append(reads)
-            
-            D[library]['bases_mapped'].append(bases_mapped) 
-            D[library]['mapped_reads'].append(mapped_reads)
-            D[library]['total_bases_on_target'].append(total_bases_on_target)
-            D[library]['duplicate (%)'].append(duplicate) 
-            D[library]['read_length'].append(read_length)
-            
-            assert total_target_size == D[library]['total_target_size']
-            
-            D[library]['run'].append(run)
-            D[library]['run_alias'].append(run_alias)
-            D[library]['files'].append([os.path.basename(file), md5sum])
-            D[library]['barcode'].append(barcode)
-            D[library]['external_id'].append(external_id)
-            D[library]['instrument'].append(instrument)
-            D[library]['tube_id'].append(tube_id)     
-                
-        else:
-            D[library] = {'reads': [reads], 'ID': ID, 'library': library, 'run': [run], 'run_alias': [run_alias],
-                          'files': [[os.path.basename(file), md5sum]], 'barcode': [barcode],
-                          'external_id': [external_id], 'instrument': [instrument],
-                          'tube_id': [tube_id], 'duplicate (%)': [duplicate],
-                          'bases_mapped': [bases_mapped], 'mapped_reads': [mapped_reads],
-                          'total_bases_on_target': [total_bases_on_target],
-                          'read_length': [read_length], 'total_target_size': total_target_size}
-    
-    for library in D:
-        # collpase these fields
-        for i in ['run', 'run_alias', 'barcode', 'external_id', 'instrument', 'tube_id']:
-            D[library][i] = ';'.join(list(set(D[library][i])))
-        # add read counts
-        for i in ['reads', 'bases_mapped', 'mapped_reads', 'total_bases_on_target']:
-            if 'NA' not in D[library][i]:
-                D[library][i] = sum(D[library][i])
-            else:
-                D[library][i] = 'NA'
-        # compute average read length
-        D[library]['read_length'] = sum(D[library]['read_length']) / len(D[library]['read_length'])
-        # replace with missing qc 
-        if 'NA' in D[library]['duplicate (%)']:
-            D[library]['duplicate (%)'] = 'NA'
-        else:
-            D[library]['duplicate (%)'] = list(set(D[library]['duplicate (%)']))[0]
-    return D
-
-
 def list_sequencers(fastq_counts):
     '''
     (dict) -> list
@@ -1808,21 +1723,15 @@ def write_report(args):
         bamqc_info = parse_bamqc(args.bamqc_table, args.project)
         # update FPR info with QC info from bamqc table
         map_bamqc_info_to_fpr(FPR_info, bamqc_info)
+        # re-organize metrics per sample and instrument
+        sample_metrics = get_run_level_sample_metrics(FPR_info)
     elif args.level == 'cumulative':
         bamqc_info = parse_merged_bamqc(args.bamqc_table, args.project)   
         # update FPR info with QC info from bamqc merged table
         map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info)
-         
-    
-    
-    
-    
-    
-    
-    # transform metrics per library instead of files
-    library_metrics = transform_metrics(FPR_info)
-    
-    
+        # re-organize metrics per sample and instrument
+        sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
+            
     
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
