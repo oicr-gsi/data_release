@@ -818,7 +818,7 @@ def parse_merged_bamqc(merged_bamqc_table, project):
 
 
 
-def update_information_released_fastqs(FPR_info, bamqc_info):
+def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
     '''
     (dict, dict) -> None
     
@@ -828,7 +828,7 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
     Parameters
     ----------
     - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - bamqc_info (dict): Information for each file and run for a given project collected from bamqc table
+    - bamqc_info (dict): QC information for each paired fastq from the bamqc table
     '''
     
     for file in FPR_info:
@@ -857,7 +857,39 @@ def update_information_released_fastqs(FPR_info, bamqc_info):
 
 
            
-
+def map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info):
+    '''
+    (dict, dict) -> None
+    
+    Update the information obtained from File Provenance Report in place with information
+    collected from bamqcmerged
+    
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+    - bamqc_info (dict): QC metrics for each sample from the bamqc4merged table
+    '''
+    
+    for file in FPR_info:
+        qc_found = False
+        instrument = FPR_info[file]['instrument'].replace('_', ' ')
+        if instrument in bamqc_info:
+            sample_name = FPR_info[file]['sample_name']
+            if sample_name in bamqc_info[instrument]:
+                # map file info with bamqc info
+                assert bamqc_info[instrument][sample_name]['sample'] == '_'.join([FPR_info[file]['ID'], FPR_info[file]['tissue_origin'], FPR_info[file]['tissue_type'], FPR_info[file]['library_source']])
+                assert FPR_info[file]['lid'] in bamqc_info[instrument][sample_name]['library']
+                qc_found = True
+                FPR_info[file]['coverage'] = bamqc_info[instrument][sample_name]['coverage']
+                FPR_info[file]['coverage_dedup'] = bamqc_info[instrument][sample_name]['coverage_dedup']
+                # add run-level relevant metrics
+                FPR_info[file]['on_target'] = 'NA'                
+                FPR_info[file]['percent_duplicate'] = 'NA'
+        if qc_found == False:
+            FPR_info[file]['coverage'] = 'NA'
+            FPR_info[file]['coverage_dedup'] = 'NA'
+            FPR_info[file]['on_target'] = 'NA'                
+            FPR_info[file]['percent_duplicate'] = 'NA'
 
 
 def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = None):
@@ -1774,27 +1806,23 @@ def write_report(args):
     # collect information from bamqc table
     if args.level == 'single':
         bamqc_info = parse_bamqc(args.bamqc_table, args.project)
+        # update FPR info with QC info from bamqc table
+        map_bamqc_info_to_fpr(FPR_info, bamqc_info)
     elif args.level == 'cumulative':
         bamqc_info = parse_merged_bamqc(args.bamqc_table, args.project)   
+        # update FPR info with QC info from bamqc merged table
+        map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info)
+         
     
     
     
     
     
-    
-    
-    
-    
-    # update FPR info with QC info from bamqc table and list libraries with missing QC
-    missing_qc = update_information_released_fastqs(FPR_info, bamqc_info)
     
     # transform metrics per library instead of files
     library_metrics = transform_metrics(FPR_info)
     
-    # add coverage for each library
-    compute_coverage(library_metrics)
-    # add on_target rate
-    compute_on_target(library_metrics)
+    
     
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
