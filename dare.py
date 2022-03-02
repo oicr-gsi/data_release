@@ -933,7 +933,7 @@ def get_run_level_sample_metrics(FPR_info):
                          'donor': donor, 'library_source': library_source,
                          'reads': read_count, 'coverage': coverage,
                          'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                         'duplicate': duplicate, 'files': [file]}]
+                         'duplicate (%)': duplicate, 'files': [file]}]
         else:
             # find paired fastq
             for d in D[instrument][sample]:
@@ -943,7 +943,7 @@ def get_run_level_sample_metrics(FPR_info):
                          d['reads'] += read_count
                          assert coverage == d['coverage']
                          assert coverage_dedup == d['coverage_dedup']
-                         assert duplicate == d['duplicate']
+                         assert duplicate == d['duplicate (%)']
                          assert on_target == d['on_target']
                          d['files'].append(file)
                          # update boolean. paired end fastq found
@@ -955,7 +955,7 @@ def get_run_level_sample_metrics(FPR_info):
                              'donor': donor, 'library_source': library_source,
                              'reads': read_count, 'coverage': coverage,
                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                             'duplicate': duplicate, 'files': [file]})
+                             'duplicate (%)': duplicate, 'files': [file]})
                     
                     
             
@@ -1011,7 +1011,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
                               'donor': donor, 'library_source': library_source,
                               'read_count': read_count, 'coverage': coverage,
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                              'duplicate': duplicate, 'files': [file]}
+                              'duplicate (%)': duplicate, 'files': [file]}
         else:
             assert barcode == D[instrument][sample]['barcode']
             assert ext_id == D[instrument][sample]['ext_id']
@@ -1021,7 +1021,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample]['read_count'] += read_count
             assert coverage == D[sample]['coverage']
             assert coverage_dedup == D[sample]['coverage_dedup']
-            assert duplicate == D[sample]['duplicate']
+            assert duplicate == D[sample]['duplicate (%)']
             assert on_target == D[sample]['on_target']
             
     return D                         
