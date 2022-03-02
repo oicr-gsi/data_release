@@ -931,7 +931,7 @@ def get_run_level_sample_metrics(FPR_info):
             D[instrument][sample] = [{'sample': sample, 'lane': lane, 'run': run, 'library': library,
                          'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                          'donor': donor, 'library_source': library_source,
-                         'read_count': read_count, 'coverage': coverage,
+                         'reads': read_count, 'coverage': coverage,
                          'coverage_dedup': coverage_dedup, 'on_target': on_target,
                          'duplicate': duplicate, 'files': [file]}]
         else:
@@ -940,7 +940,7 @@ def get_run_level_sample_metrics(FPR_info):
                 if run == d['run'] and lane == d['lane'] and library == d['library'] \
                      and instrument == d['instrument'] and barcode == d['barcode'] \
                      and ext_id == d['ext_id'] and donor == d['donor'] and library_source == d['library_source']:
-                         d['read_count'] += read_count
+                         d['reads'] += read_count
                          assert coverage == d['coverage']
                          assert coverage_dedup == d['coverage_dedup']
                          assert duplicate == d['duplicate']
@@ -953,7 +953,7 @@ def get_run_level_sample_metrics(FPR_info):
                 D[instrument][sample].append({'sample': sample, 'lane': lane, 'run': run, 'library': library,
                              'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                              'donor': donor, 'library_source': library_source,
-                             'read_count': read_count, 'coverage': coverage,
+                             'reads': read_count, 'coverage': coverage,
                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
                              'duplicate': duplicate, 'files': [file]})
                     
@@ -1250,7 +1250,7 @@ def group_qc_metric_by_instrument(sample_metrics, metric, level):
                     if instrument in D:
                         D[instrument].append([d[metric], sample + '_' + d['run'] + '_' + d['lane']])
                     else:
-                        D[instrument] = [d[metric], sample + '_' + d['run'] + '_' + d['lane']]
+                        D[instrument] = [[d[metric], sample + '_' + d['run'] + '_' + d['lane']]]
     elif level == 'cumulative':
         for instrument in sample_metrics:
             for sample in sample_metrics[instrument]:
@@ -1279,6 +1279,7 @@ def sort_metrics(sample_metrics, instrument, metric1, metric2, level):
     
     # group metric 1 by instrument
     D1 = group_qc_metric_by_instrument(sample_metrics, metric1, level)
+    
     # make a sorted list of metric1 in ascending order
     M = [i for i in D1[instrument] if i[0] != 'NA']
     M.sort(key = lambda x: x[0])
@@ -1287,7 +1288,7 @@ def sort_metrics(sample_metrics, instrument, metric1, metric2, level):
     samples = [i[1] for i in M]
     
     # group metric 2 by instrument
-    D2 = group_qc_metric_by_instrument(sample_metrics, metric2)
+    D2 = group_qc_metric_by_instrument(sample_metrics, metric2, level)
     # make a list of metric2 sorted according to the order of metric1
     Q2 = []
     for i in samples:
