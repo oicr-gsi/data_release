@@ -1717,6 +1717,24 @@ def get_logo():
     return logo_image
 
 
+def write_md5sums(project_dir, project_name, current_date, FPR_info):
+    '''
+    
+    
+    
+    '''
+
+    md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(project_name, current_date))
+    newfile = open(md5_file, 'w')
+    newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
+    for file in sorted(list(FPR_info.keys())):
+        newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
+    newfile.close()       
+
+
+
+
+
 def write_report(args):
     '''
     (str, str, str, str, str, str, str, list)
@@ -1781,7 +1799,6 @@ def write_report(args):
         # re-organize metrics per sample and instrument
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
             
-    
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.level, args.project_name,  sequencers, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
@@ -1791,25 +1808,13 @@ def write_report(args):
     elif args.level == 'cumulative':
         figure_files = figure_files1
     
-    
-    
-    
-    
-    
-    
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
     
     # write md5sums to separate text file
     if args.level == 'single':
-        md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
-        newfile = open(md5_file, 'w')
-        newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
-        for file in sorted(list(FPR_info.keys())):
-            newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
-        newfile.close()       
-    
-    
+        write_md5sums(project_dir, args.project_name, current_date, FPR_info)
+        
     # make a list to store report
     Text = []
     # add title and logo
