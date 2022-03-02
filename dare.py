@@ -1360,7 +1360,7 @@ def encode_image(filename):
 
 
 
-def generate_table(library_metrics, header, column_size):
+def generate_table(sample_metrics, header, column_size):
     '''
     (dict, list, dict, str) -> str
     
@@ -1368,13 +1368,16 @@ def generate_table(library_metrics, header, column_size):
     
     Parameters
     ----------
-    - library_metrics (dict): Dictionary with library-level metrics
+    - sample_metrics (dict): Dictionary with run-level and cumulative sample metrics
     - header (list):
     - column_size (dict):
     '''
     
     # count the expected number of cells (excluding header) in tables
-    cells = len(list(library_metrics.keys()))
+    cells = 0
+    for instrument in sample_metrics:
+        for sample in sample_metrics[instrument]:
+            cells += len(sample_metrics[instrument][sample])
     
     # add padding around text in cells    
     padding = '3px'
@@ -1390,39 +1393,77 @@ def generate_table(library_metrics, header, column_size):
     for i in header:
         table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
     table.append('</tr>')
-    
-    # sort libraries
-    libraries = sorted(list(library_metrics.keys()))
-    # add lines in table
-    for library in libraries:
-        if counter % 2 == 0:
-            table.append('<tr style="background-color: #eee">')
-        else:
-            table.append('<tr style="background-color: #fff">')
-        for i in header:
-            if i == 'run':
-                j = str(library_metrics[library]['run_alias'])
-                if ';' in j:
-                    j = j.replace(';', ';\n')
-            elif i == 'barcode':
-                j = str(library_metrics[library][i])
-                if '-' in j:
-                    j = j.replace('-', '-\n')
-            else:
-                j = str(library_metrics[library][i])
-            if counter + 1 == cells:
-                table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-            else:
-                table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-        table.append('</tr>')
-        # update counter
-        counter += 1
+
+    for instrument in sample_metrics:
+        samples = sorted(list(sample_metrics[instrument].keys()))
+        # add lines in table
+        for sample in samples:
+            for d in sample_metrics[instrument][sample]:
+                if counter % 2 == 0:
+                    table.append('<tr style="background-color: #eee">')
+                else:
+                    table.append('<tr style="background-color: #fff">')
+                for i in header:
+                    if i == 'external_id':
+                        j = str(d['ext_id'])
+                    elif i == 'run':
+                        j = str(d['run'])
+                        if ';' in j:
+                            j = j.replace(';', ';\n')
+                    elif i == 'barcode':
+                        j = str(d[i])
+                        if '-' in j:
+                            j = j.replace('-', '-\n')
+                    else:
+                        j = str(d[i])
+                    if counter + 1 == cells:
+                        table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+                    else:
+                        table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+                table.append('</tr>')
+                # update counter
+                counter += 1
     table.append('</table>')
     return ''.join(table)
 
 
 
-def generate_table_md5sum(library_metrics, header, column_size):
+
+
+
+    
+    # sort libraries
+    # libraries = sorted(list(library_metrics.keys()))
+    # # add lines in table
+    # for library in libraries:
+    #     if counter % 2 == 0:
+    #         table.append('<tr style="background-color: #eee">')
+    #     else:
+    #         table.append('<tr style="background-color: #fff">')
+    #     for i in header:
+    #         if i == 'run':
+    #             j = str(library_metrics[library]['run_alias'])
+    #             if ';' in j:
+    #                 j = j.replace(';', ';\n')
+    #         elif i == 'barcode':
+    #             j = str(library_metrics[library][i])
+    #             if '-' in j:
+    #                 j = j.replace('-', '-\n')
+    #         else:
+    #             j = str(library_metrics[library][i])
+    #         if counter + 1 == cells:
+    #             table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+    #         else:
+    #             table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+    #     table.append('</tr>')
+    #     # update counter
+    #     counter += 1
+    # table.append('</table>')
+    # return ''.join(table)
+
+
+
+def generate_table_md5sum(FPR_info, header, column_size):
     '''
     (dict, list, dict, str) -> str
     
@@ -1430,16 +1471,14 @@ def generate_table_md5sum(library_metrics, header, column_size):
     
     Parameters
     ----------
-    - library_metrics (dict): Dictionary with library-level metrics
+    - FPR_info (dict): Dictionary with QC metrics and file info
     - header (list): List of table column names
     - column_size (dict): Dictionary of column name, column width key, value pairs
     '''
     
     # count the expected number of cells (excluding header) in tables
-    cells = 0
-    for library in library_metrics:
-        cells += len(library_metrics[library]['files'])
-        
+    cells = len(FPR_info)
+            
     # add padding around text in cells    
     padding = '3px'
     
@@ -1457,9 +1496,8 @@ def generate_table_md5sum(library_metrics, header, column_size):
     # add lines in table
     # create a list of file and md5sum
     files = []
-    for library in library_metrics:
-        for i in library_metrics[library]['files']:
-            files.append(i)
+    for file in FPR_info:
+        files.append([FPR_info[file]['filename'], FPR_info[file]['md5sum']])
     files.sort()
     
     for file in files:
@@ -1719,9 +1757,19 @@ def get_logo():
 
 def write_md5sums(project_dir, project_name, current_date, FPR_info):
     '''
+    (str, str, str, dict) -> str
+    
+    Writes a table file with file names and md5sums and returns thefile path
     
     
     
+    Parameters
+    ----------
+    
+    - working-dir (str): Path to the directory with project directories and links to fastqs 
+    - project_name (str): Project name used to create the project directory in gsi space
+    - current_date (str): Current date (Y-m-d)
+    - FPR_info (dict): File information with QC metrics
     '''
 
     md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(project_name, current_date))
@@ -1730,9 +1778,7 @@ def write_md5sums(project_dir, project_name, current_date, FPR_info):
     for file in sorted(list(FPR_info.keys())):
         newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
     newfile.close()       
-
-
-
+    return md5_file
 
 
 def write_report(args):
@@ -1783,7 +1829,7 @@ def write_report(args):
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
     
     # make a list sequencers used to sequence released fastqs
-    sequencers = list_sequencers(fastq_counts)
+    #sequencers = list_sequencers(fastq_counts)
         
     # collect information from bamqc table
     if args.level == 'single':
@@ -1798,7 +1844,13 @@ def write_report(args):
         map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info)
         # re-organize metrics per sample and instrument
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
-            
+    
+
+    sequencers = list(sample_metrics.keys())
+    
+
+
+        
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.level, args.project_name,  sequencers, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
@@ -1813,7 +1865,7 @@ def write_report(args):
     
     # write md5sums to separate text file
     if args.level == 'single':
-        write_md5sums(project_dir, args.project_name, current_date, FPR_info)
+        md5_file = write_md5sums(project_dir, args.project_name, current_date, FPR_info)
         
     # make a list to store report
     Text = []
@@ -1845,9 +1897,9 @@ def write_report(args):
     
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-    header = ['ID', 'library', 'run', 'barcode', 'external_id']       
-    column_size = {'ID': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
-    Text.append(generate_table(library_metrics, header, column_size))            
+    header = ['donor', 'library', 'run', 'barcode', 'external_id']       
+    column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
+    Text.append(generate_table(sample_metrics, header, column_size))            
     
     
     # add page break between plots and tables
@@ -1856,12 +1908,12 @@ def write_report(args):
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
     if args.level == 'single':
-        header = ['ID', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
-        column_size = {'ID': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+        header = ['donor', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
+        column_size = {'donor': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
     elif args.level == 'cumulative':
-        header = ['ID', 'library', 'run', 'reads', 'coverage']
-        column_size = {'ID': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
-    Text.append(generate_table(library_metrics, header, column_size))            
+        header = ['donor', 'library', 'run', 'reads', 'coverage']
+        column_size = {'donor': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
+    Text.append(generate_table(sample_metrics, header, column_size))            
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
         
@@ -1871,14 +1923,14 @@ def write_report(args):
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
         header = ['filename', 'md5sum']       
         column_size = {'filename': '70%', 'md5sum': '30%'}
-        Text.append(generate_table_md5sum(library_metrics, header, column_size))
+        Text.append(generate_table_md5sum(FPR_info, header, column_size))
     # convert to html
     renderer = mistune.Markdown()
     Text = '\n'.join(Text)
     html_str = renderer(Text)
     
     # convert html to pdf    
-    report_name = '{0}_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
+    report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
     report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
     newfile = open(report_file, "wb")
     pisa.CreatePDF(html_str, newfile)
