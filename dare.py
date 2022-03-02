@@ -905,8 +905,10 @@ def get_run_level_sample_metrics(FPR_info):
     
     D = {}
     
-    
     for file in FPR_info:
+        # set up boolean to match paired end fastqs
+        found = False
+        # get file info        
         sample = FPR_info[file]['sample_name']
         lane = FPR_info[file]['lane']
         run = FPR_info[file]['run_alias']
@@ -926,22 +928,46 @@ def get_run_level_sample_metrics(FPR_info):
             D[instrument] = {}
         
         if sample not in D[instrument]:
-            D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run, 'library': library,
+            D[instrument][sample] = [{'sample': sample, 'lane': lane, 'run': run, 'library': library,
                          'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                          'donor': donor, 'library_source': library_source,
                          'read_count': read_count, 'coverage': coverage,
                          'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                         'duplicate': duplicate, 'files': [file]}
+                         'duplicate': duplicate, 'files': [file]}]
         else:
-            if run == D[instrument][sample]['run'] and lane == D[instrument][sample]['lane'] and library == D[instrument][sample]['library'] \
-                and instrument == D[instrument][sample]['instrument'] and barcode == D[instrument][sample]['barcode'] \
-                and ext_id == D[instrument][sample]['ext_id'] and donor == D[instrument][sample]['donor'] and library_source == D[instrument][sample]['library_source']:
-                    D[instrument][sample]['read_count'] += read_count
-                    assert coverage == D[instrument][sample]['coverage']
-                    assert coverage_dedup == D[instrument][sample]['coverage_dedup']
-                    assert duplicate == D[instrument][sample]['duplicate']
-                    assert on_target == D[instrument][sample]['on_target']
-                    D[instrument][sample]['files'].append(file)
+            # find paired fastq
+            for d in D[instrument][sample]:
+                if run == d['run'] and lane == d['lane'] and library == d['library'] \
+                     and instrument == d['instrument'] and barcode == d['barcode'] \
+                     and ext_id == d['ext_id'] and donor == d['donor'] and library_source == d['library_source']:
+                         d['read_count'] += read_count
+                         assert coverage == d['coverage']
+                         assert coverage_dedup == d['coverage_dedup']
+                         assert duplicate == d['duplicate']
+                         assert on_target == d['on_target']
+                         d['files'].append(file)
+                         # update boolean. paired end fastq found
+                         found = True
+            if found == False:
+                # record file info
+                D[instrument][sample].append({'sample': sample, 'lane': lane, 'run': run, 'library': library,
+                             'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
+                             'donor': donor, 'library_source': library_source,
+                             'read_count': read_count, 'coverage': coverage,
+                             'coverage_dedup': coverage_dedup, 'on_target': on_target,
+                             'duplicate': duplicate, 'files': [file]})
+                    
+                    
+            
+            # if run == D[instrument][sample]['run'] and lane == D[instrument][sample]['lane'] and library == D[instrument][sample]['library'] \
+            #     and instrument == D[instrument][sample]['instrument'] and barcode == D[instrument][sample]['barcode'] \
+            #     and ext_id == D[instrument][sample]['ext_id'] and donor == D[instrument][sample]['donor'] and library_source == D[instrument][sample]['library_source']:
+            #         D[instrument][sample]['read_count'] += read_count
+            #         assert coverage == D[instrument][sample]['coverage']
+            #         assert coverage_dedup == D[instrument][sample]['coverage_dedup']
+            #         assert duplicate == D[instrument][sample]['duplicate']
+            #         assert on_target == D[instrument][sample]['on_target']
+            #         D[instrument][sample]['files'].append(file)
     return D                         
                                            
             
@@ -1116,7 +1142,7 @@ def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, c
 
 
 
-def generate_figures(project_dir, project_name,  sequencers, library_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
+def generate_figures(project_dir, project_name,  sequencers, sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
     '''
     (project_dir, str, list, dict, str, str, str, str, str, str) -> list
     
@@ -1127,7 +1153,7 @@ def generate_figures(project_dir, project_name,  sequencers, library_metrics, me
     - project_dir (str): Path to the folder where figure files are written
     - project_name (str): name of the project
     - sequencers (list): List of intruments
-    - library_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
+    - sample_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
     - metric1 (str): Metrics of interest 1
     - metric2 (str): Metrics of interest 2
     - YLabel1 (str): Label of the Y axis for Data1
@@ -1141,7 +1167,7 @@ def generate_figures(project_dir, project_name,  sequencers, library_metrics, me
     for i in sequencers:
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
-        Q1, Q2 = sort_metrics(library_metrics, i, metric1, metric2)
+        Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2)
         
         plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
         if i not in figure_files:
@@ -1734,7 +1760,7 @@ def write_report(args):
             
     
     # generate figure files
-    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
+    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
         # plot on target and duplicate rate
         figure_files2= generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
