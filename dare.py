@@ -1142,15 +1142,16 @@ def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, c
 
 
 
-def generate_figures(project_dir, project_name,  sequencers, sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
+def generate_figures(project_dir, level, project_name,  sequencers, sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
     '''
-    (project_dir, str, list, dict, str, str, str, str, str, str) -> list
+    (project_dir, str, str, list, dict, str, str, str, str, str, str) -> list
     
     Returns a list of paths to figure files
     
     Parameters
     ----------
     - project_dir (str): Path to the folder where figure files are written
+    - level (str): Single or cumulative
     - project_name (str): name of the project
     - sequencers (list): List of intruments
     - sample_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
@@ -1165,9 +1166,9 @@ def generate_figures(project_dir, project_name,  sequencers, sample_metrics, met
     # generate plots for each instrument. keep track of figure file names
     figure_files = {}
     for i in sequencers:
-        outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project_name, i, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
+        outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, i, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
-        Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2)
+        Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2, level)
         
         plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
         if i not in figure_files:
@@ -1224,59 +1225,72 @@ def map_instrument_type(sequencer):
     return instrument
 
 
-def group_qc_metric_by_instrument(library_metrics, metric):
+def group_qc_metric_by_instrument(sample_metrics, metric, level):
     '''
-    (dict, str) - > dict 
+    (dict, str, str) - > dict 
     
-    Returns metric for each library across runs by instrument
-    Uses a generic intrument collapsing sequencer models into a generic name
+    Returns metric for each sample across instruments
+    
     
     Parameters
     ----------
-    - library_metrics (dict): Dictionary with library-level metrics from FPR and qc-etl 
+    - sample_metrics (dict): Dictionary run-level or cumulative level sample QC metrics  
     - metric (str): Metric of interest
+    - level (str): Single or cumulative
     '''
     
-    # collect read_counts across runs for each instrument and file
+    # collect metric for each sample and instrument
     D = {}
-    for library in library_metrics:
-        instrument = map_instrument_type(library_metrics[library]['instrument'])
-        if instrument in D:
-            D[instrument].append([library_metrics[library][metric], library])
-        else:
-            D[instrument] = [[library_metrics[library][metric], library]]
+        
+    # check level because data structure is different for run-level or cumulative metrics
+    if level == 'single':
+        for instrument in sample_metrics:
+            for sample in sample_metrics[instrument]:
+                for d in sample_metrics[instrument][sample]:
+                    if instrument in D:
+                        D[instrument].append([d[metric], sample + '_' + d['run'] + '_' + d['lane']])
+                    else:
+                        D[instrument] = [d[metric], sample + '_' + d['run'] + '_' + d['lane']]
+    elif level == 'cumulative':
+        for instrument in sample_metrics:
+            for sample in sample_metrics[instrument]:
+                if instrument in D:
+                    D[instrument].append([sample_metrics[instrument][sample][metric], sample])
+                else:
+                    D[instrument] = [sample_metrics[instrument][sample][metric], sample]
     return D
 
 
-def sort_metrics(library_metrics, instrument, metric1, metric2):
+def sort_metrics(sample_metrics, instrument, metric1, metric2, level):
     '''
-    (dict, str, str, str) -> (list, list)
+    (dict, str, str, str, str) -> (list, list)
     
     Returns a tuple with lists of metrics 1 and 2 sorted according to metrics 1
     
     Parameters
     ----------
     
-    - library_metrics (dict): QC metrics extracted from the File provenance Report and bamqc for each library
+    - sample_metrics (dict): Run-level or cumulative QC metrics for all samples 
     - instrument (str): Sequencing intrument
     - metric1 (str): Name of QC metric 1
     - metric2 (str): Name of QC metric 2
+    - level (str): Single or cumulative
     '''
     
     # group metric 1 by instrument
-    D1 = group_qc_metric_by_instrument(library_metrics, metric1)
+    D1 = group_qc_metric_by_instrument(sample_metrics, metric1, level)
     # make a sorted list of metric1 in ascending order
     M = [i for i in D1[instrument] if i[0] != 'NA']
     M.sort(key = lambda x: x[0])
     Q1 = [i[0] for i in M]
-    # make a list of libraries corresponding to the sorted metric1 values
-    libraries = [i[1] for i in M]
+    # make a list of samples corresponding to the sorted metric1 values
+    samples = [i[1] for i in M]
     
     # group metric 2 by instrument
-    D2 = group_qc_metric_by_instrument(library_metrics, metric2)
+    D2 = group_qc_metric_by_instrument(sample_metrics, metric2)
     # make a list of metric2 sorted according to the order of metric1
     Q2 = []
-    for i in libraries:
+    for i in samples:
         for j in D2[instrument]:
             if j[1] == i:
                 Q2.append(j[0])
@@ -1760,13 +1774,19 @@ def write_report(args):
             
     
     # generate figure files
-    figure_files1 = generate_figures(project_dir, args.project_name,  sequencers, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
+    figure_files1 = generate_figures(project_dir, args.level, args.project_name,  sequencers, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
         # plot on target and duplicate rate
-        figure_files2= generate_figures(project_dir, args.project_name,  sequencers, library_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
+        figure_files2= generate_figures(project_dir, args.level, args.project_name,  sequencers, sample_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
         figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     elif args.level == 'cumulative':
         figure_files = figure_files1
+    
+    
+    
+    
+    
+    
     
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
