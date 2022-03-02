@@ -1055,6 +1055,7 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
 
     # plot data 1 and median  
     xcoord = [i/10 for i in range(len(Data1))]
+        
     ax1.plot(xcoord, Data1, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color1, markeredgecolor = color1, markeredgewidth = 1, markersize = 10, alpha=0.5)
     # compute median the data
     median1 = np.median(Data1)
@@ -1082,9 +1083,17 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
     if title is not None:
         ax1.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
 
-    # add xticks 
-    plt.xticks(xcoord, ['' for i in range(0, len(xcoord), 5)], ha='center', fontsize=12, rotation=0)
-
+    # set xticks
+    # get all the ticks and set labels to empty str
+    plt.xticks(xcoord, ['' for i in range(len(xcoord))], ha='center', fontsize=12, rotation=0)
+    # set every N ticks
+    N = 3
+    xticks_pos = ax1.get_xticks()
+    xticks_labels = ax1.get_xticklabels()
+    myticks = [j for i,j in enumerate(xticks_pos) if not i % N]  # index of selected ticks
+    newlabels = [label for i,label in enumerate(xticks_labels) if not i % N]
+    plt.xticks(myticks, newlabels, ha='center', fontsize=12, rotation=0)
+    
     # add splace bewteen axis and tick labels
     for i in [ax1, ax2]:
         i.yaxis.labelpad = 17
@@ -1101,7 +1110,7 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
     for i in [ax1, ax2]:
         for loc, spine in i.spines.items():
             spine.set_position(('outward', 5))
-            spine.set_smart_bounds(True)
+            #spine.set_smart_bounds(True)
     
     # disable scientific notation
     ax1.ticklabel_format(style='plain', axis='y')
@@ -1169,7 +1178,6 @@ def generate_figures(project_dir, level, project_name,  sequencers, sample_metri
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, i, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
         Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2, level)
-        
         plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
         if i not in figure_files:
             figure_files[i] = []
