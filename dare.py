@@ -1018,10 +1018,10 @@ def get_cumulative_level_sample_metrics(FPR_info):
             assert library_source == D[instrument][sample]['library_source']
             D[instrument][sample]['library'].append(library)  
             D[instrument][sample]['read_count'] += read_count
-            assert coverage == D[sample]['coverage']
-            assert coverage_dedup == D[sample]['coverage_dedup']
-            assert duplicate == D[sample]['duplicate (%)']
-            assert on_target == D[sample]['on_target']
+            assert coverage == D[instrument][sample]['coverage']
+            assert coverage_dedup == D[instrument][sample]['coverage_dedup']
+            assert duplicate == D[instrument][sample]['duplicate (%)']
+            assert on_target == D[instrument][sample]['on_target']
             
     return D                         
 
