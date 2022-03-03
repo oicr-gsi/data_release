@@ -1863,6 +1863,12 @@ def write_report(args):
         # re-organize metrics per sample and instrument
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
     
+    
+    print('collected info from bamqc')
+    
+    
+    print(sample_metrics)
+    
 
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
@@ -1872,6 +1878,9 @@ def write_report(args):
         figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     elif args.level == 'cumulative':
         figure_files = figure_files1
+    
+    print('generated figures')
+    
     
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
@@ -1899,6 +1908,10 @@ def write_report(args):
     Text.append('<br />')
     
     
+    print('added logo and project table')
+    
+    print('adding figures')
+    
     for i in sorted(list(sample_metrics.keys())):
         Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
         if args.level == 'single':
@@ -1906,6 +1919,10 @@ def write_report(args):
         elif args.level == 'cumulative':
             Text.append(generate_figure_table(figure_files[i][0]))
         Text.append('<br />')
+
+    print('added figures')
+
+
 
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
@@ -1922,6 +1939,13 @@ def write_report(args):
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
                 
+    
+    print('added id table')
+    
+    
+    
+    
+    
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
     if args.level == 'single':
@@ -1935,6 +1959,11 @@ def write_report(args):
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
         
+    
+    print('added qc table')
+    
+    
+    
     # add md5sums
     if args.level == 'single':
         Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
@@ -1946,6 +1975,10 @@ def write_report(args):
     renderer = mistune.Markdown()
     Text = '\n'.join(Text)
     html_str = renderer(Text)
+    
+    print('rendered html')
+    
+    
     
     # convert html to pdf    
     report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
