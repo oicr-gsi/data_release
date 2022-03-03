@@ -1012,7 +1012,6 @@ def get_cumulative_level_sample_metrics(FPR_info):
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
                               'duplicate (%)': duplicate, 'files': [file]}
         else:
-            assert barcode == D[instrument][sample]['barcode']
             assert ext_id == D[instrument][sample]['ext_id']
             assert donor == D[instrument][sample]['donor']
             assert library_source == D[instrument][sample]['library_source']
