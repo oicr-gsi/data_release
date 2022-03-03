@@ -911,7 +911,8 @@ def get_run_level_sample_metrics(FPR_info):
         # get file info        
         sample = FPR_info[file]['sample_name']
         lane = FPR_info[file]['lane']
-        run = FPR_info[file]['run_alias']
+        run_alias = FPR_info[file]['run_alias']
+        run = FPR_info[file]['run']
         library = FPR_info[file]['lid']
         instrument = FPR_info[file]['instrument']
         barcode = FPR_info[file]['barcode']
@@ -928,12 +929,13 @@ def get_run_level_sample_metrics(FPR_info):
             D[instrument] = {}
         
         if sample not in D[instrument]:
-            D[instrument][sample] = [{'sample': sample, 'lane': lane, 'run': run, 'library': library,
-                         'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
-                         'donor': donor, 'library_source': library_source,
-                         'reads': read_count, 'coverage': coverage,
-                         'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                         'duplicate (%)': duplicate, 'files': [file]}]
+            D[instrument][sample] = [{'sample': sample, 'lane': lane, 'run': run,
+                                      'run_alias': run_alias, 'library': library,
+                                      'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
+                                      'donor': donor, 'library_source': library_source,
+                                      'reads': read_count, 'coverage': coverage,
+                                      'coverage_dedup': coverage_dedup, 'on_target': on_target,
+                                      'duplicate (%)': duplicate, 'files': [file]}]
         else:
             # find paired fastq
             for d in D[instrument][sample]:
@@ -950,7 +952,8 @@ def get_run_level_sample_metrics(FPR_info):
                          found = True
             if found == False:
                 # record file info
-                D[instrument][sample].append({'sample': sample, 'lane': lane, 'run': run, 'library': library,
+                D[instrument][sample].append({'sample': sample, 'lane': lane, 'run': run,
+                             'run_alias': run_alias, 'library': library,
                              'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                              'donor': donor, 'library_source': library_source,
                              'reads': read_count, 'coverage': coverage,
@@ -976,7 +979,8 @@ def get_cumulative_level_sample_metrics(FPR_info):
     for file in FPR_info:
         sample = FPR_info[file]['sample_name']
         lane = FPR_info[file]['lane']
-        run = FPR_info[file]['run_alias']
+        run_alias = FPR_info[file]['run_alias']
+        run = FPR_info[file]['run']
         library = FPR_info[file]['lid']
         instrument = FPR_info[file]['instrument']
         barcode = FPR_info[file]['barcode']
@@ -993,7 +997,8 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument] = {}
                
         if sample not in D[instrument]:
-            D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run, 'library': [library],
+            D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run,
+                              'run_alias': run_alias, 'library': [library],
                               'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                               'donor': donor, 'library_source': library_source,
                               'reads': read_count, 'coverage': coverage,
@@ -1919,7 +1924,7 @@ def write_report(args):
     for instrument in sorted(list(sample_metrics.keys())):
         # check that figures exist for instrument
         if instrument in figure_files:
-            Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
+            Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(instrument))
             if args.level == 'single':
                 Text.append(generate_figure_table(figure_files[instrument][0], figure_files[instrument][1]))
             elif args.level == 'cumulative':
