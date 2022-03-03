@@ -1330,7 +1330,7 @@ def count_released_fastqs_by_instrument(FPR_info):
     # count released fastqs by instrument and run
     D = {}
     for file in FPR_info:
-        instrument = map_instrument_type(FPR_info[file]['instrument'])
+        instrument = FPR_info[file]['instrument']
         run = FPR_info[file]['run_alias']
         if instrument not in D:
             D[instrument] = {}
@@ -1623,15 +1623,14 @@ def generate_figure_table(file1, file2=None):
     return ''.join(table)
 
 
-def list_file_count(sequencers, fastq_counts, level):
+def list_file_count(fastq_counts, level):
     '''
-    (list, dict, str) -> list
+    (dict, str) -> list
     
     Returns a list of htm strings with counts of released fastqs by instrument and run
     
     Parameters
     ----------
-    - sequencers (list): List of sequencing instruments
     - fastq_counts (dict): Counts of released fastqs for each run and instrument
     - level (str): Single release or cumulative project report. Values: single or cumulative 
     '''
@@ -1649,12 +1648,12 @@ def list_file_count(sequencers, fastq_counts, level):
     elif level == 'cumulative':
         L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} fastqs have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
     # add file count broken down by instrument and run
+    sequencers = sorted(list(fastq_counts.keys()))
     for instrument in sequencers:
-        if instrument in fastq_counts:
-            L.append('<p style="text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal">{0}</p>'.format(instrument + ':'))
-            #Text.append('### {0}'.format(instrument))
-            for run in fastq_counts[instrument]:
-                L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run, fastq_counts[instrument][run]))
+        L.append('<p style="text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal">{0}</p>'.format(instrument + ':'))
+        #Text.append('### {0}'.format(instrument))
+        for run in fastq_counts[instrument]:
+            L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run, fastq_counts[instrument][run]))
     return L            
     
 
@@ -1878,7 +1877,7 @@ def write_report(args):
     Text.append(generate_project_table(args.project_name, args.project_full_name, current_date, args.contact_name, args.contact_email))
     Text.append('<br />' * 2)           
     # list the file count            
-    Text.extend(list_file_count(sequencers, fastq_counts, args.level))
+    Text.extend(list_file_count(fastq_counts, args.level))
     Text.append('<br />')           
     # add QC plots
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
