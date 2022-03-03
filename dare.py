@@ -1356,7 +1356,7 @@ def generate_table(sample_metrics, header, column_size):
     
     Parameters
     ----------
-    - sample_metrics (dict): Dictionary with run-level and cumulative sample metrics
+    - sample_metrics (dict): Dictionary with run-level sample metrics
     - header (list):
     - column_size (dict):
     '''
@@ -1417,37 +1417,71 @@ def generate_table(sample_metrics, header, column_size):
 
 
 
-
-
+def generate_cumulative_table(sample_metrics, header, column_size):
+    '''
+    (dict, list, dict, str) -> str
     
-    # sort libraries
-    # libraries = sorted(list(library_metrics.keys()))
-    # # add lines in table
-    # for library in libraries:
-    #     if counter % 2 == 0:
-    #         table.append('<tr style="background-color: #eee">')
-    #     else:
-    #         table.append('<tr style="background-color: #fff">')
-    #     for i in header:
-    #         if i == 'run':
-    #             j = str(library_metrics[library]['run_alias'])
-    #             if ';' in j:
-    #                 j = j.replace(';', ';\n')
-    #         elif i == 'barcode':
-    #             j = str(library_metrics[library][i])
-    #             if '-' in j:
-    #                 j = j.replace('-', '-\n')
-    #         else:
-    #             j = str(library_metrics[library][i])
-    #         if counter + 1 == cells:
-    #             table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-    #         else:
-    #             table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-    #     table.append('</tr>')
-    #     # update counter
-    #     counter += 1
-    # table.append('</table>')
-    # return ''.join(table)
+    Returns a html string representing a table
+    
+    Parameters
+    ----------
+    - sample_metrics (dict): Dictionary with cumulative sample metrics
+    - header (list):
+    - column_size (dict):
+    '''
+    
+    # count the expected number of cells (excluding header) in tables
+    cells = 0
+    for instrument in sample_metrics:
+        for sample in sample_metrics[instrument]:
+            cells += len(sample_metrics[instrument][sample])
+    
+    # add padding around text in cells    
+    padding = '3px'
+    
+    # set up counter to track odd and even lines
+    counter = 0
+
+    table = []
+    # add table style
+    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
+    # add header
+    table.append('<tr>')
+    for i in header:
+        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
+    table.append('</tr>')
+
+    for instrument in sample_metrics:
+        samples = sorted(list(sample_metrics[instrument].keys()))
+        # add lines in table
+        for sample in samples:
+            if counter % 2 == 0:
+                table.append('<tr style="background-color: #eee">')
+            else:
+                table.append('<tr style="background-color: #fff">')
+            for i in header:
+                if i == 'external_id':
+                    j = str(sample_metrics[instrument][sample]['ext_id'])
+                elif i == 'run':
+                    j = str(sample_metrics[instrument][sample]['run'])
+                    if ';' in j:
+                        j = j.replace(';', ';\n')
+                elif i == 'barcode':
+                    j = str(sample_metrics[instrument][sample][i])
+                    if '-' in j:
+                        j = j.replace('-', '-\n')
+                else:
+                    j = str(sample_metrics[instrument][sample][i])
+                if counter + 1 == cells:
+                    table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+                else:
+                    table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+            table.append('</tr>')
+            # update counter
+            counter += 1
+    table.append('</table>')
+    return ''.join(table)
+
 
 
 
@@ -1880,8 +1914,10 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
     header = ['donor', 'library', 'run', 'barcode', 'external_id']       
     column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
-    Text.append(generate_table(sample_metrics, header, column_size))            
-    
+    if args.level == 'single':
+        Text.append(generate_table(sample_metrics, header, column_size))            
+    elif args.level == 'cumulative':
+        Text.generate_cumulative_table(sample_metrics, header, column_size)
     
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
@@ -1891,10 +1927,11 @@ def write_report(args):
     if args.level == 'single':
         header = ['donor', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
         column_size = {'donor': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+        Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
         header = ['donor', 'library', 'run', 'reads', 'coverage']
         column_size = {'donor': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
-    Text.append(generate_table(sample_metrics, header, column_size))            
+        Text.generate_cumulative_table(sample_metrics, header, column_size)        
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
         
