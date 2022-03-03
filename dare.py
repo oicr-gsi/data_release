@@ -1917,7 +1917,7 @@ def write_report(args):
     if args.level == 'single':
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
-        Text.generate_cumulative_table(sample_metrics, header, column_size)
+        Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
@@ -1931,7 +1931,7 @@ def write_report(args):
     elif args.level == 'cumulative':
         header = ['donor', 'library', 'run', 'reads', 'coverage']
         column_size = {'donor': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
-        Text.generate_cumulative_table(sample_metrics, header, column_size)        
+        Text.append(generate_cumulative_table(sample_metrics, header, column_size))        
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
         
