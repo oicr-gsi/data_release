@@ -997,8 +997,8 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument] = {}
                
         if sample not in D[instrument]:
-            D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run,
-                              'run_alias': run_alias, 'library': [library],
+            D[instrument][sample] = {'sample': sample, 'lane': [lane], 'run': [run],
+                              'run_alias': [run_alias], 'library': [library],
                               'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                               'donor': donor, 'library_source': library_source,
                               'reads': read_count, 'coverage': coverage,
@@ -1011,6 +1011,9 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample]['library'].append(library)  
             D[instrument][sample]['reads'] += read_count
             D[instrument][sample]['files'].append(file)
+            D[instrument][sample]['run'].append(run)  
+            D[instrument][sample]['lane'].append(lane)  
+            D[instrument][sample]['run_alias'].append(run_alias)  
             assert coverage == D[instrument][sample]['coverage']
             assert coverage_dedup == D[instrument][sample]['coverage_dedup']
             assert duplicate == D[instrument][sample]['duplicate (%)']
