@@ -844,10 +844,10 @@ def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
                     and FPR_info[file]['instrument'].replace('_', ' ') == d['instrument']:
                         assert FPR_info[file]['lid'] == d['library']    
                         qc_found = True
-                        FPR_info[file]['coverage'] = d['coverage']
-                        FPR_info[file]['coverage_dedup'] = d['coverage_dedup']
-                        FPR_info[file]['on_target'] = d['on_target']                
-                        FPR_info[file]['percent_duplicate'] = d['percent_duplicate']
+                        FPR_info[file]['coverage'] = round(d['coverage'], 2)
+                        FPR_info[file]['coverage_dedup'] = round(d['coverage_dedup'], 2)
+                        FPR_info[file]['on_target'] = round(d['on_target'], 2)                
+                        FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'], 2)
 
         if qc_found == False:
             FPR_info[file]['coverage'] = 'NA'
@@ -880,8 +880,8 @@ def map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info):
                 assert bamqc_info[instrument][sample_name]['sample_name'] == '_'.join([FPR_info[file]['ID'], FPR_info[file]['tissue_origin'], FPR_info[file]['tissue_type'], FPR_info[file]['library_source']])
                 assert FPR_info[file]['lid'] in bamqc_info[instrument][sample_name]['library']
                 qc_found = True
-                FPR_info[file]['coverage'] = bamqc_info[instrument][sample_name]['coverage']
-                FPR_info[file]['coverage_dedup'] = bamqc_info[instrument][sample_name]['coverage_dedup']
+                FPR_info[file]['coverage'] = round(bamqc_info[instrument][sample_name]['coverage'], 2)
+                FPR_info[file]['coverage_dedup'] = round(bamqc_info[instrument][sample_name]['coverage_dedup'], 2)
                 # add run-level relevant metrics
                 FPR_info[file]['on_target'] = 'NA'                
                 FPR_info[file]['percent_duplicate'] = 'NA'
@@ -1151,9 +1151,9 @@ def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, c
 
 
 
-def generate_figures(project_dir, level, project_name,  sequencers, sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
+def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
     '''
-    (project_dir, str, str, list, dict, str, str, str, str, str, str) -> list
+    (project_dir, str, str, dict, str, str, str, str, str, str) -> list
     
     Returns a list of paths to figure files
     
@@ -1162,7 +1162,6 @@ def generate_figures(project_dir, level, project_name,  sequencers, sample_metri
     - project_dir (str): Path to the folder where figure files are written
     - level (str): Single or cumulative
     - project_name (str): name of the project
-    - sequencers (list): List of intruments
     - sample_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
     - metric1 (str): Metrics of interest 1
     - metric2 (str): Metrics of interest 2
@@ -1172,9 +1171,12 @@ def generate_figures(project_dir, level, project_name,  sequencers, sample_metri
     - color2 (str): Color of markers and text related to Data2
     '''
     
+    # make a list of instruments
+    instruments = sorted(list(sample_metrics.keys()))
+        
     # generate plots for each instrument. keep track of figure file names
     figure_files = {}
-    for i in sequencers:
+    for i in instruments:
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, i, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
         Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2, level)
@@ -1827,9 +1829,6 @@ def write_report(args):
     # count the number of released fastqs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(FPR_info)
     
-    # make a list sequencers used to sequence released fastqs
-    #sequencers = list_sequencers(fastq_counts)
-        
     # collect information from bamqc table
     if args.level == 'single':
         bamqc_info = parse_bamqc(args.bamqc_table, args.project)
@@ -1845,16 +1844,11 @@ def write_report(args):
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
     
 
-    sequencers = list(sample_metrics.keys())
-    
-
-
-        
     # generate figure files
-    figure_files1 = generate_figures(project_dir, args.level, args.project_name,  sequencers, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
+    figure_files1 = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
         # plot on target and duplicate rate
-        figure_files2= generate_figures(project_dir, args.level, args.project_name,  sequencers, sample_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
+        figure_files2= generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
         figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
     elif args.level == 'cumulative':
         figure_files = figure_files1
@@ -1883,7 +1877,9 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read counts</span> and <span style="font-style: italic">percent duplicate</span> are plotted by ascending order. <span style="font-style: italic">Mean coverage</span> and <span style="font-style: italic">on target rate</span> are plotted respectively according to the order of <span style="font-style: italic">read counts</span> and <span style="font-style: italic">percent duplicate</span></p>')
     Text.append('<br />')
-    for i in sequencers:
+    
+    
+    for i in sorted(list(sample_metrics.keys())):
         Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
         if args.level == 'single':
             Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1]))
