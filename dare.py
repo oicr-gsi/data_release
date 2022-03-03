@@ -1005,6 +1005,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
             assert library_source == D[instrument][sample]['library_source']
             D[instrument][sample]['library'].append(library)  
             D[instrument][sample]['reads'] += read_count
+            D[instrument][sample]['files'].append(file)
             assert coverage == D[instrument][sample]['coverage']
             assert coverage_dedup == D[instrument][sample]['coverage_dedup']
             assert duplicate == D[instrument][sample]['duplicate (%)']
@@ -1166,10 +1167,12 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
         outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, i, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
         # sort read counts in ascending order and coverage according to read count order
         Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2, level)
-        plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
-        if i not in figure_files:
-            figure_files[i] = []
-        figure_files[i].append(outputfile)
+        # plot data only if data exists (ie miseq qc metrics may not be in bamqc merged)
+        if Q1 and Q2:
+            plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
+            if i not in figure_files:
+                figure_files[i] = []
+            figure_files[i].append(outputfile)
     return figure_files
 
 
@@ -1867,9 +1870,6 @@ def write_report(args):
     print('collected info from bamqc')
     
     
-    print(sample_metrics)
-    
-
     # generate figure files
     figure_files1 = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
