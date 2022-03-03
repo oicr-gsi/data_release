@@ -956,18 +956,6 @@ def get_run_level_sample_metrics(FPR_info):
                              'reads': read_count, 'coverage': coverage,
                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
                              'duplicate (%)': duplicate, 'files': [file]})
-                    
-                    
-            
-            # if run == D[instrument][sample]['run'] and lane == D[instrument][sample]['lane'] and library == D[instrument][sample]['library'] \
-            #     and instrument == D[instrument][sample]['instrument'] and barcode == D[instrument][sample]['barcode'] \
-            #     and ext_id == D[instrument][sample]['ext_id'] and donor == D[instrument][sample]['donor'] and library_source == D[instrument][sample]['library_source']:
-            #         D[instrument][sample]['read_count'] += read_count
-            #         assert coverage == D[instrument][sample]['coverage']
-            #         assert coverage_dedup == D[instrument][sample]['coverage_dedup']
-            #         assert duplicate == D[instrument][sample]['duplicate']
-            #         assert on_target == D[instrument][sample]['on_target']
-            #         D[instrument][sample]['files'].append(file)
     return D                         
                                            
             
@@ -1008,7 +996,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample] = {'sample': sample, 'lane': lane, 'run': run, 'library': [library],
                               'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                               'donor': donor, 'library_source': library_source,
-                              'read_count': read_count, 'coverage': coverage,
+                              'reads': read_count, 'coverage': coverage,
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
                               'duplicate (%)': duplicate, 'files': [file]}
         else:
@@ -1016,7 +1004,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
             assert donor == D[instrument][sample]['donor']
             assert library_source == D[instrument][sample]['library_source']
             D[instrument][sample]['library'].append(library)  
-            D[instrument][sample]['read_count'] += read_count
+            D[instrument][sample]['reads'] += read_count
             assert coverage == D[instrument][sample]['coverage']
             assert coverage_dedup == D[instrument][sample]['coverage_dedup']
             assert duplicate == D[instrument][sample]['duplicate (%)']
@@ -1265,7 +1253,7 @@ def group_qc_metric_by_instrument(sample_metrics, metric, level):
                 if instrument in D:
                     D[instrument].append([sample_metrics[instrument][sample][metric], sample])
                 else:
-                    D[instrument] = [sample_metrics[instrument][sample][metric], sample]
+                    D[instrument] = [[sample_metrics[instrument][sample][metric], sample]]
     return D
 
 
