@@ -1912,13 +1912,19 @@ def write_report(args):
     
     print('adding figures')
     
-    for i in sorted(list(sample_metrics.keys())):
-        Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
-        if args.level == 'single':
-            Text.append(generate_figure_table(figure_files[i][0], figure_files[i][1]))
-        elif args.level == 'cumulative':
-            Text.append(generate_figure_table(figure_files[i][0]))
-        Text.append('<br />')
+    print(sorted(list(sample_metrics.keys())))
+    
+    print(figure_files)
+    
+    for instrument in sorted(list(sample_metrics.keys())):
+        # check that figures exist for instrument
+        if instrument in figure_files:
+            Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(i))
+            if args.level == 'single':
+                Text.append(generate_figure_table(figure_files[instrument][0], figure_files[instrument][1]))
+            elif args.level == 'cumulative':
+                Text.append(generate_figure_table(figure_files[instrument][0]))
+            Text.append('<br />')
 
     print('added figures')
 
