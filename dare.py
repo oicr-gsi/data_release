@@ -1018,7 +1018,14 @@ def get_cumulative_level_sample_metrics(FPR_info):
             assert coverage_dedup == D[instrument][sample]['coverage_dedup']
             assert duplicate == D[instrument][sample]['duplicate (%)']
             assert on_target == D[instrument][sample]['on_target']
-            
+    
+    # collapse lanes, runs and libraries
+    for instrument in D:
+        for sample in D[instrument]:
+            D[instrument][sample]['run'] = ';'.join(list(set(D[instrument][sample]['run'])))
+            D[instrument][sample]['lane'] = ';'.join(list(set(D[instrument][sample]['lane'])))
+            D[instrument][sample]['run_alias'] = ';'.join(list(set(D[instrument][sample]['run_alias'])))
+            D[instrument][sample]['library'] = ';'.join(list(set(D[instrument][sample]['library'])))
     return D                         
 
                                            
@@ -1473,16 +1480,16 @@ def generate_cumulative_table(sample_metrics, header, column_size):
             for i in header:
                 if i == 'external_id':
                     j = str(sample_metrics[instrument][sample]['ext_id'])
-                elif i == 'run':
-                    j = str(sample_metrics[instrument][sample]['run'])
-                    if ';' in j:
-                        j = j.replace(';', ';\n')
-                elif i == 'barcode':
-                    j = str(sample_metrics[instrument][sample][i])
-                    if '-' in j:
-                        j = j.replace('-', '-\n')
+                # elif i == 'run':
+                #     j = str(sample_metrics[instrument][sample]['run'])
                 else:
                     j = str(sample_metrics[instrument][sample][i])
+                
+                if ';' in j or '-' in j:
+                    if i == 'barcode':
+                        j = j.replace('-', '-\n')
+                    elif i in ['run', 'library']:
+                        j = j.replace(';', ';\n')
                 if counter + 1 == cells:
                     table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
                 else:
