@@ -1950,11 +1950,13 @@ def write_report(args):
     
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-    header = ['donor', 'library', 'run', 'barcode', 'external_id']       
+           
     column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
+        header = ['donor', 'library', 'run', 'barcode', 'external_id']
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
+        header = ['donor', 'external_id', 'library', 'run', 'barcode']
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
