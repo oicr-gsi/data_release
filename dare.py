@@ -993,6 +993,8 @@ def get_cumulative_level_sample_metrics(FPR_info):
         on_target = FPR_info[file]['on_target']
         duplicate = FPR_info[file]['percent_duplicate']
         
+        group_id = FPR_info[file]['group_id']
+        
         if instrument not in D:
             D[instrument] = {}
                
@@ -1003,7 +1005,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
                               'donor': donor, 'library_source': library_source,
                               'reads': read_count, 'coverage': coverage,
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                              'duplicate (%)': duplicate, 'files': [file]}
+                              'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id}
         else:
             assert ext_id == D[instrument][sample]['ext_id']
             assert donor == D[instrument][sample]['donor']
@@ -1021,6 +1023,10 @@ def get_cumulative_level_sample_metrics(FPR_info):
             assert coverage_dedup == D[instrument][sample]['coverage_dedup']
             assert duplicate == D[instrument][sample]['duplicate (%)']
             assert on_target == D[instrument][sample]['on_target']
+    
+            assert group_id == D[instrument][sample]['group_id']
+    
+    
     
     # collapse lanes, runs and libraries
     for instrument in D:
@@ -1961,9 +1967,12 @@ def write_report(args):
     column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
         header = ['donor', 'library', 'run', 'barcode', 'external_id']
+        column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
+    
     elif args.level == 'cumulative':
-        header = ['donor', 'external_id', 'library', 'run', 'barcode']
+        header = ['donor', 'group_id', 'external_id', 'library', 'run']
+        column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'group_id': '10%', 'external_id': '20%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
