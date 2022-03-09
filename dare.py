@@ -737,7 +737,7 @@ def parse_bamqc(bamqc_table, project):
             
             total_bases_on_target = int(i[header.index('total bases on target')])
             total_reads = int(i[header.index('total reads')])
-                      
+            
             on_target = compute_on_target_rate(bases_mapped, total_bases_on_target)    
             
             # map file information
@@ -999,7 +999,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
         if sample not in D[instrument]:
             D[instrument][sample] = {'sample': sample, 'lane': [lane], 'run': [run],
                               'run_alias': [run_alias], 'library': [library],
-                              'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
+                              'instrument': instrument, 'barcode': [barcode], 'ext_id': ext_id,
                               'donor': donor, 'library_source': library_source,
                               'reads': read_count, 'coverage': coverage,
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
@@ -1014,6 +1014,9 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample]['run'].append(run)  
             D[instrument][sample]['lane'].append(lane)  
             D[instrument][sample]['run_alias'].append(run_alias)  
+            
+            D[instrument][sample]['barcode'].append(barcode)
+            
             assert coverage == D[instrument][sample]['coverage']
             assert coverage_dedup == D[instrument][sample]['coverage_dedup']
             assert duplicate == D[instrument][sample]['duplicate (%)']
@@ -1026,6 +1029,10 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample]['lane'] = ';'.join(list(set(D[instrument][sample]['lane'])))
             D[instrument][sample]['run_alias'] = ';'.join(list(set(D[instrument][sample]['run_alias'])))
             D[instrument][sample]['library'] = ';'.join(list(set(D[instrument][sample]['library'])))
+            D[instrument][sample]['barcode'] = ';'.join(list(set(D[instrument][sample]['barcode'])))
+            
+            
+            
     return D                         
 
                                            
@@ -1484,12 +1491,12 @@ def generate_cumulative_table(sample_metrics, header, column_size):
                 #     j = str(sample_metrics[instrument][sample]['run'])
                 else:
                     j = str(sample_metrics[instrument][sample][i])
-                
-                if ';' in j or '-' in j:
-                    if i == 'barcode':
+                if i in ['barcode', 'run', 'library']:
+                    if '-' in j:
                         j = j.replace('-', '-\n')
-                    elif i in ['run', 'library']:
+                    if ';' in j:
                         j = j.replace(';', ';\n')
+                
                 if counter + 1 == cells:
                     table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
                 else:
