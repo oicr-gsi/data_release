@@ -1388,8 +1388,8 @@ def generate_table(sample_metrics, header, column_size):
     Parameters
     ----------
     - sample_metrics (dict): Dictionary with run-level sample metrics
-    - header (list):
-    - column_size (dict):
+    - header (list): List of column names
+    - column_size (dict): Dictionary with columns width for each column in header
     '''
     
     # count the expected number of cells (excluding header) in tables
@@ -1448,17 +1448,18 @@ def generate_table(sample_metrics, header, column_size):
 
 
 
-def generate_cumulative_table(sample_metrics, header, column_size):
+def generate_cumulative_table(sample_metrics, header, column_size, table_type=None):
     '''
-    (dict, list, dict, str) -> str
+    (dict, list, dict, str, str) -> str
     
     Returns a html string representing a table
     
     Parameters
     ----------
     - sample_metrics (dict): Dictionary with cumulative sample metrics
-    - header (list):
-    - column_size (dict):
+    - header (list): List of column names
+    - column_size (dict): Dictionary with columns width for each column in header
+    - table_type (str): Report library and lane counts rather than Ids if set to metrics    
     '''
     
     # count the expected number of cells (excluding header) in tables
@@ -1503,7 +1504,11 @@ def generate_cumulative_table(sample_metrics, header, column_size):
                     elif i == 'group_id':
                         k = len(j.split('_')) // 2
                         j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:])
-                       
+                        
+                if table_type == 'metrics' and i in ['run', 'library']:
+                    j = str(sample_metrics[instrument][sample][i])
+                    j = len(list(set(j.split(';'))))
+                                                      
                 if counter + 1 == cells:
                     table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
                 else:
@@ -1995,7 +2000,7 @@ def write_report(args):
     elif args.level == 'cumulative':
         header = ['donor', 'library', 'run', 'reads', 'coverage']
         column_size = {'donor': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
-        Text.append(generate_cumulative_table(sample_metrics, header, column_size))        
+        Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
         
