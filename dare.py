@@ -1998,8 +1998,8 @@ def write_report(args):
         column_size = {'donor': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
-        header = ['donor', 'library', 'run', 'reads', 'coverage']
-        column_size = {'donor': '15%', 'library': '25%', 'run': '40%', 'reads': '10%', 'coverage': '10%'}
+        header = ['donor', 'group_id', 'library', 'run', 'reads', 'coverage']
+        column_size = {'donor': '15%', 'group_id': '20%', 'library': '15%', 'run': '30%', 'reads': '10%', 'coverage': '10%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
