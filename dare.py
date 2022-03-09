@@ -1493,16 +1493,17 @@ def generate_cumulative_table(sample_metrics, header, column_size):
             for i in header:
                 if i == 'external_id':
                     j = str(sample_metrics[instrument][sample]['ext_id'])
-                # elif i == 'run':
-                #     j = str(sample_metrics[instrument][sample]['run'])
                 else:
                     j = str(sample_metrics[instrument][sample][i])
-                if i in ['barcode', 'run', 'library']:
-                    if '-' in j:
-                        j = j.replace('-', '-\n')
-                    if ';' in j:
-                        j = j.replace(';', ';\n')
-                
+                    if i in ['barcode', 'run', 'library']:
+                        if '-' in j:
+                            j = j.replace('-', '-\n')
+                        if ';' in j:
+                            j = j.replace(';', ';\n')
+                    elif i == 'group_id':
+                        k = len(j.split('_')) // 2
+                        j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:])
+                       
                 if counter + 1 == cells:
                     table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
                 else:
@@ -1972,7 +1973,7 @@ def write_report(args):
     
     elif args.level == 'cumulative':
         header = ['donor', 'group_id', 'external_id', 'library', 'run']
-        column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'group_id': '10%', 'external_id': '20%'}
+        column_size = {'donor': '10%', 'library': '23%', 'run': '35%', 'group_id': '20%', 'external_id': '12%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
