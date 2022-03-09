@@ -1937,6 +1937,10 @@ def write_report(args):
     # list the file count            
     Text.extend(list_file_count(fastq_counts, args.level))
     Text.append('<br />')           
+    
+    # add page break between plots and tables
+    Text.append('<div style="page-break-after: always;"></div>')
+        
     # add QC plots
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read counts</span> and <span style="font-style: italic">percent duplicate</span> are plotted by ascending order. <span style="font-style: italic">Mean coverage</span> and <span style="font-style: italic">on target rate</span> are plotted respectively according to the order of <span style="font-style: italic">read counts</span> and <span style="font-style: italic">percent duplicate</span></p>')
