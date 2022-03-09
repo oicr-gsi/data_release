@@ -1651,7 +1651,7 @@ def generate_header_table(logo, width, height, level):
 
 
 
-def generate_figure_table(file1, file2=None):
+def generate_figure_table(file1, factor, file2=None):
    
     '''
     (str, str | None) -> str
@@ -1662,6 +1662,7 @@ def generate_figure_table(file1, file2=None):
     ----------
     - file1 (str): Path to the figure file with metrics 1 and 2 
     - file2 (str | None): Path to the figure file with metrics 3 and 4 if exists
+    - factor (float): Resizing factor
     '''
 
     table = []
@@ -1671,12 +1672,16 @@ def generate_figure_table(file1, file2=None):
     table.append('</tr>')
     table.append('<tr>')
     # resize figure 1
-    height1, width1 = resize_image(file1, 0.3)
-    table.append('<td style="width: 50%; padding: 3px; text-align: left"><img src="{0}" alt="{1}" title="{1}" style="padding-right: 0px; padding-left:0px; width:{2}; height:{3}"></td>'.format(file1, os.path.basename(file1), width1, height1))
+    height1, width1 = resize_image(file1, factor)
+    if file2:
+        width = '50%'
+    else:
+        width = '100%'
+    table.append('<td style="width: {0}; padding: 3px; text-align: left"><img src="{1}" alt="{2}" title="{2}" style="padding-right: 0px; padding-left:0px; width:{3}; height:{4}"></td>'.format(width, file1, os.path.basename(file1), width1, height1))
     if file2:
         # resize figure 
-        height2, width2 = resize_image(file2, 0.3)
-        table.append('<td style="width: 50%; padding: 3px; text-align: left"><img src="{0}" alt="{1}" title="{1}" style="padding-right: 0px; padding-left:0px; width:{2}; height:{3}"></td>'.format(file2, os.path.basename(file2), width2, height2))
+        height2, width2 = resize_image(file2, factor)
+        table.append('<td style="width: {0}; padding: 3px; text-align: left"><img src="{1}" alt="{2}" title="{2}" style="padding-right: 0px; padding-left:0px; width:{3}; height:{4}"></td>'.format(width, file2, os.path.basename(file2), width2, height2))
     table.append('</tr>')
     table.append('</table>')
     
@@ -1955,14 +1960,20 @@ def write_report(args):
     
     print(figure_files)
     
+    
+    if args.level == 'single':
+        factor = 0.3
+    elif args.level == 'cumulative':
+        factor = 1.3
+    
     for instrument in sorted(list(sample_metrics.keys())):
         # check that figures exist for instrument
         if instrument in figure_files:
             Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(instrument))
             if args.level == 'single':
-                Text.append(generate_figure_table(figure_files[instrument][0], figure_files[instrument][1]))
+                Text.append(generate_figure_table(figure_files[instrument][0], factor, figure_files[instrument][1]))
             elif args.level == 'cumulative':
-                Text.append(generate_figure_table(figure_files[instrument][0]))
+                Text.append(generate_figure_table(figure_files[instrument][0], factor))
             Text.append('<br />')
 
     print('added figures')
