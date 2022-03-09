@@ -1494,6 +1494,8 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
             for i in header:
                 if i == 'external_id':
                     j = str(sample_metrics[instrument][sample]['ext_id'])
+                elif i == 'coverage_deduplicated':
+                    j = str(sample_metrics[instrument][sample]['coverage_dedup'])
                 else:
                     j = str(sample_metrics[instrument][sample][i])
                     if i in ['barcode', 'run', 'library']:
@@ -1502,8 +1504,9 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
                         if ';' in j:
                             j = j.replace(';', ';\n')
                     elif i == 'group_id':
-                        k = len(j.split('_')) // 2
-                        j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:])
+                        if table_type != 'metrics':
+                            k = len(j.split('_')) // 2
+                            j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:])
                         
                 if table_type == 'metrics' and i in ['run', 'library']:
                     j = str(sample_metrics[instrument][sample][i])
@@ -1998,8 +2001,8 @@ def write_report(args):
         column_size = {'donor': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
-        header = ['donor', 'group_id', 'library', 'run', 'reads', 'coverage']
-        column_size = {'donor': '15%', 'group_id': '20%', 'library': '15%', 'run': '30%', 'reads': '10%', 'coverage': '10%'}
+        header = ['donor', 'group_id', 'library', 'run', 'reads', 'coverage', 'coverage_deduplicated']
+        column_size = {'donor': '15%', 'group_id': '20%', 'library': '15%', 'run': '20%', 'reads': '10%', 'coverage': '10%', 'coverage_deduplicated': '10%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
