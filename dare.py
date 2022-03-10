@@ -1465,9 +1465,8 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
     # count the expected number of cells (excluding header) in tables
     cells = 0
     for instrument in sample_metrics:
-        for sample in sample_metrics[instrument]:
-            cells += len(sample_metrics[instrument][sample])
-    
+        cells += len(sample_metrics[instrument].keys())
+        
     # add padding around text in cells    
     padding = '3px'
     
