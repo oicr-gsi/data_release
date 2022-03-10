@@ -7,23 +7,17 @@ Created on Thu Oct 15 12:27:07 2020
 
 
 import argparse
-import subprocess
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Patch
-import matplotlib as mpl
-from matplotlib.lines import Line2D
 from datetime import datetime
 import xhtml2pdf.pisa as pisa
 import mistune
 import base64
-import copy
 from PIL import Image
 import math
 import requests
 import gzip
-from itertools import zip_longest
 import io
 
 
