@@ -2014,7 +2014,7 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
     if args.level == 'single':
         header = ['donor', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
-        column_size = {'donor': '10%', 'library': '24%', 'run': '29%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+        column_size = {'donor': '10%', 'library': '22%', 'run': '31%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
         header = ['donor', 'group_id', 'library', 'run', 'reads', 'coverage', 'coverage_dedup']
