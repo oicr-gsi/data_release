@@ -925,6 +925,8 @@ def get_run_level_sample_metrics(FPR_info):
         ext_id = FPR_info[file]['external_id']
         donor = FPR_info[file]['ID']
         library_source = FPR_info[file]['library_source']
+        tissue_origin = FPR_info[file]['tissue_origin']
+        tissue_type = FPR_info[file]['tissue_type']
         read_count = FPR_info[file]['read_count']
         coverage = FPR_info[file]['coverage']
         coverage_dedup = FPR_info[file]['coverage_dedup']
@@ -939,6 +941,7 @@ def get_run_level_sample_metrics(FPR_info):
                                       'run_alias': run_alias, 'library': library,
                                       'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                                       'donor': donor, 'library_source': library_source,
+                                      'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
                                       'reads': read_count, 'coverage': coverage,
                                       'coverage_dedup': coverage_dedup, 'on_target': on_target,
                                       'duplicate (%)': duplicate, 'files': [file]}]
@@ -953,6 +956,8 @@ def get_run_level_sample_metrics(FPR_info):
                          assert coverage_dedup == d['coverage_dedup']
                          assert duplicate == d['duplicate (%)']
                          assert on_target == d['on_target']
+                         assert tissue_origin == d['tissue_origin']
+                         assert tissue_type == d['tissue_type']
                          d['files'].append(file)
                          # update boolean. paired end fastq found
                          found = True
@@ -962,6 +967,7 @@ def get_run_level_sample_metrics(FPR_info):
                              'run_alias': run_alias, 'library': library,
                              'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
                              'donor': donor, 'library_source': library_source,
+                             'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
                              'reads': read_count, 'coverage': coverage,
                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
                              'duplicate (%)': duplicate, 'files': [file]})
@@ -993,6 +999,8 @@ def get_cumulative_level_sample_metrics(FPR_info):
         ext_id = FPR_info[file]['external_id']
         donor = FPR_info[file]['ID']
         library_source = FPR_info[file]['library_source']
+        tissue_origin = FPR_info[file]['tissue_origin']
+        tissue_type = FPR_info[file]['tissue_type']
         read_count = FPR_info[file]['read_count']
         coverage = FPR_info[file]['coverage']
         coverage_dedup = FPR_info[file]['coverage_dedup']
@@ -1009,6 +1017,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
                               'run_alias': [run_alias], 'library': [library],
                               'instrument': instrument, 'barcode': [barcode], 'ext_id': ext_id,
                               'donor': donor, 'library_source': library_source,
+                              'tissue_origin': tissue_origin, 'tissue_type': tissue_type,
                               'reads': read_count, 'coverage': coverage,
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
                               'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id}
@@ -1016,6 +1025,8 @@ def get_cumulative_level_sample_metrics(FPR_info):
             assert ext_id == D[instrument][sample]['ext_id']
             assert donor == D[instrument][sample]['donor']
             assert library_source == D[instrument][sample]['library_source']
+            assert tissue_type == D[instrument][sample]['tissue_type']
+            assert tissue_origin == D[instrument][sample]['tissue_origin']
             D[instrument][sample]['library'].append(library)  
             D[instrument][sample]['reads'] += read_count
             D[instrument][sample]['files'].append(file)
@@ -1042,8 +1053,6 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample]['run_alias'] = ';'.join(list(set(D[instrument][sample]['run_alias'])))
             D[instrument][sample]['library'] = ';'.join(list(set(D[instrument][sample]['library'])))
             D[instrument][sample]['barcode'] = ';'.join(list(set(D[instrument][sample]['barcode'])))
-            
-            
             
     return D                         
 
@@ -1439,6 +1448,12 @@ def generate_table(sample_metrics, header, column_size):
                         j = str(d[i])
                         if '-' in j:
                             j = j.replace('-', '-\n')
+                    elif i == 'O':
+                        j = str(d['tissue_origin'])
+                    elif i == 'S':
+                        j = str(d['library_source'])
+                    elif i == 'T':
+                        j = str(d['tissue_type'])
                     else:
                         j = str(d[i])
                     if counter + 1 == cells:
@@ -1499,6 +1514,12 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
             for i in header:
                 if i == 'external_id':
                     j = str(sample_metrics[instrument][sample]['ext_id'])
+                elif i == 'S':
+                    j = str(sample_metrics[instrument][sample]['library_source'])
+                elif i == 'T':
+                    j = str(sample_metrics[instrument][sample]['tissue_type'])
+                elif i == 'O':
+                    j = str(sample_metrics[instrument][sample]['tissue_origin'])
                 else:
                     j = str(sample_metrics[instrument][sample][i])
                     if i in ['barcode', 'run', 'library']:
@@ -1990,19 +2011,20 @@ def write_report(args):
 
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
-    
+        
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-           
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library source, T: Tissue type, O: Tissue origin.</span></p>')
+       
     column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
-        header = ['donor', 'library', 'run', 'barcode', 'external_id']
-        column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
+        header = ['donor', 'library', 'S', 'O', 'T', 'run', 'barcode', 'external_id']
+        column_size = {'donor': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'barcode': '10%', 'external_id': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     
     elif args.level == 'cumulative':
-        header = ['donor', 'group_id', 'external_id', 'library', 'run']
-        column_size = {'donor': '10%', 'library': '23%', 'run': '35%', 'group_id': '20%', 'external_id': '12%'}
+        header = ['donor', 'group_id', 'external_id', 'library', 'S', 'O', 'T', 'run']
+        column_size = {'donor': '9%', 'library': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'group_id': '18%', 'external_id': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
