@@ -150,7 +150,6 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
 
     # parse the records
     for i in records:
-        i = i.rstrip().split('\t')
         # get file path
         file_path = i[46]
         # get sample name
@@ -376,8 +375,7 @@ def map_file_ids(L):
     
     D = {}
     
-    for i in L:
-        j = i.rstrip().split('\t')
+    for j in L:    
         try:
             file = j[46]
             run = j[23]
@@ -2162,8 +2160,7 @@ def map_swid_file(L):
     # create a dict {file path: swid}
     D = {} 
 
-    for i in L:
-        j = i.rstrip().split('\t')
+    for j in L:
         swid = j[44]
         # get file path and resolve any links
         file = os.path.realpath(j[46])
