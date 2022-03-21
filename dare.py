@@ -389,20 +389,33 @@ def map_file_ids(L):
             if 'geo_group_id' in geo:
                 groupid = geo['geo_group_id']
             else:
-                groupid = '-'
+                groupid = 'NA'
             if 'geo_group_id_description' in geo:
                 groupdesc = geo['geo_group_id_description']
             else:
-                groupdesc = '-'
+                groupdesc = 'NA'
             if 'geo_tube_id' in geo:
                 tubeid = geo['geo_tube_id']
             else:
-                tubeid = '-'
+                tubeid = 'NA'
             if 'geo_targeted_resequencing' in geo:
                 panel = geo['geo_targeted_resequencing']
             else:
-                panel = '-'
-            D[file] = [ID, lid, run, barcode, externalid, groupid, groupdesc, tubeid, panel]
+                panel = 'NA'
+            if 'geo_library_source_template_type' in geo:
+                library_source = geo['geo_library_source_template_type']
+            else:
+                library_source = 'NA'
+            if 'geo_tissue_type' in geo:
+                tissue_type = geo['geo_tissue_type']
+            else:
+                tissue_type = 'NA'
+            if 'geo_tissue_origin' in geo:
+                tissue_origin = geo['geo_tissue_origin']
+            else:
+                tissue_origin = 'NA'
+            
+            D[file] = [ID, lid, library_source, tissue_type, tissue_origin, run, barcode, externalid, groupid, groupdesc, tubeid, panel]
         except:
             continue
     return D        
@@ -430,7 +443,8 @@ def write_map_file(projects_dir, project_name, run, L, suffix, add_tube, add_pan
     
     output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.txt'.format(run, project_name, suffix))
     newfile = open(output_map, 'w')
-    header = ['sample', 'library', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
+    header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
+    
     if add_tube:
         header.append('tube_id')
     if add_panel:
