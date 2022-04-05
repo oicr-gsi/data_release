@@ -2077,12 +2077,12 @@ def write_report(args):
        
     column_size = {'case': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
-        header = ['case', 'library', 'S', 'O', 'T', 'run', 'barcode', 'external_id']
+        header = ['external_id', 'case', 'library', 'S', 'O', 'T', 'run', 'barcode']
         column_size = {'case': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'barcode': '10%', 'external_id': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     
     elif args.level == 'cumulative':
-        header = ['case', 'group_id', 'external_id', 'library', 'S', 'O', 'T', 'run']
+        header = ['external_id', 'case', 'group_id', 'library', 'S', 'O', 'T', 'run']
         column_size = {'case': '9%', 'library': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'group_id': '18%', 'external_id': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
@@ -2091,9 +2091,6 @@ def write_report(args):
                 
     
     print('added id table')
-    
-    
-    
     
     
     # add QC metrics table
