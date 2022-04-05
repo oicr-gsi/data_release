@@ -1722,39 +1722,83 @@ def generate_figure_table(file1, factor, file2=None):
     return ''.join(table)
 
 
-def list_file_count(fastq_counts, level):
+
+def count_all_files(fastq_counts):
     '''
-    (dict, str) -> list
+    (dict) -> int
     
-    Returns a list of htm strings with counts of released fastqs by instrument and run
+    Returns the total number of fast files (or number of paired fastq files) across instruments and runs
     
     Parameters
     ----------
     - fastq_counts (dict): Counts of released fastqs for each run and instrument
-    - level (str): Single release or cumulative project report. Values: single or cumulative 
+    '''
+
+    total = 0
+    for instrument in fastq_counts:
+        total += len(fastq_counts[instrument])
+    return total
+
+
+def generate_file_count_table(fastq_counts, header, column_size):
+    '''
+    (dict, list, dict) -> str
+    
+    Returns a html string representing a table
+    
+    Parameters
+    ----------
+    - fastq_counts (dict): Dictionary with counts of released files per run and instrument
+    - header (list): List of column names
+    - column_size (dict): Dictionary with columns width for each column in header
     '''
     
-    # count all files
-    c = 0
-    for i in fastq_counts:
-        for j in fastq_counts[i]:
-            c += fastq_counts[i][j]
-    # store html in list
-    L = []
-    L.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
-    if level == 'single':
-        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(c))
-    elif level == 'cumulative':
-        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
-    # add file count broken down by instrument and run
-    sequencers = sorted(list(fastq_counts.keys()))
-    for instrument in sequencers:
-        L.append('<p style="text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal">{0}</p>'.format(instrument + ':'))
-        #Text.append('### {0}'.format(instrument))
-        for run in fastq_counts[instrument]:
-            L.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}: {1}<li/></ul>'.format(run, fastq_counts[instrument][run]))
-    return L            
+    # count the expected number of cells (excluding header) in tables
+    cells = count_all_files(fastq_counts)
+            
+    # add padding around text in cells    
+    padding = '3px'
     
+    # set up counter to track odd and even lines
+    counter = 0
+
+    table = []
+    # add table style
+    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
+    # add header
+    table.append('<tr>')
+    for i in header:
+        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
+    table.append('</tr>')
+
+    # make a sorted list of instruments
+    instruments = sorted(list(fastq_counts.keys()))
+
+    for instrument in instruments:
+        # make a sorted list of runs
+        runs = sorted(list(fastq_counts[instrument].keys()))
+        # add lines in table
+        for run in runs:
+            if counter % 2 == 0:
+                table.append('<tr style="background-color: #eee">')
+            else:
+                table.append('<tr style="background-color: #fff">')
+            for i in header:
+                if i == 'Platform':
+                    j = instrument
+                elif i == 'Run':
+                    j = run
+                elif i == 'Paired fastq files':
+                    j = str(fastq_counts[instrument][run])
+                if counter + 1 == cells:
+                    table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+                else:
+                    table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+            table.append('</tr>')
+            # update counter
+            counter += 1
+    table.append('</table>')
+    return ''.join(table)
 
 
 def get_QC_status_from_nabu(api, file_swid):
@@ -1974,7 +2018,14 @@ def write_report(args):
     Text.append(generate_project_table(args.project_name, args.project_full_name, current_date, args.contact_name, args.contact_email))
     Text.append('<br />' * 2)           
     # list the file count            
-    Text.extend(list_file_count(fastq_counts, args.level))
+    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
+    # count all released fastqs or paired across instruments and runs
+    file_count = count_all_files(fastq_counts)
+    if args.level == 'single':
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(file_count))
+    elif args.level == 'cumulative':
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(file_count))
+    Text.append(generate_file_count_table(fastq_counts, ['Platform', 'Run', 'Paired fastq files'], {'Platform': '25%', 'Run': '30%', 'Paired fastq files': '25%'}))
     Text.append('<br />')           
     
     # add page break between plots and tables
