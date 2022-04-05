@@ -798,11 +798,11 @@ def parse_merged_bamqc(merged_bamqc_table, project):
             coverage_dedup = float(i[header.index('coverage deduplicated')])
             sample = i[header.index('sample')]
             group_id = i[header.index('Group ID')]
-            donor = i[header.index('Donor')]
+            case = i[header.index('Donor')]
             library_design = i[header.index('Library Design')]
             tissue_origin = i[header.index('Tissue Origin')]
             tissue_type = i[header.index('Tissue Type')]
-            sample_name = donor + '_' + tissue_origin + '_' + tissue_type + '_' + library_design
+            sample_name = case + '_' + tissue_origin + '_' + tissue_type + '_' + library_design
             assert sample == sample_name + '_' + group_id
             assert project == i[header.index('Project')]
             
@@ -923,7 +923,7 @@ def get_run_level_sample_metrics(FPR_info):
         instrument = FPR_info[file]['instrument']
         barcode = FPR_info[file]['barcode']
         ext_id = FPR_info[file]['external_id']
-        donor = FPR_info[file]['ID']
+        case = FPR_info[file]['ID']
         library_source = FPR_info[file]['library_source']
         tissue_origin = FPR_info[file]['tissue_origin']
         tissue_type = FPR_info[file]['tissue_type']
@@ -940,7 +940,7 @@ def get_run_level_sample_metrics(FPR_info):
             D[instrument][sample] = [{'sample': sample, 'lane': lane, 'run': run,
                                       'run_alias': run_alias, 'library': library,
                                       'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
-                                      'donor': donor, 'library_source': library_source,
+                                      'case': case, 'library_source': library_source,
                                       'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
                                       'reads': read_count, 'coverage': coverage,
                                       'coverage_dedup': coverage_dedup, 'on_target': on_target,
@@ -950,7 +950,7 @@ def get_run_level_sample_metrics(FPR_info):
             for d in D[instrument][sample]:
                 if run == d['run'] and lane == d['lane'] and library == d['library'] \
                      and instrument == d['instrument'] and barcode == d['barcode'] \
-                     and ext_id == d['ext_id'] and donor == d['donor'] and library_source == d['library_source']:
+                     and ext_id == d['ext_id'] and case == d['case'] and library_source == d['library_source']:
                          d['reads'] += read_count
                          assert coverage == d['coverage']
                          assert coverage_dedup == d['coverage_dedup']
@@ -966,7 +966,7 @@ def get_run_level_sample_metrics(FPR_info):
                 D[instrument][sample].append({'sample': sample, 'lane': lane, 'run': run,
                              'run_alias': run_alias, 'library': library,
                              'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
-                             'donor': donor, 'library_source': library_source,
+                             'case': case, 'library_source': library_source,
                              'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
                              'reads': read_count, 'coverage': coverage,
                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
@@ -997,7 +997,7 @@ def get_cumulative_level_sample_metrics(FPR_info):
         instrument = FPR_info[file]['instrument']
         barcode = FPR_info[file]['barcode']
         ext_id = FPR_info[file]['external_id']
-        donor = FPR_info[file]['ID']
+        case = FPR_info[file]['ID']
         library_source = FPR_info[file]['library_source']
         tissue_origin = FPR_info[file]['tissue_origin']
         tissue_type = FPR_info[file]['tissue_type']
@@ -1016,14 +1016,14 @@ def get_cumulative_level_sample_metrics(FPR_info):
             D[instrument][sample] = {'sample': sample, 'lane': [lane], 'run': [run],
                               'run_alias': [run_alias], 'library': [library],
                               'instrument': instrument, 'barcode': [barcode], 'ext_id': ext_id,
-                              'donor': donor, 'library_source': library_source,
+                              'case': case, 'library_source': library_source,
                               'tissue_origin': tissue_origin, 'tissue_type': tissue_type,
                               'reads': read_count, 'coverage': coverage,
                               'coverage_dedup': coverage_dedup, 'on_target': on_target,
                               'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id}
         else:
             assert ext_id == D[instrument][sample]['ext_id']
-            assert donor == D[instrument][sample]['donor']
+            assert case == D[instrument][sample]['case']
             assert library_source == D[instrument][sample]['library_source']
             assert tissue_type == D[instrument][sample]['tissue_type']
             assert tissue_origin == D[instrument][sample]['tissue_origin']
@@ -2075,15 +2075,15 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library source, T: Tissue type, O: Tissue origin.</span></p>')
        
-    column_size = {'donor': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
+    column_size = {'case': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
-        header = ['donor', 'library', 'S', 'O', 'T', 'run', 'barcode', 'external_id']
-        column_size = {'donor': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'barcode': '10%', 'external_id': '17%'}
+        header = ['case', 'library', 'S', 'O', 'T', 'run', 'barcode', 'external_id']
+        column_size = {'case': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'barcode': '10%', 'external_id': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     
     elif args.level == 'cumulative':
-        header = ['donor', 'group_id', 'external_id', 'library', 'S', 'O', 'T', 'run']
-        column_size = {'donor': '9%', 'library': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'group_id': '18%', 'external_id': '11%'}
+        header = ['case', 'group_id', 'external_id', 'library', 'S', 'O', 'T', 'run']
+        column_size = {'case': '9%', 'library': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'group_id': '18%', 'external_id': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
@@ -2099,12 +2099,12 @@ def write_report(args):
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
     if args.level == 'single':
-        header = ['donor', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
-        column_size = {'donor': '10%', 'library': '22%', 'run': '31%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
+        header = ['case', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
+        column_size = {'case': '10%', 'library': '22%', 'run': '31%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
-        header = ['donor', 'group_id', 'library', 'run', 'reads', 'coverage', 'coverage_dedup']
-        column_size = {'donor': '15%', 'group_id': '38%', 'library': '5%', 'run': '7%', 'reads': '10%', 'coverage': '10%', 'coverage_dedup': '15%'}
+        header = ['case', 'group_id', 'library', 'run', 'reads', 'coverage', 'coverage_dedup']
+        column_size = {'case': '15%', 'group_id': '38%', 'library': '5%', 'run': '7%', 'reads': '10%', 'coverage': '10%', 'coverage_dedup': '15%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
