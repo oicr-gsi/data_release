@@ -1735,9 +1735,9 @@ def list_file_count(fastq_counts, level):
     L = []
     L.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
     if level == 'single':
-        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} fastqs. File count is broken down by instrument and run as follow.</p>'.format(c))
+        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} fastq files. File count is broken down by instrument and run as follow.</p>'.format(c))
     elif level == 'cumulative':
-        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} fastqs have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
+        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
     # add file count broken down by instrument and run
     sequencers = sorted(list(fastq_counts.keys()))
     for instrument in sequencers:
