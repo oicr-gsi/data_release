@@ -1350,15 +1350,16 @@ def sort_metrics(sample_metrics, instrument, metric1, metric2, level):
     return Q1, Q2
 
 
-def count_released_fastqs_by_instrument(FPR_info):
+def count_released_fastqs_by_instrument(FPR_info, reads):
     '''
-    (dict) -> dict
+    (dict, str) -> dict
     
     Returns the count of released fastqs for each run and instrument
     
     Parameters
     ----------
     - FPR_info (dict): Information about the released fastqs collected from File Provenance Report
+    - reads (str): Count all files (read= all) or fastq pairs (read= read1)
     '''
         
     # count released fastqs by instrument and run
@@ -1368,10 +1369,17 @@ def count_released_fastqs_by_instrument(FPR_info):
         run = FPR_info[file]['run_alias']
         if instrument not in D:
             D[instrument] = {}
-        if run not in D[instrument]:
-            D[instrument][run] = 1
-        else:
-            D[instrument][run] += 1
+        if reads == 'all_reads':
+            if run not in D[instrument]:
+                D[instrument][run] = 1
+            else:
+                D[instrument][run] += 1
+        elif reads == 'read1':
+            if 'R1' in file:
+                if run not in D[instrument]:
+                    D[instrument][run] = 1
+                else:
+                    D[instrument][run] += 1
     return D
     
 
@@ -1735,9 +1743,9 @@ def list_file_count(fastq_counts, level):
     L = []
     L.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
     if level == 'single':
-        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} fastq files. File count is broken down by instrument and run as follow.</p>'.format(c))
+        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(c))
     elif level == 'cumulative':
-        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
+        L.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(c))
     # add file count broken down by instrument and run
     sequencers = sorted(list(fastq_counts.keys()))
     for instrument in sequencers:
@@ -1915,9 +1923,9 @@ def write_report(args):
     for i in to_remove:
         del FPR_info[i]
     
-    # count the number of released fastqs for each run and instrument
-    fastq_counts = count_released_fastqs_by_instrument(FPR_info)
-    
+    # count the number of released fastq pairs for each run and instrument
+    fastq_counts = count_released_fastqs_by_instrument(FPR_info, 'read1')
+        
     # collect information from bamqc table
     if args.level == 'single':
         bamqc_info = parse_bamqc(args.bamqc_table, args.project)
