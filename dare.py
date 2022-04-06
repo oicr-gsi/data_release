@@ -2116,15 +2116,11 @@ def write_report(args):
     
     print('added qc table')
     
-    
-    
     # add md5sums
     if args.level == 'single':
         Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is also available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
-        header = ['filename', 'md5sum']       
-        column_size = {'filename': '70%', 'md5sum': '30%'}
-        Text.append(generate_table_md5sum(FPR_info, header, column_size))
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
+        
     # convert to html
     renderer = mistune.Markdown()
     Text = '\n'.join(Text)
