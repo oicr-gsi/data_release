@@ -1448,6 +1448,8 @@ def generate_table(sample_metrics, header, column_size):
                 for i in header:
                     if i == 'external_id':
                         j = str(d['ext_id'])
+                    elif i == 'Library ID':
+                        j = str(d['library'])
                     elif i == 'run':
                         j = str(d['run'])
                         if ';' in j:
@@ -1530,7 +1532,11 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
                     j = str(sample_metrics[instrument][sample]['tissue_origin'])
                 else:
                     j = str(sample_metrics[instrument][sample][i])
-                    if i in ['barcode', 'run', 'library']:
+                    if i == 'indices':
+                        j = str(sample_metrics[instrument][sample]['barcode'])
+                    elif i == 'Library ID':
+                        j = str(sample_metrics[instrument][sample]['library'])
+                    if i in ['indices', 'run', 'Library ID']:
                         if '-' in j:
                             j = j.replace('-', '-\n')
                         if ';' in j:
@@ -1540,8 +1546,11 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
                             k = len(j.split('_')) // 2
                             j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:])
                         
-                if table_type == 'metrics' and i in ['run', 'library']:
-                    j = str(sample_metrics[instrument][sample][i])
+                if table_type == 'metrics':
+                    if i == 'run':
+                        j = str(sample_metrics[instrument][sample][i])
+                    elif i == 'Library ID':
+                        j = str(sample_metrics[instrument][sample]['library'])
                     j = len(list(set(j.split(';'))))
                                                       
                 if counter + 1 == cells:
@@ -2075,15 +2084,13 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
        
-    column_size = {'case': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
-        header = ['external_id', 'case', 'library', 'S', 'O', 'T', 'run', 'indices']
+        header = ['external_id', 'case', 'Library ID', 'S', 'O', 'T', 'run', 'indices']
         column_size = {'case': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
-    
     elif args.level == 'cumulative':
-        header = ['external_id', 'case', 'group_id', 'library', 'S', 'O', 'T', 'run']
-        column_size = {'case': '9%', 'library': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'group_id': '18%', 'external_id': '11%'}
+        header = ['external_id', 'case', 'group_id', 'Library ID', 'S', 'O', 'T', 'run']
+        column_size = {'case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'group_id': '18%', 'external_id': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
     
     # add page break between plots and tables
