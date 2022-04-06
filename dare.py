@@ -1452,8 +1452,8 @@ def generate_table(sample_metrics, header, column_size):
                         j = str(d['run'])
                         if ';' in j:
                             j = j.replace(';', ';\n')
-                    elif i == 'barcode':
-                        j = str(d[i])
+                    elif i == 'indices':
+                        j = str(d['barcode'])
                         if '-' in j:
                             j = j.replace('-', '-\n')
                     elif i == 'O':
@@ -2077,8 +2077,8 @@ def write_report(args):
        
     column_size = {'case': '10%', 'library': '25%', 'run': '35%', 'barcode': '10%', 'external_id': '20%'}
     if args.level == 'single':
-        header = ['external_id', 'case', 'library', 'S', 'O', 'T', 'run', 'barcode']
-        column_size = {'case': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'barcode': '10%', 'external_id': '17%'}
+        header = ['external_id', 'case', 'library', 'S', 'O', 'T', 'run', 'indices']
+        column_size = {'case': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     
     elif args.level == 'cumulative':
