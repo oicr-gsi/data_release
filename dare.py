@@ -2069,7 +2069,7 @@ def write_report(args):
        
     if args.level == 'single':
         header = ['external_id', 'case', 'Library ID', 'S', 'O', 'T', 'run', 'indices']
-        column_size = {'case': '10%', 'library': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
+        column_size = {'case': '10%', 'Library ID': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
         header = ['external_id', 'case', 'group_id', 'Library ID', 'S', 'O', 'T', 'run']
