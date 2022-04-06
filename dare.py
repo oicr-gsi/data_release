@@ -1058,9 +1058,9 @@ def get_cumulative_level_sample_metrics(FPR_info):
 
                                            
 
-def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = None):
+def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel = None):
     '''
-    (int, int, int, matplotlib.figure.Figure, list, list, str, str, str, str, str | None, str | None)
+    (int, int, int, matplotlib.figure.Figure, list, str, str, str | None, str | None)
     
     Parameters
     ----------
@@ -1068,84 +1068,67 @@ def create_ax(row, col, pos, figure, Data1, Data2, YLabel1, YLabel2, color1, col
     - row (int): Row position of the plot in figure
     - col (int): Column position of the plot in figure
     - figure (matplotlib.figure.Figure): Matplotlib figure
-    - Data1 (list): List of metrics to plot in graph
-    - Data2 (list): List of metrics to plot on the same graph as Data1
-    - YLabel1 (str): Label of the Y axis for Data1
-    - YLabel2 (str): Label of the Y axis for Data2
-    - color1 (str): Color of markers and text related to Data1
-    - color2 (str): Color of markers and text related to Data2
+    - Data (list): List of metrics to plot in graph
+    - YLabel (str): Label of the Y axis
+    - color (str): Color of markers for Data
     - title (str | None): Title of the graph
     - XLabel (str | None): Label of the X axis    
     '''
     
-    # create ax in figure to plot data 1
-    ax1 = figure.add_subplot(row, col, pos)
-    # create ax 2 in figure to plot data 2 using a different y scale
-    ax2 = ax1.twinx()
-
-    # plot data 1 and median  
-    xcoord = [i/10 for i in range(len(Data1))]
-        
-    ax1.plot(xcoord, Data1, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color1, markeredgecolor = color1, markeredgewidth = 1, markersize = 10, alpha=0.5)
-    # compute median the data
-    median1 = np.median(Data1)
-    # plot median and mean. use zorder to bring line to background
-    ax1.axhline(y=median1, color=color1, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+    # create ax in figure to plot data
+    ax = figure.add_subplot(row, col, pos)
     
-    # plot data 2 and median  
-    ax2.plot(xcoord, Data2, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color2, markeredgecolor = color2, markeredgewidth = 1, markersize = 10, alpha=0.5)
+    # plot data and median  
+    xcoord = [i/10 for i in range(len(Data))]
+        
+    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color, markeredgecolor = color, markeredgewidth = 1, markersize = 10, alpha=0.5)
     # compute median the data
-    median2 = np.median(Data2)
+    median = np.median(Data)
     # plot median and mean. use zorder to bring line to background
-    ax2.axhline(y=median2, color=color2, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+    ax.axhline(y=median, color=color, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
     
     # start y axis at 0
-    for i in [ax1, ax2]:
-        i.set_ylim(ymin=0)
+    ax.set_ylim(ymin=0)
        
     # write axis labels
     if XLabel is not None:
-        ax1.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
-    ax1.set_ylabel(YLabel1, color=color1, size=18, ha='center', weight='normal')
-    ax2.set_ylabel(YLabel2, color=color2, size=18, ha='center', weight='normal')
-
+        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
+    ax.set_ylabel(YLabel, color=color, size=18, ha='center', weight='normal')
+    
     # add title 
     if title is not None:
-        ax1.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
+        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
 
     # set xticks
     # get all the ticks and set labels to empty str
     plt.xticks(xcoord, ['' for i in range(len(xcoord))], ha='center', fontsize=12, rotation=0)
     # set every N ticks
     N = 3
-    xticks_pos = ax1.get_xticks()
-    xticks_labels = ax1.get_xticklabels()
+    xticks_pos = ax.get_xticks()
+    xticks_labels = ax.get_xticklabels()
     myticks = [j for i,j in enumerate(xticks_pos) if not i % N]  # index of selected ticks
     newlabels = [label for i,label in enumerate(xticks_labels) if not i % N]
     plt.xticks(myticks, newlabels, ha='center', fontsize=12, rotation=0)
     
     # add splace bewteen axis and tick labels
-    for i in [ax1, ax2]:
-        i.yaxis.labelpad = 17
-        i.xaxis.labelpad = 17
+    ax.yaxis.labelpad = 17
+    
        
     # do not show frame lines  
-    for i in [ax1, ax2]:
-        i.spines["top"].set_visible(False)    
-        i.spines["bottom"].set_visible(True)    
-        i.spines["right"].set_visible(False)    
-        i.spines["left"].set_visible(False)    
+    ax.spines["top"].set_visible(False)    
+    ax.spines["bottom"].set_visible(True)    
+    ax.spines["right"].set_visible(False)    
+    ax.spines["left"].set_visible(False)    
         
     # offset the x axis
-    for i in [ax1, ax2]:
-        for loc, spine in i.spines.items():
-            spine.set_position(('outward', 5))
-            #spine.set_smart_bounds(True)
+    for loc, spine in ax.spines.items():
+        spine.set_position(('outward', 5))
+        #spine.set_smart_bounds(True)
     
     # disable scientific notation
-    ax1.ticklabel_format(style='plain', axis='y')
+    ax.ticklabel_format(style='plain', axis='y')
     
-    return ax1, ax2
+    return ax
 
 
 def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, color1, color2, XLabel=None):
@@ -1172,7 +1155,9 @@ def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, c
     figure = plt.figure()
     figure.set_size_inches(width, height)
     # plot data
-    ax1, ax2 = create_ax(1, 1, 1, figure, Data1, Data2, YLabel1, YLabel2, color1, color2, title = None, XLabel = XLabel)
+    ax1 = create_ax(1, 1, 1, figure, Data1, YLabel1, color1, title = None, XLabel = XLabel)
+    ax2 = create_ax(1, 1, 1, figure, Data2, YLabel2, color2, title = None, XLabel = XLabel)
+    
     # make sure axes do not overlap
     plt.tight_layout(pad = 5)
     # write figure to file  
@@ -1911,9 +1896,7 @@ def write_md5sums(project_dir, project_name, current_date, FPR_info):
     (str, str, str, dict) -> str
     
     Writes a table file with file names and md5sums and returns thefile path
-    
-    
-    
+        
     Parameters
     ----------
     
