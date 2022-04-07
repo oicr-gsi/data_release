@@ -1138,9 +1138,75 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
     return ax
 
 
-def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None):
+# def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None, keep_on_target=True):
+#     '''
+#     (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None, bool) -> dict
+    
+#     Returns a dictionary with figure paths for each instrument
+    
+#     Parameters
+#     ----------
+#     - project_dir (str): Path to the folder where figure files are written
+#     - level (str): Single or cumulative
+#     - project_name (str): name of the project
+#     - sample_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
+#     - metric1 (str): Metrics of interest 1
+#     - metric2 (str): Metrics of interest 2
+#     - YLabel1 (str): Label of the Y axis for Data1
+#     - YLabel2 (str): Label of the Y axis for Data2
+#     - color1 (str): Color of markers and text related to Data1
+#     - color2 (str): Color of markers and text related to Data2
+#     - XLabel (str): Label of the X axis
+#     - width (int): Width of the figure
+#     - height (int): Height of the figure
+#     - metric3 (str or None): Metrics of interest 3
+#     - metric4 (str or None): Metrics of interest 4
+#     - color3 (str or None): Color of markers for Data3 if metric3 is defined
+#     - color4 (str or None): Color of markers for Data4 if metric4 is defined
+#     - YLabel3 (str or None): Label of the Y axis for Data3 if metric3 defined
+#     - YLabel4 (str or None): Label of the Y axis for Data4 if metric4 defined
+#     - keep_on_target (bool): Always plot on target rate even if True.
+#                              Do not plot on target if all values are 100% if False 
+#     '''
+    
+#     # make a list of instruments
+#     instruments = sorted(list(sample_metrics.keys()))
+        
+#     # generate plots for each instrument. keep track of figure file names
+#     figure_files = {}
+#     for instrument in instruments:
+#         # sort read counts in ascending order and other metrics according to read count order
+#         Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
+#         # plot data only if data exists (ie miseq qc metrics may not be in bamqc merged)
+#         if Q1 and Q2:
+#             figure = plt.figure()
+#             figure.set_size_inches(width, height)
+#             # check if Q3 and Q4 are defined
+#             if Q3 and Q4:
+#                 outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.{5}.{6}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', ''), ''.join(metric3.split()).replace('(%)', ''), ''.join(metric4.split()).replace('(%)', '')))
+#                 ax1 = create_ax(4, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
+#                 ax2 = create_ax(4, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = None)
+#                 ax3 = create_ax(4, 1, 3, figure, Q3, YLabel3, color3, title = None, XLabel = None)
+#                 ax4 = create_ax(4, 1, 4, figure, Q4, YLabel4, color4, title = None, XLabel = XLabel)
+#             else:
+#                 outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
+#                 ax1 = create_ax(2, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
+#                 ax2 = create_ax(2, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = XLabel)
+#             # make sure axes do not overlap
+#             plt.tight_layout(pad = 2.5)
+#             # write figure to file  
+#             figure.savefig(outputfile, bbox_inches = 'tight')
+#             plt.close()
+            
+#             assert instrument not in figure_files
+#             figure_files[instrument] = outputfile
+#     return figure_files
+
+
+
+def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None, keep_on_target=True):
     '''
-    (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None) -> dict
+    (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None, bool) -> dict
     
     Returns a dictionary with figure paths for each instrument
     
@@ -1165,6 +1231,8 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
     - color4 (str or None): Color of markers for Data4 if metric4 is defined
     - YLabel3 (str or None): Label of the Y axis for Data3 if metric3 defined
     - YLabel4 (str or None): Label of the Y axis for Data4 if metric4 defined
+    - keep_on_target (bool): Always plot on target rate even if True.
+                              Do not plot on target if all values are 100% if False 
     '''
     
     # make a list of instruments
@@ -1176,21 +1244,55 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
         # sort read counts in ascending order and other metrics according to read count order
         Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
         
+        data = [Q1, Q2, Q3, Q4]
+        metrics = [metric1, metric2, metric3, metric4]
+                
+        if keep_on_target == False:
+            pos = metrics.index('on_target')
+            # check if all on_target values are 100%
+            if all(list(map(lambda x: True if x == 100 else False, data[pos]))):
+                # all values are 100% -> delete values, do not plot
+                data[pos] = []
+                # unpack values to update metric data
+                Q1, Q2, Q3, Q4 = data
+        
+        # get the output file name
+        outputfile = '.'.join([project_name, instrument, level])
+        for i in range(len(data)):
+            if data[i]:
+                outputfile = outputfile + ''.join(metrics[i].split()).replace('(%)', '') + '.'
+        outputfile = os.path.join(project_dir, outputfile + '.QC_plots.png')
+        
         # plot data only if data exists (ie miseq qc metrics may not be in bamqc merged)
         if Q1 and Q2:
             figure = plt.figure()
             figure.set_size_inches(width, height)
-            # check if Q3 and Q4 are defined
-            if Q3 and Q4:
-                outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.{5}.{6}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', ''), ''.join(metric3.split()).replace('(%)', ''), ''.join(metric4.split()).replace('(%)', '')))
-                ax1 = create_ax(4, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
-                ax2 = create_ax(4, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = None)
-                ax3 = create_ax(4, 1, 3, figure, Q3, YLabel3, color3, title = None, XLabel = None)
-                ax4 = create_ax(4, 1, 4, figure, Q4, YLabel4, color4, title = None, XLabel = XLabel)
-            else:
-                outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
-                ax1 = create_ax(2, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
-                ax2 = create_ax(2, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = XLabel)
+            
+            # make a list with x labels to find out wich subplot should show Samples label
+            labels = ['Samples' if data[i] else None for i in range(len(data))]
+            max_index = 0
+            for i in range(len(labels)):
+                if labels[i]:
+                    max_index = i
+            for i in range(len(labels)):
+                if i < max_index:
+                    labels[i] = None
+                        
+            # determine how many subplots and subplot positions
+            number_subplots = sum([1 if i else 0 for i in data])
+            subplot_pos = [1 if i else 0 for i in data]
+            for i in range(1,len(subplot_pos)):
+                subplot_pos[i] = subplot_pos[i-1] + subplot_pos[i]
+            
+            # plot metric1 and metric2
+            ax1 = create_ax(number_subplots, 1, subplot_pos[0], figure, Q1, YLabel1, color1, title = instrument, XLabel = labels[0])
+            ax2 = create_ax(number_subplots, 1, subplot_pos[1], figure, Q2, YLabel2, color2, title = None, XLabel = labels[1])
+            # check if other metrics defined
+            if Q3:
+                ax3 = create_ax(number_subplots, 1, subplot_pos[2], figure, Q3, YLabel3, color3, title = None, XLabel = labels[2])
+            if Q4:
+                ax4 = create_ax(number_subplots, 1, subplot_pos[3], figure, Q4, YLabel4, color4, title = None, XLabel = labels[3])
+            
             # make sure axes do not overlap
             plt.tight_layout(pad = 2.5)
             # write figure to file  
@@ -2077,10 +2179,10 @@ def write_report(args):
     # generate figure files
     if args.level == 'single':
         # plot read count, coverage, on target and duplicate rate
-        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target')
+        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target', keep_on_target=False)
     elif args.level == 'cumulative':
         # plot read count and coverage
-        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
+        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8, keep_on_target=False)
         
     print('generated figures')
     
@@ -2212,7 +2314,7 @@ def write_report(args):
     # remove figure files from disk
     for i in figure_files:
         print(figure_files[i])
-        os.remove(figure_files[i])
+        #os.remove(figure_files[i])
 
 
 
