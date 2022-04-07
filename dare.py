@@ -1093,11 +1093,11 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
     # write axis labels
     if XLabel is not None:
         ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
-    ax.set_ylabel(YLabel, color=color, size=18, ha='center', weight='normal')
+    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
     
     # add title 
     if title is not None:
-        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':40})
+        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':20})
 
     # set xticks
     # get all the ticks and set labels to empty str
@@ -1113,7 +1113,6 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
     # add splace bewteen axis and tick labels
     ax.yaxis.labelpad = 17
     
-       
     # do not show frame lines  
     ax.spines["top"].set_visible(False)    
     ax.spines["bottom"].set_visible(True)    
@@ -1125,52 +1124,25 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
         spine.set_position(('outward', 5))
         #spine.set_smart_bounds(True)
     
+    # add a light grey horizontal grid to the plot, semi-transparent, 
+    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5, linewidth = 0.5)  
+    # hide these grids behind plot objects
+    ax.set_axisbelow(True)
+
+      
+    
+    
     # disable scientific notation
     ax.ticklabel_format(style='plain', axis='y')
     
     return ax
 
 
-def plot_qc_metrics(outputfile, width, height, Data1, Data2, YLabel1, YLabel2, color1, color2, XLabel=None):
+def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None):
     '''
-    (str, int, int, list, foat) -> None
+    (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None) -> dict
     
-    Plot 2 metrics of interest on the same graph
-        
-    Parameters
-    ----------
-    - outputfile (str): Path to the output figure
-    - width (int): Width in inches of the figure
-    - height (int): Height in inches of the figure
-    - Data1 (list): List of metrics to plot in graph
-    - Data2 (list): List of metrics to plot on the same graph as Data1
-    - YLabel1 (str): Label of the Y axis for Data1
-    - YLabel2 (str): Label of the Y axis for Data2
-    - color1 (str): Color of markers and text related to Data1
-    - color2 (str): Color of markers and text related to Data2
-    - XLabel (str | None): Label of the X axis    
-    '''
-    
-    #create figure
-    figure = plt.figure()
-    figure.set_size_inches(width, height)
-    # plot data
-    ax1 = create_ax(1, 1, 1, figure, Data1, YLabel1, color1, title = None, XLabel = XLabel)
-    ax2 = create_ax(1, 1, 1, figure, Data2, YLabel2, color2, title = None, XLabel = XLabel)
-    
-    # make sure axes do not overlap
-    plt.tight_layout(pad = 5)
-    # write figure to file  
-    figure.savefig(outputfile, bbox_inches = 'tight')
-    plt.close()
-
-
-
-def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2):
-    '''
-    (project_dir, str, str, dict, str, str, str, str, str, str) -> list
-    
-    Returns a list of paths to figure files
+    Returns a dictionary with figure paths for each instrument
     
     Parameters
     ----------
@@ -1184,6 +1156,15 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
     - YLabel2 (str): Label of the Y axis for Data2
     - color1 (str): Color of markers and text related to Data1
     - color2 (str): Color of markers and text related to Data2
+    - XLabel (str): Label of the X axis
+    - width (int): Width of the figure
+    - height (int): Height of the figure
+    - metric3 (str or None): Metrics of interest 3
+    - metric4 (str or None): Metrics of interest 4
+    - color3 (str or None): Color of markers for Data3 if metric3 is defined
+    - color4 (str or None): Color of markers for Data4 if metric4 is defined
+    - YLabel3 (str or None): Label of the Y axis for Data3 if metric3 defined
+    - YLabel4 (str or None): Label of the Y axis for Data4 if metric4 defined
     '''
     
     # make a list of instruments
@@ -1191,16 +1172,33 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
         
     # generate plots for each instrument. keep track of figure file names
     figure_files = {}
-    for i in instruments:
-        outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, i, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
-        # sort read counts in ascending order and coverage according to read count order
-        Q1, Q2 = sort_metrics(sample_metrics, i, metric1, metric2, level)
+    for instrument in instruments:
+        # sort read counts in ascending order and other metrics according to read count order
+        Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
+        
         # plot data only if data exists (ie miseq qc metrics may not be in bamqc merged)
         if Q1 and Q2:
-            plot_qc_metrics(outputfile, 13, 8, Q1, Q2, YLabel1, YLabel2, color1, color2, 'Samples')
-            if i not in figure_files:
-                figure_files[i] = []
-            figure_files[i].append(outputfile)
+            figure = plt.figure()
+            figure.set_size_inches(width, height)
+            # check if Q3 and Q4 are defined
+            if Q3 and Q4:
+                outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.{5}.{6}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', ''), ''.join(metric3.split()).replace('(%)', ''), ''.join(metric4.split()).replace('(%)', '')))
+                ax1 = create_ax(4, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
+                ax2 = create_ax(4, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = None)
+                ax3 = create_ax(4, 1, 3, figure, Q3, YLabel3, color3, title = None, XLabel = None)
+                ax4 = create_ax(4, 1, 4, figure, Q4, YLabel4, color4, title = None, XLabel = XLabel)
+            else:
+                outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
+                ax1 = create_ax(2, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
+                ax2 = create_ax(2, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = XLabel)
+            # make sure axes do not overlap
+            plt.tight_layout(pad = 2.5)
+            # write figure to file  
+            figure.savefig(outputfile, bbox_inches = 'tight')
+            plt.close()
+            
+            assert instrument not in figure_files
+            figure_files[instrument] = outputfile
     return figure_files
 
 
@@ -1288,7 +1286,86 @@ def group_qc_metric_by_instrument(sample_metrics, metric, level):
     return D
 
 
-def sort_metrics(sample_metrics, instrument, metric1, metric2, level):
+
+def sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric2, samples1, level):
+    '''
+    (dict, str, str, list, str) -> list
+    
+    Returns a list of metric2 sorted according to order of metric1 
+    
+    Parameters
+    ----------
+    - sample_metrics (dict): Run-level or cumulative QC metrics for all samples 
+    - instrument (str): Sequencing intrument
+    - metric2 (str): Name of QC metric 2
+    - samples1 (str): List of samples sorted according to the order of metric 1
+    - level (str): Report level: single or cumulative
+    '''
+
+    # group metric 2 by instrument
+    D = group_qc_metric_by_instrument(sample_metrics, metric2, level)
+    # make a list of metric2 sorted according to the order of metric1
+    Q = []
+    for i in samples1:
+        for j in D[instrument]:
+            if j[1] == i:
+                Q.append(j[0])
+    return Q
+
+    
+def remove_missing_values(Q1, Q2, Q3, Q4):
+    '''
+    (list, list, list, list) -> (list, list, list, list)
+    
+    Returns a lists with metrics without missing values NA, keeping the original order of the lists
+    
+    Parameters
+    ----------
+    - Q1 (list): List of metric 1
+    - Q2 (list): List of metric 2
+    - Q3 (list): List of metric 3. Can be en empty list
+    - Q4 (list): List of metric 4. Can be an empty list
+    '''
+    
+    # remove missing QC values for each list
+    while 'NA' in Q1 or 'NA' in Q2 or 'NA' in Q3 or 'NA' in Q4:
+        if 'NA' in Q1:
+            pos = Q1.index('NA')
+            del Q1[pos]
+            del Q2[pos]
+            if Q3:
+                del Q3[pos]
+            if Q4:
+                del Q4[pos]        
+        if 'NA' in Q2:
+            pos = Q2.index('NA')
+            del Q1[pos]
+            del Q2[pos]
+            if Q3:
+                del Q3[pos]
+            if Q4:
+                del Q4[pos]
+        if 'NA' in Q3:
+            pos = Q3.index('NA')
+            del Q1[pos]
+            del Q2[pos]
+            del Q3[pos]
+            if Q4:
+                del Q4[pos]
+        if 'NA' in Q4:
+            pos = Q4.index('NA')
+            del Q1[pos]
+            del Q2[pos]
+            if Q3:
+                del Q3[pos]
+            del Q4[pos]
+    
+    return Q1, Q2, Q3, Q4
+    
+    
+    
+
+def sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3=None, metric4=None):
     '''
     (dict, str, str, str, str) -> (list, list)
     
@@ -1314,25 +1391,31 @@ def sort_metrics(sample_metrics, instrument, metric1, metric2, level):
     # make a list of samples corresponding to the sorted metric1 values
     samples = [i[1] for i in M]
     
-    # group metric 2 by instrument
-    D2 = group_qc_metric_by_instrument(sample_metrics, metric2, level)
-    # make a list of metric2 sorted according to the order of metric1
-    Q2 = []
-    for i in samples:
-        for j in D2[instrument]:
-            if j[1] == i:
-                Q2.append(j[0])
-    # remove missing QC values for each list
-    while 'NA' in Q1 or 'NA' in Q2:
-        if 'NA' in Q1:
-            del Q1[Q1.index('NA')]
-            del Q2[Q1.index('NA')]
-        if 'NA' in Q2:
-            del Q1[Q2.index('NA')]
-            del Q2[Q2.index('NA')]
-    assert len(Q1) == len(Q2)
+    # sort metric 2 according to the order of metric1
+    Q2 = sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric2, samples, level)
 
-    return Q1, Q2
+    # sort metric 3 according to the order of metric1
+    if metric3:
+        Q3 = sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric3, samples, level)
+    else:
+        Q3 = []
+    
+    # sort metric 4 according to the order of metric1
+    if metric4:
+        Q4 = sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric4, samples, level)
+    else:
+        Q4 = []
+     
+    # remove missing QC values for each list
+    Q1, Q2, Q3, Q4 = remove_missing_values(Q1, Q2, Q3, Q4)
+    
+    assert len(Q1) == len(Q2)
+    if Q3:
+        assert len(Q1) == len(Q2) == len(Q3)
+    if Q4:
+        assert len(Q1) == len(Q2) == len(Q4)
+
+    return Q1, Q2, Q2, Q3
 
 
 def count_released_fastqs_by_instrument(FPR_info, reads):
@@ -1482,7 +1565,14 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
     cells = 0
     for instrument in sample_metrics:
         cells += len(sample_metrics[instrument].keys())
+      
+    # cells = 0
+    # for instrument in sample_metrics:
+    #     for sample in sample_metrics[instrument]:
+    #         cells += len(sample_metrics[instrument][sample])    
+      
         
+      
     # add padding around text in cells    
     padding = '3px'
     
@@ -1730,7 +1820,8 @@ def count_all_files(fastq_counts):
 
     total = 0
     for instrument in fastq_counts:
-        total += len(fastq_counts[instrument])
+        for run in fastq_counts[instrument]:
+            total += fastq_counts[instrument][run]
     return total
 
 
@@ -1748,7 +1839,10 @@ def generate_file_count_table(fastq_counts, header, column_size):
     '''
     
     # count the expected number of cells (excluding header) in tables
-    cells = count_all_files(fastq_counts)
+    cells = 0
+    for instrument in fastq_counts:
+        cells += len(fastq_counts[instrument])
+    
             
     # add padding around text in cells    
     padding = '3px'
@@ -1981,14 +2075,13 @@ def write_report(args):
     
     
     # generate figure files
-    figure_files1 = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA')
     if args.level == 'single':
-        # plot on target and duplicate rate
-        figure_files2= generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'duplicate (%)', 'on_target', 'Percent duplicate', 'On target', '#009ADE', '#FFC61E')
-        figure_files = {i: j + figure_files2[i] for i, j in figure_files1.items()}
+        # plot read count, coverage, on target and duplicate rate
+        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target')
     elif args.level == 'cumulative':
-        figure_files = figure_files1
-    
+        # plot read count and coverage
+        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
+        
     print('generated figures')
     
     
@@ -2011,12 +2104,11 @@ def write_report(args):
     Text.append('<br />' * 2)           
     # list the file count            
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
-    # count all released fastqs or paired across instruments and runs
-    file_count = count_all_files(fastq_counts)
+    
     if args.level == 'single':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(file_count))
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
     elif args.level == 'cumulative':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(file_count))
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
     Text.append(generate_file_count_table(fastq_counts, ['Platform', 'Run', 'Paired fastq files'], {'Platform': '25%', 'Run': '30%', 'Paired fastq files': '25%'}))
     Text.append('<br />')           
     
@@ -2026,9 +2118,9 @@ def write_report(args):
     # add QC plots
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
     if args.level == 'single':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read counts</span> and <span style="font-style: italic">percent duplicate</span> are plotted by ascending order. <span style="font-style: italic">Mean coverage</span> and <span style="font-style: italic">on target rate</span> are plotted respectively according to the order of <span style="font-style: italic">read counts</span> and <span style="font-style: italic">percent duplicate</span></p>')
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>')
     elif args.level == 'cumulative':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read counts</span> are plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
     Text.append('<br />')
     
     
@@ -2042,23 +2134,20 @@ def write_report(args):
     
     
     if args.level == 'single':
-        factor = 0.3
+        #factor = 0.3
+        factor = 1
+        
     elif args.level == 'cumulative':
         factor = 1.3
     
     for instrument in sorted(list(sample_metrics.keys())):
         # check that figures exist for instrument
         if instrument in figure_files:
-            Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li>{0}<li/></ul>'.format(instrument))
-            if args.level == 'single':
-                Text.append(generate_figure_table(figure_files[instrument][0], factor, figure_files[instrument][1]))
-            elif args.level == 'cumulative':
-                Text.append(generate_figure_table(figure_files[instrument][0], factor))
+            Text.append(generate_figure_table(figure_files[instrument], factor))
             Text.append('<br />')
-
+            #Text.append('<div style="page-break-after: always;"></div>')
+            
     print('added figures')
-
-
 
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
@@ -2094,8 +2183,8 @@ def write_report(args):
         column_size = {'case': '15%', 'group_id': '38%', 'library': '5%', 'run': '7%', 'reads': '10%', 'coverage': '10%', 'coverage_dedup': '15%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
-    Text.append('<div style="page-break-after: always;"></div>')
-        
+    #Text.append('<div style="page-break-after: always;"></div>')
+    Text.append('<br />')    
     
     print('added qc table')
     
@@ -2122,9 +2211,8 @@ def write_report(args):
 
     # remove figure files from disk
     for i in figure_files:
-        for j in figure_files[i]:
-            os.remove(j)
-    
+        print(figure_files[i])
+        os.remove(figure_files[i])
 
 
 
