@@ -1720,7 +1720,7 @@ def generate_project_table(project_name, project_full_name, current_date, name, 
     table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
     # add header
     table.append('<tr>')
-    for i in ['Project', 'Name', 'Date', 'Genome Sequence Informatics', 'Contact']:
+    for i in ['Project', 'Name', 'Date', 'Genome Sequence Informatics Analyst', 'Contact']:
         table.append('<th style="padding: 3px; border: 0.75px solid grey; border-collapse:collapse; text-align: center; font-size:10px">{0}</th>'.format(i))
     table.append('</tr>')
     # add lines in table
