@@ -2203,10 +2203,17 @@ def write_report(args):
     Text.append('<br />' * 3)
     # add information about project and contact personn
     Text.append(generate_project_table(args.project_name, args.project_full_name, current_date, args.contact_name, args.contact_email))
-    Text.append('<br />' * 2)           
+    Text.append('<br />')           
+    
+    # add description
+    if args.level == 'single':
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about newly released raw sequences.</p>')
+    elif args.level == 'cumulative':
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about all released raw sequences to date.</p>')
+    Text.append('<br />' * 2)
+          
     # list the file count            
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
-    
     if args.level == 'single':
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
     elif args.level == 'cumulative':
