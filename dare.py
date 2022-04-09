@@ -1204,6 +1204,8 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
 
 
 
+
+
 def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None, keep_on_target=True):
     '''
     (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None, bool) -> dict
@@ -1243,7 +1245,9 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
     for instrument in instruments:
         # sort read counts in ascending order and other metrics according to read count order
         Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
-        
+        # remove missing values
+        Q1, Q2, Q3, Q4 = clean_up_data_points(Q1, Q2, Q3, Q4)
+                
         data = [Q1, Q2, Q3, Q4]
         metrics = [metric1, metric2, metric3, metric4]
                 
@@ -1464,7 +1468,33 @@ def remove_missing_values(Q1, Q2, Q3, Q4):
     
     return Q1, Q2, Q3, Q4
     
+
+
+def clean_up_data_points(Q1, Q2, Q3, Q4):
+    '''
+    (list, list, list, list) -> list, list, list, list
     
+    Clean up data points to be plotted by removing data points with missing values NA,
+    keeping the original order of the lists
+    
+    Parameters
+    ----------
+    - Q1 (list): List of metric 1
+    - Q2 (list): List of metric 2
+    - Q3 (list): List of metric 3. Can be en empty list
+    - Q4 (list): List of metric 4. Can be an empty list
+    '''
+    
+    # remove missing QC values for each list
+    Q1, Q2, Q3, Q4 = remove_missing_values(Q1, Q2, Q3, Q4)
+    
+    assert len(Q1) == len(Q2)
+    if Q3:
+        assert len(Q1) == len(Q2) == len(Q3)
+    if Q4:
+        assert len(Q1) == len(Q2) == len(Q4)
+
+    return Q1, Q2, Q3, Q4
     
 
 def sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3=None, metric4=None):
@@ -1508,16 +1538,39 @@ def sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3=No
     else:
         Q4 = []
      
-    # remove missing QC values for each list
-    Q1, Q2, Q3, Q4 = remove_missing_values(Q1, Q2, Q3, Q4)
-    
-    assert len(Q1) == len(Q2)
-    if Q3:
-        assert len(Q1) == len(Q2) == len(Q3)
-    if Q4:
-        assert len(Q1) == len(Q2) == len(Q4)
+    return Q1, Q2, Q3, Q4
 
-    return Q1, Q2, Q2, Q3
+
+
+def count_samples_with_missing_values(sample_metrics, metric1, metric2, level, metric3=None, metric4=None):
+    '''
+    (dict, str, str, str, str) -> dict
+    
+    Returns a dictionary with number of samples with missing values for each instrument
+    
+    Parameters
+    ----------
+    
+    - sample_metrics (dict): Run-level or cumulative QC metrics for all samples 
+    - metric1 (str): Name of QC metric 1
+    - metric2 (str): Name of QC metric 2
+    - level (str): Single or cumulative
+    '''
+    
+    D = {}
+    
+    for instrument in sample_metrics:
+        # sort metrics
+        Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
+        # record positions with missing values
+        P = []
+        for data in [Q1, Q2, Q3, Q4]:
+            P.extend([i for i in range(len(data)) if data[i] == 'NA'])
+        # collapse all indices to count samples with missing values
+        D[instrument] = len(list(set(P))) 
+
+    return D
+
 
 
 def count_released_fastqs_by_instrument(FPR_info, reads):
@@ -2227,9 +2280,16 @@ def write_report(args):
     # add QC plots
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
     if args.level == 'single':
+        # count samples with missing values
+        discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level, 'duplicate (%)', 'on_target')
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>')
     elif args.level == 'cumulative':
+        # count samples with missing values
+        discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level)
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
+    if discarded_samples:
+        S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(','.join(S)))
     Text.append('<br />')
     
     
