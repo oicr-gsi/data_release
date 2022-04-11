@@ -2296,7 +2296,7 @@ def write_report(args):
     print('discarded_samples', discarded_samples)
     
     
-    if discarded_samples:
+    if sum(discarded_samples.values()):
         S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(','.join(S)))
     Text.append('<br />')
