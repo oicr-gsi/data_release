@@ -932,6 +932,8 @@ def get_run_level_sample_metrics(FPR_info):
         coverage_dedup = FPR_info[file]['coverage_dedup']
         on_target = FPR_info[file]['on_target']
         duplicate = FPR_info[file]['percent_duplicate']
+        group_id = FPR_info[file]['group_id']
+
 
         if instrument not in D:
             D[instrument] = {}
@@ -944,7 +946,7 @@ def get_run_level_sample_metrics(FPR_info):
                                       'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
                                       'reads': read_count, 'coverage': coverage,
                                       'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                                      'duplicate (%)': duplicate, 'files': [file]}]
+                                      'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id}]
         else:
             # find paired fastq
             for d in D[instrument][sample]:
@@ -952,6 +954,7 @@ def get_run_level_sample_metrics(FPR_info):
                      and instrument == d['instrument'] and barcode == d['barcode'] \
                      and ext_id == d['ext_id'] and case == d['case'] and library_source == d['library_source']:
                          d['reads'] += read_count
+                         assert group_id == d['group_id']
                          assert coverage == d['coverage']
                          assert coverage_dedup == d['coverage_dedup']
                          assert duplicate == d['duplicate (%)']
@@ -970,7 +973,7 @@ def get_run_level_sample_metrics(FPR_info):
                              'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
                              'reads': read_count, 'coverage': coverage,
                              'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                             'duplicate (%)': duplicate, 'files': [file]})
+                             'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id})
     return D                         
                                            
             
@@ -1671,6 +1674,8 @@ def generate_table(sample_metrics, header, column_size):
                 for i in header:
                     if i == 'external_id':
                         j = str(d['ext_id'])
+                    elif i == 'group ID':
+                        j = str(d['group_id'])
                     elif i == 'Library ID':
                         j = str(d['library'])
                     elif i == 'run':
@@ -2287,6 +2292,10 @@ def write_report(args):
         # count samples with missing values
         discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level)
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
+    
+    print('discarded_samples', discarded_samples)
+    
+    
     if discarded_samples:
         S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(','.join(S)))
@@ -2326,8 +2335,14 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
        
     if args.level == 'single':
-        header = ['external_id', 'case', 'Library ID', 'S', 'O', 'T', 'run', 'indices']
-        column_size = {'case': '10%', 'Library ID': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
+        #header = ['external_id', 'case', 'Library ID', 'S', 'O', 'T', 'run', 'indices']
+        #column_size = {'case': '10%', 'Library ID': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
+        
+        
+        header = ['external_id', 'case', 'group ID', 'Library ID', 'S', 'O', 'T']
+        column_size = {'case': '10%', 'group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'external_id': '17%'}
+               
+        
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
         header = ['external_id', 'case', 'group_id', 'Library ID', 'S', 'O', 'T', 'run']
