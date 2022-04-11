@@ -2332,17 +2332,12 @@ def write_report(args):
         
     # add table with sample Ids
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 1 provides information about the sequenced samples.</span></p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
        
     if args.level == 'single':
-        #header = ['external_id', 'case', 'Library ID', 'S', 'O', 'T', 'run', 'indices']
-        #column_size = {'case': '10%', 'Library ID': '22%', 'S': '3%', 'O': '3%', 'T': '3%', 'run': '32%', 'indices': '10%', 'external_id': '17%'}
-        
-        
         header = ['external_id', 'case', 'group ID', 'Library ID', 'S', 'O', 'T']
         column_size = {'case': '10%', 'group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'external_id': '17%'}
-               
-        
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
         header = ['external_id', 'case', 'group_id', 'Library ID', 'S', 'O', 'T', 'run']
@@ -2358,6 +2353,8 @@ def write_report(args):
     
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
+        
     if args.level == 'single':
         header = ['case', 'library', 'run', 'reads', 'coverage', 'on_target', 'duplicate (%)']       
         column_size = {'case': '10%', 'library': '22%', 'run': '31%', 'reads': '9%', 'coverage': '9%', 'on_target': '8%', 'duplicate (%)': '11%'}
