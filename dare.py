@@ -2370,12 +2370,16 @@ def write_report(args):
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Raw Coverage : an estimate of the mean depth of coverage in the target space = total bases on target / size of the target space</span></p>')
         
     if args.level == 'single':
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">On Target Rate : percentage of reads that overlap the target space by at least one base = reads on target/total reads.</span></p>')
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Percent duplicate: Percent of duplicate reads estimated by Picard MarkDuplicates.</span></p>')
         header = ['Case', 'Library', 'Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
         column_size = {'Case': '10%', 'Library': '22%', 'Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Coverage Deduplicated :  an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).</span></p>')
         header = ['Case', 'Group ID', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
         column_size = {'Case': '15%', 'Group ID': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
