@@ -1257,7 +1257,13 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
                 
         data = [Q1, Q2, Q3, Q4]
         metrics = [metric1, metric2, metric3, metric4]
-                
+        
+
+        print('metrics', metrics)
+
+
+
+        
         if keep_on_target == False:
             pos = metrics.index('on_target')
             # check if all on_target values are 100%
@@ -2246,7 +2252,7 @@ def write_report(args):
         figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target', keep_on_target=False)
     elif args.level == 'cumulative':
         # plot read count and coverage
-        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8, keep_on_target=False)
+        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
         
     print('generated figures')
     
