@@ -178,7 +178,7 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
         # skip if incorrect workflow
         if workflow == 'bcl2fastq':
             # skip if not casava or bcl2fastq workflow    
-            if not (i[30].lower() == 'casava' or i[30].lower() == 'bcl2fastq'):
+            if i[30].lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
                 continue
         else:
             # skip if not provided workflow
@@ -576,7 +576,7 @@ def collect_info_fastqs(records):
     # loop through each record. each individual record is a list of fields 
     for i in records:
         # only consider workflows generating fastqs
-        if 'casava' in i[30].lower() or 'bcl2fastq' in i[30].lower():
+        if i[30].lower() in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
             # get file path
             file = i[46]
             # get workflow accession from file path
