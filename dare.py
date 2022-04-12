@@ -386,6 +386,8 @@ def map_file_ids(L):
             externalid = geo['geo_external_name']
             if 'geo_group_id' in geo:
                 groupid = geo['geo_group_id']
+                # removes misannotations
+                groupid = groupid.replace('&2011-04-19', '').replace('2011-04-19&', '')
             else:
                 groupid = 'NA'
             if 'geo_group_id_description' in geo:
@@ -597,6 +599,8 @@ def collect_info_fastqs(records):
             externalid = geo['geo_external_name']
             if 'geo_group_id' in geo:
                 groupid = geo['geo_group_id']
+                # remove misannotations
+                groupid = groupid.replace('&2011-04-19', '').replace('2011-04-19&', '')
             else:
                 groupid = 'NA'
             if 'geo_group_id_description' in geo:
