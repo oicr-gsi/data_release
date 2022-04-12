@@ -1777,28 +1777,32 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
                     j = str(sample_metrics[instrument][sample]['tissue_type'])
                 elif i == 'O':
                     j = str(sample_metrics[instrument][sample]['tissue_origin'])
+                elif i == 'Group ID':
+                    j = str(sample_metrics[instrument][sample]['group_id'])
+                    if table_type != 'metrics':
+                        k = len(j.split('_')) // 2
+                        j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:]) 
+                elif i == 'Library ID' or i == 'Libraries':
+                    j = str(sample_metrics[instrument][sample]['library'])
+                elif i == 'Runs':
+                    j = str(sample_metrics[instrument][sample]['run'])
+                elif i == 'Indices':
+                    j = str(sample_metrics[instrument][sample]['barcode'])
                 else:
                     j = str(sample_metrics[instrument][sample][i.lower()])
-                    if i == 'Indices':
-                        j = str(sample_metrics[instrument][sample]['barcode'])
-                    elif i == 'Library ID':
-                        j = str(sample_metrics[instrument][sample]['library'])
-                    if i in ['Indices', 'Run', 'Library ID']:
-                        if '-' in j:
-                            j = j.replace('-', '-\n')
-                        if ';' in j:
-                            j = j.replace(';', ';\n')
-                    elif i == 'Group ID':
-                        if table_type != 'metrics':
-                            k = len(j.split('_')) // 2
-                            j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:])
-                        
+                    
+                if i in ['Indices', 'Run', 'Library ID']:
+                    if '-' in j:
+                        j = j.replace('-', '-\n')
+                    if ';' in j:
+                        j = j.replace(';', ';\n')
+                                        
                 if table_type == 'metrics':
                     if i == 'Runs':
-                        j = str(sample_metrics[instrument][sample]['run'])
+                        j = len(list(set(str(sample_metrics[instrument][sample]['run']).split(';'))))
                     elif i == 'Libraries':
-                        j = str(sample_metrics[instrument][sample]['library'])
-                    j = len(list(set(j.split(';'))))
+                        j = len(list(set(str(sample_metrics[instrument][sample]['library']).split(';'))))
+                    #j = len(list(set(j.split(';'))))
                                                       
                 if counter + 1 == cells:
                     table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
@@ -2310,7 +2314,7 @@ def write_report(args):
     
     if sum(discarded_samples.values()):
         S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(','.join(S)))
+        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(', '.join(S)))
     Text.append('<br />')
     
     
@@ -2373,7 +2377,7 @@ def write_report(args):
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
         header = ['Case', 'Group ID', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
-        column_size = {'Case': '15%', 'Group ID': '38%', 'Libraries': '5%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
+        column_size = {'Case': '15%', 'Group ID': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
     #Text.append('<div style="page-break-after: always;"></div>')
