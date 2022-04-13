@@ -1698,6 +1698,8 @@ def generate_table(sample_metrics, header, column_size):
                         j = str(d['barcode'])
                         if '-' in j:
                             j = j.replace('-', '-\n')
+                    elif i == 'Sequencing Run':
+                        j = str(d['run']) + '\n' + str(d['barcode']) 
                     elif i == 'O':
                         j = str(d['tissue_origin'])
                     elif i == 'S':
@@ -2375,8 +2377,8 @@ def write_report(args):
     if args.level == 'single':
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">On Target Rate : percentage of reads that overlap the target space by at least one base = reads on target/total reads.</span></p>')
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Percent duplicate: Percent of duplicate reads estimated by Picard MarkDuplicates.</span></p>')
-        header = ['Case', 'Library', 'Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
-        column_size = {'Case': '10%', 'Library': '22%', 'Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
+        header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
+        column_size = {'Case': '10%', 'Library': '22%', 'Sequencing Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Coverage Deduplicated :  an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).</span></p>')
