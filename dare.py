@@ -2187,6 +2187,131 @@ def write_md5sums(project_dir, project_name, current_date, FPR_info):
     return md5_file
 
 
+
+def get_tissue_types():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary mapping Tissue Type codes to their definitions
+    Pre-condition: These definitions are obtained from the Configuration tab in MISO
+    '''
+    
+    D = {'X': 'Xenograft derived from some tumour. Note: may not necessarily be a mouse xenograft',
+         'U': 'Unspecified',
+         'T': 'Unclassifed tumour',
+         'S': 'Serum from blood where clotting proteins have been removed',
+         'R': 'Reference or non-tumour, non-diseased tissue sample. Typically used as a donor-specific comparison to a diseased tissue, usually a cancer',
+         'P': 'Primary tumour',
+         'O': 'Organoid',
+         'n': 'Unknown',
+         'M': 'Metastatic tumour',
+         'F': 'Fibroblast cells',
+         'E': 'Endothelial cells',
+         'C': 'Cell line derived from a tumour',
+         'B': 'Benign tumour',
+         'A': 'Cells taken from Ascites fluid'}
+
+    return D
+
+def get_tissue_origin():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary mapping Tissue Origin codes to their definitions
+    Pre-condition: These definitions are obtained from the Configuration tab in MISO
+    '''
+    
+    D = {'Ab': 'Abdomen', 'Ad': 'Adipose', 'Ae': 'Adnexa', 'Ag': 'Adrenal',
+         'An': 'Anus', 'Ao': 'Anorectal', 'Ap': 'Appendix', 'As': 'Ascites',
+         'At': 'Astrocytoma', 'Av': 'Ampulla', 'Ax': 'Axillary', 'Ba': 'Back',
+         'Bd': 'Bile', 'Bi': 'Biliary', 'Bl': 'Bladder', 'Bm': 'Bone', 'Bn': 'Brain',
+         'Bo': 'Bone', 'Br': 'Breast', 'Bu': 'Buccal', 'Bw': 'Bowel', 'Cb': 'Cord',
+         'Cc': 'Cecum', 'Ce': 'Cervix', 'Cf': 'Cell-Free', 'Ch': 'Chest', 'Cj': 'Conjunctiva',
+         'Ck': 'Cheek', 'Cn': 'Central', 'Co': 'Colon', 'Cr': 'Colorectal', 'Cs': 'Cul-de-sac',
+         'Ct': 'Circulating', 'Di': 'Diaphragm', 'Du': 'Duodenum', 'En': 'Endometrial',
+         'Ep': 'Epidural', 'Es': 'Esophagus', 'Ey': 'Eye', 'Fa': 'Fallopian',
+         'Fb': 'Fibroid', 'Fs': 'Foreskin', 'Ft': 'Foot', 'Ga': 'Gastric',
+         'Gb': 'Gallbladder', 'Ge': 'Gastroesophageal', 'Gi': 'Gastrointestinal',
+         'Gj': 'Gastrojejunal', 'Gn': 'Gingiva', 'Gt': 'Genital', 'Hp': 'Hypopharynx',
+         'Hr': 'Heart', 'Ic': 'ileocecum', 'Il': 'Ileum', 'Ki': 'Kidney', 'La': 'Lacrimal',
+         'Lb': 'Limb', 'Le': 'Leukocyte', 'Lg': 'Leg', 'Li': 'Large', 'Ln': 'Lymph',
+         'Lp': 'Lymphoblast', 'Lu': 'Lung', 'Lv': 'Liver', 'Lx': 'Larynx',
+         'Ly': 'Lymphocyte', 'Md': 'Mediastinum', 'Me': 'Mesenchyme', 'Mn': 'Mandible',
+         'Mo': 'Mouth', 'Ms': 'Mesentary', 'Mu': 'Muscle', 'Mx': 'Maxilla',
+         'Nk': 'Neck', 'nn': 'Unknown', 'No': 'Nose', 'Np': 'Nasopharynx',
+         'Oc': 'Oral', 'Om': 'Omentum', 'Or': 'Orbit', 'Ov': 'Ovary',
+         'Pa': 'Pancreas', 'Pb': 'Peripheral', 'Pc': 'Pancreatobiliary',
+         'Pd': 'Parathyroid', 'Pe': 'Pelvic', 'Pg': 'Parotid', 'Ph': 'Paratracheal',
+         'Pi': 'Penis', 'Pl': 'Plasma', 'Pm': 'Peritoneum', 'Pn': 'Peripheral',
+         'Po': 'Peri-aorta', 'Pr': 'Prostate', 'Pt': 'Palate', 'Pu': 'Pleura',
+         'Py': 'periampullary', 'Ra': 'Right', 'Rc': 'Rectosigmoid', 'Re': 'Rectum',
+         'Ri': 'Rib', 'Rp': 'Retroperitoneum', 'Sa': 'Saliva', 'Sb': 'Small',
+         'Sc': 'Scalp', 'Se': 'Serum', 'Sg': 'Salivary', 'Si': 'Small', 'Sk': 'Skin',
+         'Sm': 'Skeletal', 'Sn': 'Spine', 'So': 'Soft', 'Sp': 'Spleen', 'Sr': 'Serosa',
+         'Ss': 'Sinus', 'St': 'Stomach', 'Su': 'Sternum', 'Ta': 'Tail', 'Te': 'Testes',
+         'Tg': 'Thymic', 'Th': 'Thymus', 'Tn': 'Tonsil', 'To': 'Throat', 'Tr': 'Trachea',
+         'Tu': 'Tongue', 'Ty': 'Thyroid', 'Uc': 'Urachus', 'Ue': 'Ureter', 'Um': 'Umbilical',
+         'Up': 'Urine', 'Ur': 'Urethra', 'Us': 'Urine', 'Ut': 'Uterus', 'Uw': 'Urine',
+         'Vg': 'Vagina', 'Vu': 'Vulva', 'Wm': 'Worm'}
+
+    return D
+
+
+def get_library_design():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary mapping Library Design codes to their definitions
+    Pre-condition: These definitions are obtained from the Configuration tab in MISO
+    '''
+
+    D = {'WT': 'Whole Transcriptome', 'WG': 'Whole Genome', 'TS': 'Targeted Sequencing',
+         'TR': 'Total RNA', 'SW': 'Shallow Whole Genome', 'SM': 'smRNA', 'SC': 'Single Cell',
+         'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
+         'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq'}
+    
+    return D
+
+
+
+def list_library_tissue_codes(sample_metrics, level):
+    '''
+    (dict, str) -> (list, list, list)    
+    
+    Returns a tuple with lists of library design, tissue type and origin codes
+    
+    Parameters
+    ----------
+    - sample_metrics (dict): Dictionary with run-level or cumulative sample metrics
+    - level (str): Report level, single or cumulative.
+    '''
+    
+    library_design, tissue_origin, tissue_type = [], [] , []
+    
+    if level == 'single':
+        for instrument in sample_metrics:
+            for sample in sample_metrics[instrument]:
+                for d in sample_metrics[instrument][sample]:
+                    tissue_origin.append(str(d['tissue_origin']))
+                    library_design.append(str(d['library_source']))
+                    tissue_type.append(str(d['tissue_type']))
+    
+    if level == 'cumulative':
+        for instrument in sample_metrics:
+            for sample in sample_metrics[instrument]:
+                library_design.append(str(sample_metrics[instrument][sample]['library_source']))
+                tissue_type.append(str(sample_metrics[instrument][sample]['tissue_type']))
+                tissue_origin.append(str(sample_metrics[instrument][sample]['tissue_origin']))
+            
+    # keep unique values
+    tissue_origin = sorted(list(set(tissue_origin)))
+    tissue_type = sorted(list(set(tissue_type)))
+    library_design = sorted(list(set(library_design)))
+
+    return library_design, tissue_type, tissue_origin
+
+
+
 def write_report(args):
     '''
     (str, str, str, str, str, str, str, list)
@@ -2361,7 +2486,22 @@ def write_report(args):
         header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T', 'Run']
         column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Group ID': '18%', 'External ID': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
+    Text.append('<br />')
     
+    # add appendix with library design, tissue origin and type
+    library_design, tissue_type, tissue_origin = list_library_tissue_codes(sample_metrics, args.level)
+    L = ['{0}: {1}'.format(i, get_library_design()[i]) for i in library_design]
+    T = ['{0}: {1}'.format(i, get_tissue_types()[i]) for i in tissue_type]
+    O = ['{0}: {1}'.format(i, get_tissue_origin()[i]) for i in tissue_origin]
+    
+    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 1</p>')
+    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:bold"><li>Library type (S):<li/></ul>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0}</span></p>'.format(', '.join(L)))
+    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:bold"><li>Tissue Type (T):<li/></ul>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0}</span></p>'.format(', '.join(T)))
+    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size: 12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:bold"><li>Tissue Origin (O):<li/></ul>')
+    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0}</span></p>'.format(', '.join(O)))
+
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
                 
