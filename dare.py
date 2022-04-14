@@ -2297,14 +2297,7 @@ def write_report(args):
         # re-organize metrics per sample and instrument
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
     
-    
         
-    
-    
-    
-    print('collected info from bamqc')
-    
-    
     # generate figure files
     if args.level == 'single':
         # plot read count, coverage, on target and duplicate rate
@@ -2313,9 +2306,6 @@ def write_report(args):
         # plot read count and coverage
         figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
         
-    print('generated figures')
-    
-    
     # get current date (year-month-day)
     current_date = datetime.today().strftime('%Y-%m-%d')
     
@@ -2364,22 +2354,10 @@ def write_report(args):
         discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level)
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
     
-    print('discarded_samples', discarded_samples)
-    
-    
     if sum(discarded_samples.values()):
         S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(', '.join(S)))
     Text.append('<br />')
-    
-    
-    print('added logo and project table')
-    
-    print('adding figures')
-    
-    print(sorted(list(sample_metrics.keys())))
-    
-    print(figure_files)
     
     
     if args.level == 'single':
@@ -2395,8 +2373,6 @@ def write_report(args):
             Text.append(generate_figure_table(figure_files[instrument], factor))
             Text.append('<br />')
                 
-    print('added figures')
-
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
         
@@ -2429,10 +2405,6 @@ def write_report(args):
     # add page break between plots and tables
     Text.append('<div style="page-break-after: always;"></div>')
                 
-    
-    print('added id table')
-    
-    
     # add QC metrics table
     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
@@ -2457,8 +2429,6 @@ def write_report(args):
     elif args.level == 'cumulative':
         Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Coverage Deduplicated:</span> an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).<li/></ul>')
     
-    print('added qc table')
-    
     # add md5sums
     if args.level == 'single':
         Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
@@ -2469,10 +2439,6 @@ def write_report(args):
     Text = '\n'.join(Text)
     html_str = renderer(Text)
     
-    print('rendered html')
-    
-    
-    
     # convert html to pdf    
     report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
     report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
@@ -2482,7 +2448,6 @@ def write_report(args):
 
     # remove figure files from disk
     for i in figure_files:
-        print(figure_files[i])
         os.remove(figure_files[i])
 
 
