@@ -1771,7 +1771,11 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
             else:
                 table.append('<tr style="background-color: #fff">')
             for i in header:
-                if i == 'External ID':
+                if i == 'Sample':
+                    j = sample
+                    k = len(j.split('_')) // 4
+                    j = '_'.join(j.split('_')[0:k]) + '_\n' + '_'.join(j.split('_')[k:2*k]) + '_\n' + '_'.join(j.split('_')[2*k:3*k]) + '_\n' + '_'.join(j.split('_')[3*k:])
+                elif i == 'External ID':
                     j = str(sample_metrics[instrument][sample]['ext_id'])
                 elif i == 'S':
                     j = str(sample_metrics[instrument][sample]['library_source'])
@@ -2374,6 +2378,10 @@ def write_report(args):
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
     
     
+        
+    
+    
+    
     print('collected info from bamqc')
     
     
@@ -2483,9 +2491,14 @@ def write_report(args):
         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
-        header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T', 'Run']
-        column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Group ID': '18%', 'External ID': '11%'}
+        #header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T', 'Run']
+        #column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Group ID': '18%', 'External ID': '11%'}
+        header = ['External ID', 'Case', 'Sample', 'Library ID', 'S', 'O', 'T', 'Run']
+        column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Sample': '18%', 'External ID': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
+    
+    
+    
     Text.append('<br />')
     
     # add appendix with library design, tissue origin and type
@@ -2522,8 +2535,11 @@ def write_report(args):
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Coverage Deduplicated :  an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).</span></p>')
-        header = ['Case', 'Group ID', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
-        column_size = {'Case': '15%', 'Group ID': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
+        #header = ['Case', 'Group ID', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
+        #column_size = {'Case': '15%', 'Group ID': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
+        
+        header = ['Case', 'Sample', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
+        column_size = {'Case': '15%', 'Sample': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
     # add page break between plots and tables
     #Text.append('<div style="page-break-after: always;"></div>')
