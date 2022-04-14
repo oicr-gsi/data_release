@@ -75,14 +75,10 @@ def select_most_recent_workflow(L):
     '''
     (list) -> list
     
-    Parameters
-    ----------
-    
     Returns a list of file paths corresponding to the most recent workflow ID for each file
     
-
-
-    
+    Parameters
+    ----------
     - L (list): List of file paths
     '''
     
@@ -826,8 +822,6 @@ def parse_merged_bamqc(merged_bamqc_table, project):
 
 
 
-
-
 def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
     '''
     (dict, dict) -> None
@@ -1143,73 +1137,6 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
     ax.ticklabel_format(style='plain', axis='y')
     
     return ax
-
-
-# def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None, keep_on_target=True):
-#     '''
-#     (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None, bool) -> dict
-    
-#     Returns a dictionary with figure paths for each instrument
-    
-#     Parameters
-#     ----------
-#     - project_dir (str): Path to the folder where figure files are written
-#     - level (str): Single or cumulative
-#     - project_name (str): name of the project
-#     - sample_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
-#     - metric1 (str): Metrics of interest 1
-#     - metric2 (str): Metrics of interest 2
-#     - YLabel1 (str): Label of the Y axis for Data1
-#     - YLabel2 (str): Label of the Y axis for Data2
-#     - color1 (str): Color of markers and text related to Data1
-#     - color2 (str): Color of markers and text related to Data2
-#     - XLabel (str): Label of the X axis
-#     - width (int): Width of the figure
-#     - height (int): Height of the figure
-#     - metric3 (str or None): Metrics of interest 3
-#     - metric4 (str or None): Metrics of interest 4
-#     - color3 (str or None): Color of markers for Data3 if metric3 is defined
-#     - color4 (str or None): Color of markers for Data4 if metric4 is defined
-#     - YLabel3 (str or None): Label of the Y axis for Data3 if metric3 defined
-#     - YLabel4 (str or None): Label of the Y axis for Data4 if metric4 defined
-#     - keep_on_target (bool): Always plot on target rate even if True.
-#                              Do not plot on target if all values are 100% if False 
-#     '''
-    
-#     # make a list of instruments
-#     instruments = sorted(list(sample_metrics.keys()))
-        
-#     # generate plots for each instrument. keep track of figure file names
-#     figure_files = {}
-#     for instrument in instruments:
-#         # sort read counts in ascending order and other metrics according to read count order
-#         Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
-#         # plot data only if data exists (ie miseq qc metrics may not be in bamqc merged)
-#         if Q1 and Q2:
-#             figure = plt.figure()
-#             figure.set_size_inches(width, height)
-#             # check if Q3 and Q4 are defined
-#             if Q3 and Q4:
-#                 outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.{5}.{6}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', ''), ''.join(metric3.split()).replace('(%)', ''), ''.join(metric4.split()).replace('(%)', '')))
-#                 ax1 = create_ax(4, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
-#                 ax2 = create_ax(4, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = None)
-#                 ax3 = create_ax(4, 1, 3, figure, Q3, YLabel3, color3, title = None, XLabel = None)
-#                 ax4 = create_ax(4, 1, 4, figure, Q4, YLabel4, color4, title = None, XLabel = XLabel)
-#             else:
-#                 outputfile = os.path.join(project_dir, '{0}.{1}.{2}.{3}.{4}.QC_plots.png'.format(project_name, instrument, level, ''.join(metric1.split()).replace('(%)', ''), ''.join(metric2.split()).replace('(%)', '')))
-#                 ax1 = create_ax(2, 1, 1, figure, Q1, YLabel1, color1, title = instrument, XLabel = None)
-#                 ax2 = create_ax(2, 1, 2, figure, Q2, YLabel2, color2, title = None, XLabel = XLabel)
-#             # make sure axes do not overlap
-#             plt.tight_layout(pad = 2.5)
-#             # write figure to file  
-#             figure.savefig(outputfile, bbox_inches = 'tight')
-#             plt.close()
-            
-#             assert instrument not in figure_files
-#             figure_files[instrument] = outputfile
-#     return figure_files
-
-
 
 
 
@@ -1739,13 +1666,6 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
     cells = 0
     for instrument in sample_metrics:
         cells += len(sample_metrics[instrument].keys())
-      
-    # cells = 0
-    # for instrument in sample_metrics:
-    #     for sample in sample_metrics[instrument]:
-    #         cells += len(sample_metrics[instrument][sample])    
-      
-        
       
     # add padding around text in cells    
     padding = '3px'
@@ -2474,8 +2394,7 @@ def write_report(args):
         if instrument in figure_files:
             Text.append(generate_figure_table(figure_files[instrument], factor))
             Text.append('<br />')
-            #Text.append('<div style="page-break-after: always;"></div>')
-            
+                
     print('added figures')
 
     # add page break between plots and tables
@@ -2491,14 +2410,10 @@ def write_report(args):
         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
-        #header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T', 'Run']
-        #column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Group ID': '18%', 'External ID': '11%'}
         header = ['External ID', 'Case', 'Sample', 'Library ID', 'S', 'O', 'T', 'Run']
         column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Sample': '18%', 'External ID': '11%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size))
-    
-    
-    
+        
     Text.append('<br />')
     
     # add appendix with library design, tissue origin and type
@@ -2535,14 +2450,10 @@ def write_report(args):
         Text.append(generate_table(sample_metrics, header, column_size))
     elif args.level == 'cumulative':
         Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Coverage Deduplicated :  an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).</span></p>')
-        #header = ['Case', 'Group ID', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
-        #column_size = {'Case': '15%', 'Group ID': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
-        
         header = ['Case', 'Sample', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
         column_size = {'Case': '15%', 'Sample': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
         Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
-    # add page break between plots and tables
-    #Text.append('<div style="page-break-after: always;"></div>')
+    # add space
     Text.append('<br />')    
     
     print('added qc table')
