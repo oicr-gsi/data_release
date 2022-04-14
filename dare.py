@@ -1798,7 +1798,7 @@ def generate_table_md5sum(FPR_info, header, column_size):
     return ''.join(table)
 
 
-def generate_project_table(project_name, project_full_name, current_date, name, email):
+def generate_project_table(project_name, project_full_name, current_date):
     '''
     (str, str, str, str, str) -> str
 
@@ -1809,29 +1809,23 @@ def generate_project_table(project_name, project_full_name, current_date, name, 
     - project_name (str): Acronym of the project
     - project_full_name (str): Full name of the project 
     - current_date (str): Date of the release (Y-M-D)
-    - name (str): Name of contact personn releasing the data
-    - email (str): Email of the contact personn releasing the data     
     '''
 
-
-    content = [project_name, project_full_name, current_date, name, email]
-    column_width = [15, 15, 10, 30, 30]
+    content = [project_name, project_full_name, current_date]
+    column_width = [30, 50, 20]
 
     table = []
     # add table style
     table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
     # add header
     table.append('<tr>')
-    for i in ['Project', 'Name', 'Date', 'Genome Sequence Informatics Analyst', 'Contact']:
+    for i in ['Project Acronym', 'Project Name', 'Date']:
         table.append('<th style="padding: 3px; border: 0.75px solid grey; border-collapse:collapse; text-align: center; font-size:10px">{0}</th>'.format(i))
     table.append('</tr>')
     # add lines in table
     table.append('<tr>')
     for i in range(len(content)):
-        if i != len(content) -1:
-            table.append('<td style="width: {0}%; padding: 3px; border: 0.75px solid grey;  border-collapse:collapse; text-align: center; font-size:10px">{1}</td>'.format(column_width[i], content[i]))
-        else:
-            table.append('<td style="width: {0}%; padding: 3px; border: 0.75px solid grey;  border-collapse:collapse; text-align: center; font-size:10px">{1}</td>'.format(column_width[i], '<a href = "mailto: {0}">{0}</a>'.format(content[i])))
+        table.append('<td style="width: {0}%; padding: 3px; border: 0.75px solid grey;  border-collapse:collapse; text-align: center; font-size:10px">{1}</td>'.format(column_width[i], content[i]))
     table.append('</tr>')
     table.append('</table>')
     return ''.join(table)
@@ -2247,8 +2241,6 @@ def write_report(args):
     - project_name (str): Project name used to create the project directory in gsi space
     - project_code (str): Project code from MISO
     - bamqc_table (str): Path to the bamqc table of qc-etl
-    - contact_name (str): Name of the analyst releasing the data
-    - contact_email (str): Email of the analyst releasing the data
     - run_directories (list): List of directories with links to fastqs
     - provenance (str): Path to File Provenance Report.
     - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
@@ -2321,7 +2313,7 @@ def write_report(args):
     Text.append(generate_header_table(logo, width, height, args.level))
     Text.append('<br />' * 3)
     # add information about project and contact personn
-    Text.append(generate_project_table(args.project_name, args.project_full_name, current_date, args.contact_name, args.contact_email))
+    Text.append(generate_project_table(args.project_name, args.project_full_name, current_date))
     Text.append('<br />')           
     
     # add description
@@ -2710,8 +2702,6 @@ if __name__ == '__main__':
     r_parser.add_argument('-c', '--code', dest='project_full_name', help='Full name of the project', required = True)
     r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
     r_parser.add_argument('-q', '--qc_table', dest='bamqc_table', help='Path to the bamqc table', required=True)
-    r_parser.add_argument('-ct', '--contact', dest='contact_name', help='Name of the contact personn releasing the data', required=True)
-    r_parser.add_argument('-e', '--email', dest='contact_email', help='Email of the contact personn releasing the data', required=True)
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     r_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
     r_parser.add_argument('-l', '--level', dest='level', choices=['single', 'cumulative'], help='Generates a single release report or a cumulative project report', required = True)
