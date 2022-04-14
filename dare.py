@@ -2483,7 +2483,7 @@ def write_report(args):
     # remove figure files from disk
     for i in figure_files:
         print(figure_files[i])
-        #os.remove(figure_files[i])
+        os.remove(figure_files[i])
 
 
 
