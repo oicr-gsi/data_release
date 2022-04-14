@@ -1609,7 +1609,10 @@ def generate_table(sample_metrics, header, column_size):
                 else:
                     table.append('<tr style="background-color: #fff">')
                 for i in header:
-                    if i == 'On target':
+                    if i == 'Reads':
+                        # add commas to read count
+                        j = '{:,}'.format(d['reads'])
+                    elif i == 'On target':
                         j = str(d['on_target'])
                     elif i == 'External ID':
                         j = str(d['ext_id'])
