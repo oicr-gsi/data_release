@@ -358,15 +358,16 @@ def link_files(args):
         newfile.close()    
     print('Files were extracted from FPR {0}'.format(provenance))
     
-def map_file_ids(L):
+def map_file_ids(L, time_points):
     '''
-    (list)- > dict
+    (list, dict | None)- > dict
     
     Returns a dictionary mapping files to various IDs including library ID, run ID and external ID
     
     Parameters
     ----------
     - L (list): List of records including library IDs and external IDs
+    - time_points (dict | None): Dictionary with time points pulled from Pinery for each library or None
     '''
     
     D = {}
@@ -380,6 +381,14 @@ def map_file_ids(L):
             lid = j[13]
             barcode = j[27]
             externalid = geo['geo_external_name']
+            # add time point
+            if time_points:
+                if lid in time_points:
+                    timepoint = time_points[lid]
+                else:
+                    timepoint = 'NA'
+            else:
+                timepoint = 'ND'
             if 'geo_group_id' in geo:
                 groupid = geo['geo_group_id']
                 # removes misannotations
@@ -390,10 +399,6 @@ def map_file_ids(L):
                 groupdesc = geo['geo_group_id_description']
             else:
                 groupdesc = 'NA'
-            if 'geo_tube_id' in geo:
-                tubeid = geo['geo_tube_id']
-            else:
-                tubeid = 'NA'
             if 'geo_targeted_resequencing' in geo:
                 panel = geo['geo_targeted_resequencing']
             else:
@@ -411,13 +416,13 @@ def map_file_ids(L):
             else:
                 tissue_origin = 'NA'
             
-            D[file] = [ID, lid, library_source, tissue_type, tissue_origin, run, barcode, externalid, groupid, groupdesc, tubeid, panel]
+            D[file] = [ID, lid, library_source, tissue_type, tissue_origin, run, barcode, externalid, groupid, groupdesc, timepoint, panel]
         except:
             continue
     return D        
 
 
-def write_map_file(projects_dir, project_name, run, L, suffix, add_tube, add_panel):
+def write_map_file(projects_dir, project_name, run, L, suffix, add_time_points, add_panel):
     '''
     (str, str, str, list, str) -> None
     
@@ -430,7 +435,7 @@ def write_map_file(projects_dir, project_name, run, L, suffix, add_tube, add_pan
     - run (str): Run ID corresponding to the libraries with external Ids in L
     - L (list): List of records including library IDs and external IDs
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
-    - add_tube (bool): Add tube_id column to sample map if True
+    - add_time_points (bool): Add time points column to sample map if True
     - add_panel (bool): Add panel column to sample map if True
     '''
 
@@ -441,15 +446,15 @@ def write_map_file(projects_dir, project_name, run, L, suffix, add_tube, add_pan
     newfile = open(output_map, 'w')
     header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
     
-    if add_tube:
-        header.append('tube_id')
+    if add_time_points:
+        header.append('time_points')
     if add_panel:
         header.append('panel')
     newfile.write('\t'.join(header) + '\n')
 
     for i in L:
         line = i[:-2]
-        if add_tube:
+        if add_time_points:
             line.append(i[-2])
         if add_panel:
             line.append(i[-1])
@@ -2542,7 +2547,7 @@ def write_report(args):
 
 def map_external_ids(args):
     '''
-    (str | None, str | None, list | None, str | None, str, bool, str, str, str | list, str) -> None
+    (str | None, str | None, list | None, str | None, str, bool, str, str, str | list, str, bool, str, str) -> None
 
     Parameters
     ----------    
@@ -2564,10 +2569,11 @@ def map_external_ids(args):
     - exclude (str | list): File with sample name or libraries to exclude from the release,
                             or a list of sample name or libraries
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
-    - add_tube (bool): Add tube_id column to sample map if True
+    - timepoints (bool): Add time points column to sample map if True
     - add_panel (bool): Add panel column to sample map if True
     - provenance (str): Path to File Provenance Report.
                         Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
+    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
     '''
 
     try:
@@ -2602,6 +2608,12 @@ def map_external_ids(args):
     files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
     print('Extracted files from FPR')
     
+    # get time points
+    if args.timepoints:
+        time_points = get_time_points(extract_sample_info(args.sample_provenance))
+    else:
+        time_points = None
+    
     for run in files_release:
         # make a list of items to write to file
         # make a list of records items
@@ -2610,7 +2622,7 @@ def map_external_ids(args):
         # grab all the FPR records for that run
         records = get_FPR_records(run, provenance, 'run')
         # map files in run to external IDs
-        mapped_files = map_file_ids(records)
+        mapped_files = map_file_ids(records, time_points)
         for file in files_release[run]:
             if file in mapped_files:
                 R = mapped_files[file]
@@ -2618,7 +2630,7 @@ def map_external_ids(args):
                     L.append(R)
                 recorded.append(R)
         
-        write_map_file(args.projects_dir, args.project_name, run, L, args.suffix, args.add_tube, args.add_panel)
+        write_map_file(args.projects_dir, args.project_name, run, L, args.suffix, args.timepoints, args.add_panel)
     print('Information was extracted from FPR {0}'.format(provenance))
 
 def map_swid_file(L):
@@ -2774,8 +2786,9 @@ if __name__ == '__main__':
     m_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
     m_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     m_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
-    m_parser.add_argument('--tube', dest='add_tube', action='store_true', help='Add tube_id to sample map if option is used. By default, tube_id is not added.')
+    m_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to sample map if option is used. By default, time points are not added.')
     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
+    m_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     m_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     m_parser.set_defaults(func=map_external_ids)
 
