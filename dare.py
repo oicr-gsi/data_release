@@ -1185,12 +1185,6 @@ def generate_figures(project_dir, level, project_name,  sample_metrics, metric1,
         data = [Q1, Q2, Q3, Q4]
         metrics = [metric1, metric2, metric3, metric4]
         
-
-        print('metrics', metrics)
-
-
-
-        
         if keep_on_target == False:
             pos = metrics.index('on_target')
             # check if all on_target values are 100%
@@ -1620,6 +1614,8 @@ def generate_table(sample_metrics, header, column_size):
                         j = str(d['group_id'])
                     elif i == 'Library ID':
                         j = str(d['library'])
+                    elif i == 'Library ID (time point)':
+                        j = str(d['library']) + '\n' + '({0})'.format(str(d['timepoint']))
                     elif i == 'Run':
                         j = str(d[i.lower()])
                         if ';' in j:
@@ -1694,7 +1690,9 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
             else:
                 table.append('<tr style="background-color: #fff">')
             for i in header:
-                if i == 'Sample':
+                if i == 'Reads':
+                    j = '{:,}'.format(sample_metrics[instrument][sample][i.lower()])    
+                elif i == 'Sample':
                     j = sample
                     k = len(j.split('_')) // 4
                     j = '_'.join(j.split('_')[0:k]) + '_\n' + '_'.join(j.split('_')[k:2*k]) + '_\n' + '_'.join(j.split('_')[2*k:3*k]) + '_\n' + '_'.join(j.split('_')[3*k:])
@@ -2233,6 +2231,88 @@ def list_library_tissue_codes(sample_metrics, level):
 
 
 
+
+def extract_sample_info(sample_provenance):
+    '''
+    (str) -> list
+    
+    Returns a list of dictionary with sample information pulled down from the
+    sample_provenance Pinary API
+
+    Parameters
+    ----------
+    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
+    '''
+    
+    response = requests.get(sample_provenance)
+    if response.ok:
+        L = response.json()
+    else:
+        L = []
+    return L
+
+
+def get_time_points(sample_information):
+    '''
+    (list) -> dict
+    
+    Returns a dictionary of time points for each library
+    
+    Parameters
+    ----------
+    - sample_information (list): List of dictionary with sample information pulled
+                                 down from the inery API 
+    '''
+
+    D = {}
+
+    for i in sample_information:
+        sample = i['sampleName']
+        if 'timepoint' in i['sampleAttributes']:
+            time_point = i['sampleAttributes']['timepoint']
+        else:
+            time_point = []
+        if sample in D:
+            D[sample].extend(time_point)
+        else:
+            D[sample] = time_point
+    
+    for i in D:
+        D[i] = ';'.join(sorted(list(set(D[i]))))
+        if not D[i]:
+            D[i] = 'NA'
+    return D
+
+
+
+def add_time_points(sample_provenance, sample_metrics):
+    '''
+    (str, dict) -> None
+    
+    Add time points retrieved from sample_provenance to each sample in sample_metrics.
+    Updates sample_metrics in place
+    
+    Parameters
+    ----------
+    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
+    - sample_metrics (dict): Dictionary with run-level sample metrics
+    '''
+
+    # pull down sample information from Pinery
+    L  = extract_sample_info(sample_provenance)
+    # extract time points for each library
+    D = get_time_points(L)
+    # add time points to each sample
+    
+    for instrument in sample_metrics:
+        for sample in sample_metrics[instrument]:
+            for d in sample_metrics[instrument][sample]:
+                if d['library'] in D:
+                    d['timepoint'] = D[d['library']]
+                else:
+                    d['timepoint'] = 'NA'
+        
+        
 def write_report(args):
     '''
     (str, str, str, str, str, str, str, list)
@@ -2252,7 +2332,11 @@ def write_report(args):
     # check that runs are specified for single data release report
     if args.level == 'single' and args.run_directories is None:
         raise ValueError('Please provide a list of run folders')
+    # emit warning if time points are used with cumulative report
+    if args.level == 'cumulative' and args.timepoints:
+        print('Option timepoint has no effect. Time points are only added to batch level reports')
         
+    
     # get the project directory with release run folders
     project_dir = os.path.join(args.working_dir, args.project_name)
     # get the records for the project of interest
@@ -2285,14 +2369,18 @@ def write_report(args):
         map_bamqc_info_to_fpr(FPR_info, bamqc_info)
         # re-organize metrics per sample and instrument
         sample_metrics = get_run_level_sample_metrics(FPR_info)
+        # add time points
+        if args.timepoints:
+            # update sample metrics by adding time points to each sample
+            add_time_points(args.sample_provenance, sample_metrics)
+            
     elif args.level == 'cumulative':
         bamqc_info = parse_merged_bamqc(args.bamqc_table, args.project)   
         # update FPR info with QC info from bamqc merged table
         map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info)
         # re-organize metrics per sample and instrument
         sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
-    
-        
+            
     # generate figure files
     if args.level == 'single':
         # plot read count, coverage, on target and duplicate rate
@@ -2377,8 +2465,12 @@ def write_report(args):
     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
        
     if args.level == 'single':
-        header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
-        column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
+        if args.timepoints:
+            header = ['External ID', 'Case', 'Group ID', 'Library ID (time point)', 'S', 'O', 'T']
+            column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID (time point)': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
+        else:
+            header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
+            column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
         Text.append(generate_table(sample_metrics, header, column_size))            
     elif args.level == 'cumulative':
         header = ['External ID', 'Case', 'Sample', 'Library ID', 'S', 'O', 'T', 'Run']
@@ -2708,6 +2800,8 @@ if __name__ == '__main__':
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     r_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
     r_parser.add_argument('-l', '--level', dest='level', choices=['single', 'cumulative'], help='Generates a single release report or a cumulative project report', required = True)
+    r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
+    r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     r_parser.set_defaults(func=write_report)
     
     # get arguments from the command line
