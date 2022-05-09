@@ -211,7 +211,7 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
             # record md5sum
             if run_id not in M:
                 M[run_id] = []
-            M[run_id].append([file_path, i[47]]) 
+            M[run_id].append([i[47], file_path]) 
 
     # select the files corresponding to the most recent workflow ID for each run
     # get the corresponding md5sums of the file
@@ -224,7 +224,7 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
         for j in toremove:
             D[i].remove(j)
         # remove files not selected
-        to_remove = [j for j in M[i] if j[0] not in L]
+        to_remove = [j for j in M[i] if j[1] not in L]
         for j in to_remove:
             M[i].remove(j)
     
@@ -345,6 +345,7 @@ def link_files(args):
     if args.suffix == 'fastqs':
         assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
     generate_links(files_release, files_withhold, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+
         
     # write summary md5sums
     run_dir = os.path.join(args.projects_dir, args.project_name)
@@ -352,12 +353,11 @@ def link_files(args):
     for i in md5sums:
         print('Generating md5sums summary file for run {0}'.format(i))
         filename = i + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
-        newfile = open(os.path.join(run_dir, filename), 'w')
-        for j in md5sums[i]:
-            newfile.write('\t'.join([os.path.basename(j[0]), j[1]]) +'\n')
-        newfile.close()    
+        write_md5sums(os.path.join(run_dir, filename), md5sums[i])
     print('Files were extracted from FPR {0}'.format(provenance))
-    
+
+
+   
 def map_file_ids(L, time_points):
     '''
     (list, dict | None)- > dict
@@ -2087,29 +2087,22 @@ def get_logo():
     return logo_image
 
 
-def write_md5sums(project_dir, project_name, current_date, FPR_info):
+def write_md5sums(md5_file, md5sums):
     '''
-    (str, str, str, dict) -> str
+    (str, str, str, dict, bool) -> str
     
     Writes a table file with file names and md5sums and returns thefile path
         
     Parameters
     ----------
-    
-    - working-dir (str): Path to the directory with project directories and links to fastqs 
-    - project_name (str): Project name used to create the project directory in gsi space
-    - current_date (str): Current date (Y-m-d)
-    - FPR_info (dict): File information with QC metrics
+    - md5_file (str): Path to the outputfile with md5sums
+    - md5sums (dict): Dictionary of file path, md5sum key, value pairs
     '''
 
-    md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(project_name, current_date))
     newfile = open(md5_file, 'w')
-    newfile.write('\t'.join(['filename', 'md5sum']) +'\n')
-    for file in sorted(list(FPR_info.keys())):
-        newfile.write('\t'.join([FPR_info[file]['filename'], FPR_info[file]['md5sum']]) + '\n')
+    for i in md5sums:
+        newfile.write('\t'.join([i[0], i[1]]) + '\n')
     newfile.close()       
-    return md5_file
-
 
 
 def get_tissue_types():
@@ -2399,8 +2392,10 @@ def write_report(args):
     
     # write md5sums to separate text file
     if args.level == 'single':
-        md5_file = write_md5sums(project_dir, args.project_name, current_date, FPR_info)
-        
+        md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
+        # make a list of file paths, md5sum inner lists
+        write_md5sums(md5_file, [[FPR_info[file]['md5sum'], FPR_info[file]['filename']] for file in FPR_info])
+            
     # make a list to store report
     Text = []
     # add title and logo
