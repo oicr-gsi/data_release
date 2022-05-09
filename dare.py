@@ -100,9 +100,9 @@ def select_most_recent_workflow(L):
     return files
 
 
-def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases, files_release, exclude):
+def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases, files_release, exclude, prefix=None):
     '''
-    (str, str, list, str, bool, dict, list, list) -> (dict, dict, dict)
+    (str, str, list, str, bool, dict, list, list, str | None) -> (dict, dict, dict)
   
     Returns a tuple with dictionaries with files extracted from FPR and their corresponding run
     respectively from release and withheld from release, and a dictionary with md5sums of the release files.
@@ -122,6 +122,7 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
                               Can be an empty dictionary
     - files_release (list): List of file names to release
     - exclude (list): List of samples or libraries to exclude from release
+    - prefix (str | None): Prefix used to recover file full paths when File Provevance contains relative paths.
     '''
     
     # create a dict {run: [files]}
@@ -147,7 +148,10 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
     # parse the records
     for i in records:
         # get file path
-        file_path = i[46]
+        if prefix:
+            file_path = os.path.join(prefix, i[46])
+        else:
+            file_path = i[46]
         # get sample name
         sample_name = i[7]
         # get parent sample name
@@ -306,6 +310,8 @@ def link_files(args):
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     - provenance (str): Path to File Provenance Report.
                         Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
     '''
     
     # dereference link to FPR
@@ -338,7 +344,7 @@ def link_files(args):
     # extract files from FPR
     runs = args.runs if args.runs else []
     project = args.project if args.project else ''
-    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude, prefix = args.prefix)
     print('Extracted files from File Provenance Report')
     
     # link files to project dir
@@ -358,7 +364,7 @@ def link_files(args):
 
 
    
-def map_file_ids(L, time_points):
+def map_file_ids(L, time_points, prefix = None):
     '''
     (list, dict | None)- > dict
     
@@ -368,13 +374,18 @@ def map_file_ids(L, time_points):
     ----------
     - L (list): List of records including library IDs and external IDs
     - time_points (dict | None): Dictionary with time points pulled from Pinery for each library or None
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
     '''
     
     D = {}
     
     for j in L:    
         try:
-            file = j[46]
+            if prefix:
+                file = os.path.join(prefix, j[46])
+            else:
+                file = j[46]
             run = j[23]
             ID = j[7]
             geo = {k.split('=')[0]:k.split('=')[1] for k in j[12].split(';')}
@@ -559,9 +570,9 @@ def get_FPR_records(name, provenance, level):
     return records
 
 
-def collect_info_fastqs(records):
+def collect_info_fastqs(records, prefix = None):
     '''
-    (list) -> dict
+    (list, str | None) -> dict
     
     Returns a dictionary with relevant information for fastqs by parsing the
     File Provenance Report for a given project 
@@ -569,6 +580,8 @@ def collect_info_fastqs(records):
     Parameters
     ----------
     - records (list): Project level records from File Provenance Report
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
     '''
     
     # initiate dict
@@ -579,7 +592,10 @@ def collect_info_fastqs(records):
         # only consider workflows generating fastqs
         if i[30].lower() in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
             # get file path
-            file = i[46]
+            if prefix:
+                file = os.path.join(prefix, i[46])
+            else:
+                file = i[46]
             # get workflow accession from file path
             workflow_accession = get_workflow_id(file)
             # get file name
@@ -2313,7 +2329,7 @@ def add_time_points(sample_provenance, sample_metrics):
         
 def write_report(args):
     '''
-    (str, str, str, str, str, str, str, list)
+    (str, str, str, str, str, str, str, list, str | None)
 
     Write a PDF report with QC metrics and released fastqs for a given project
 
@@ -2325,6 +2341,8 @@ def write_report(args):
     - run_directories (list): List of directories with links to fastqs
     - provenance (str): Path to File Provenance Report.
     - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
     '''
     
     # check that runs are specified for single data release report
@@ -2542,7 +2560,7 @@ def write_report(args):
 
 def map_external_ids(args):
     '''
-    (str | None, str | None, list | None, str | None, str, bool, str, str, str | list, str, bool, str, str) -> None
+    (str | None, str | None, list | None, str | None, str, bool, str, str, str | list, str, bool, str, str, str | None) -> None
 
     Parameters
     ----------    
@@ -2569,6 +2587,8 @@ def map_external_ids(args):
     - provenance (str): Path to File Provenance Report.
                         Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
     - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
     '''
 
     try:
@@ -2600,7 +2620,7 @@ def map_external_ids(args):
     project = args.project if args.project else ''
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude)
+    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude, args.prefix)
     print('Extracted files from FPR')
     
     # get time points
@@ -2617,7 +2637,7 @@ def map_external_ids(args):
         # grab all the FPR records for that run
         records = get_FPR_records(run, provenance, 'run')
         # map files in run to external IDs
-        mapped_files = map_file_ids(records, time_points)
+        mapped_files = map_file_ids(records, time_points, prefix = args.prefix)
         for file in files_release[run]:
             if file in mapped_files:
                 R = mapped_files[file]
@@ -2765,6 +2785,7 @@ if __name__ == '__main__':
     l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     l_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
     l_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
+    l_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
@@ -2785,6 +2806,7 @@ if __name__ == '__main__':
     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
     m_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     m_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
+    m_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
@@ -2810,6 +2832,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-l', '--level', dest='level', choices=['single', 'cumulative'], help='Generates a single release report or a cumulative project report', required = True)
     r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
     r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
+    r_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     r_parser.set_defaults(func=write_report)
     
     # get arguments from the command line
