@@ -2361,7 +2361,7 @@ def write_report(args):
     records = get_FPR_records(args.project, provenance, 'project')
     print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about fastqs for project 
-    FPR_info = collect_info_fastqs(records)
+    FPR_info = collect_info_fastqs(records, prefix = args.prefix)
     # keep only info about released fastqs
     if args.level == 'single':
         # make a list of full paths to the released fastqs resolving the links in the run directories
