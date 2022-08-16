@@ -11,7 +11,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
-import xhtml2pdf.pisa as pisa
+import time
+#import xhtml2pdf.pisa as pisa
 import mistune
 import base64
 from PIL import Image
@@ -50,57 +51,37 @@ def get_libraries(library_file):
     return D
     
 
-def get_workflow_id(file_path):
+def get_FPR_records(project, provenance):
     '''
-    (str) -> int
+    (str, str) -> list
+    
+    Returns a list with all the records from the File Provenance Report for a given project.
+    Each individual record in the list is a list of fields    
     
     Parameters
     ----------
-    
-    Returns the workflow id from the file path
-           
-    - file_path (str): File path
+    - project (str): Name of a project or run as it appears in File Provenance Report
+    - provenance (str): Path to File Provenance Report.
     '''
-    
-    workflow = -1
-    
-    k = file_path.split('/')
-    for j in k:
-        if j.isdigit():
-            workflow = int(j)
-    return workflow
-    
-
-def select_most_recent_workflow(L):
-    '''
-    (list) -> list
-    
-    Returns a list of file paths corresponding to the most recent workflow ID for each file
-    
-    Parameters
-    ----------
-    - L (list): List of file paths
-    '''
-    
-    # create a dict to store workflow accession and file path for each file name
-    d = {}
-    
-    for i in L:
-        filename = os.path.basename(i)
-        if filename not in d:
-            d[filename] = []
-        workflow = get_workflow_id(i)
-        d[filename].append([workflow, i])
-    # get the most recent workflow accession id and corresponding file
-    for i in d:
-        d[i].sort()
-    # keep only the files corresponding to the most recent workflow run
-    # when worflow id not in file path, eg FileImport, just select the file. assumes 1 record in FPR
-    files = [d[i][-1][1] for i in d]
-    return files
+        
+    # get the records for a single project
+    records = []
+    # open provenance for reading. allow gzipped file or not
+    if is_gzipped(provenance):
+        infile = gzip.open(provenance, 'rt', errors='ignore')
+    else:
+        infile = open(provenance)
+    for line in infile:
+        if project in line:
+            line = line.rstrip().split('\t')
+            if project == line[1]:
+                records.append(line)
+    infile.close()
+    return records
 
 
-def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases, files_release, exclude, prefix=None):
+
+def parse_fpr_records(provenance, project, workflow, prefix=None):
     '''
     (str, str, list, str, bool, dict, list, list, str | None) -> (dict, dict, dict)
   
@@ -115,135 +96,226 @@ def extract_files(provenance, project, runs, workflow, nomiseq, library_aliases,
                      Used to parse the FPR by project. Files are further filtered
                      by run is runs parameter if provided, or all files for
                      the project and workflow are used
-    - runs (list): List of run IDs or empty list. Other runs are ignored if not empty    
     - workflow (str): Worflow used to generate the output files
-    - nomiseq (bool): Exclude MiSeq runs if True
-    - library_aliases (dict): Dictionary with library alias as key and library aliquot ID as value or the empty string.
-                              Can be an empty dictionary
     - files_release (list): List of file names to release
-    - exclude (list): List of samples or libraries to exclude from release
     - prefix (str | None): Prefix used to recover file full paths when File Provevance contains relative paths.
     '''
     
-    # create a dict {run: [files]}
-    D, K = {}, {}
+    # create a dict {file_swid: {file info}}
+    D  = {}
     
-    # create a dict {file: md5sum}
-    M = {}
-        
-    # make a list of records
-    records = []
+    # get all the records for a single project
+    records = get_FPR_records(project, provenance)
     
-    # create a list to store project runs
-    project_runs = []
-    
-    
-    # parse the file provenance record
-    if project: 
-        records.extend(get_FPR_records(project, provenance, 'project'))
-    elif runs:
-        for run in runs:
-            records.extend(get_FPR_records(run, provenance, 'run'))
-
-    # parse the records
+    # parse the records and get all the files for a given project
     for i in records:
-        # get file path
-        if prefix:
-            file_path = os.path.join(prefix, i[46])
-        else:
-            file_path = i[46]
-        # get sample name
-        sample_name = i[7]
-        # get parent sample name
-        parent_sample = i[9].split(':')[0]
-        # skip if project provided and not in record
-        if project and project != i[1]:
-            continue
-        # skip miseq runs if miseq should be excluded
-        if nomiseq and 'miseq' in i[22].lower():
-            continue
-        # get run id
-        run_id = i[18]
-        # parse files from all runs if runs not provided
-        if len(runs) == 0:
-            project_runs.append(run_id)
-        else:
-            project_runs = runs
-        # skip runs that are not specified  
-        if run_id not in project_runs:
-            continue
-        # get library aliases and aliquot
-        aliquot = i[56].split('_')[-1]
-        library = i[13]
-        # skip if incorrect workflow
-        if workflow == 'bcl2fastq':
-            # skip if not casava or bcl2fastq workflow    
-            if i[30].lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
-                continue
-        else:
-            # skip if not provided workflow
-            if workflow.lower() != i[30].lower():
-                continue
-        # check if file list is provided
-        if files_release:
-            # skip files not in the allow list
-            if os.path.basename(file_path) not in files_release:
-                continue
-        # check if library aliases are provided
-        if library_aliases:
-            # skip libraries not included in file
-            if library not in library_aliases and parent_sample not in library_aliases:
-                continue
-            else: 
-                # skip libraries if aliquot ID is provided and incorrect
-                if library in library_aliases:
-                    if library_aliases[library] and library_aliases[library] != aliquot:
-                        continue
-                elif parent_sample in library_aliases:
-                    if library_aliases[parent_sample] and library_aliases[parent_sample] != aliquot:
-                        continue
-        # check if sample or library is excluded 
-        if sample_name in exclude or library in exclude or parent_sample in exclude:
-            if run_id not in K:
-                K[run_id] = []
-            K[run_id].append(file_path)
-        else:
-            # record files per run
-            if run_id not in D:
-                D[run_id] = []
-            D[run_id].append(file_path)
-            # record md5sum
-            if run_id not in M:
-                M[run_id] = []
-            M[run_id].append([i[47], file_path]) 
+        # keep records for project
+        if project == i[1]:
+            # check workflow
+            if workflow == 'bcl2fastq':
+                # skip if not fastq-related workflows    
+                if i[30].lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
+                    continue
+            else:
+                # skip if not provided workflow
+                if workflow.lower() != i[30].lower():
+                    continue
+            # get file path
+            if prefix:
+                file_path = os.path.join(prefix, i[46])
+            else:
+                file_path = i[46]
+            # get file name
+            file_name = os.path.basename(file_path)
+            # get sample name
+            sample_name = i[7]
+            # get parent sample name
+            parent_sample = i[9].split(':')[0]
+            # get time stamp and convert to epoch
+            creation_date = i[0]
+            # remove milliseconds
+            creation_date = creation_date.split('.')[0]
+            pattern = '%Y-%m-%d %H:%M:%S'
+            creation_date = int(time.mktime(time.strptime(creation_date, pattern)))
+            # record platform
+            platform = i[22]
+            # get run id
+            run_id = i[18]
+            # get lims key
+            linkskey = i[56]
+            # get library aliquot
+            aliquot = i[56].split('_')[-1]
+            # get library aliases
+            library = i[13]
+            # get md5sum
+            md5 = i[47]
+            # get workdlow swid
+            workflow_run_id = i[36]
+            # get file swid
+            file_swid = i[44]
+        
+            
+            d = {'workflow': i[30], 'file_path': file_path, 'file_name': file_name,
+                 'sample_name': sample_name, 'parent_sample': parent_sample,
+                 'creation_date': creation_date, 'platform': platform,
+                 'run_id': run_id, 'linkskey': linkskey, 'aliquot': aliquot,
+                 'library': library, 'md5': md5, 'workflow_run_id': workflow_run_id,
+                 'file_swid': file_swid}
+                
+            if file_swid not in D:
+                D[file_swid] = d
+            else:
+                assert D[file_swid] == d
+        
+    return D    
+        
+            
 
-    # select the files corresponding to the most recent workflow ID for each run
-    # get the corresponding md5sums of the file
-    for i in D:
-        # remove duplicates due to multiple records of full paths because of merging workflows
-        D[i] = list(set(D[i]))    
-        L = select_most_recent_workflow(D[i])
-        # remove duplicate files that are not the most recent
-        toremove = [j for j in D[i] if j not in L]
-        for j in toremove:
-            D[i].remove(j)
-        # remove files not selected
-        to_remove = [j for j in M[i] if j[1] not in L]
-        for j in to_remove:
-            M[i].remove(j)
-    
-    return D, K, M
-
-
-
-def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
+def select_most_recent_workflow(files):
     '''
-    (dict, dict, str, str, str, dict) -> None
+    (dict) -> dict
+    
+    Returns a new dictionary keeping files from the most recent workflow iteration if duplicate files exist
+        
+    Parameters
+    ----------
+    - files (dict): Dictionary with file records obtained from parsing FPR
+    '''
+
+    # find files with the same file name
+    file_names = {}
+    for file_swid in files:
+        # get the file name
+        file_name = files[file_swid]['file_name']
+        creation_time = files[file_swid]['creation_date']
+        if file_name in file_names:
+            # compare creation times
+            if creation_time >= file_names[file_name][0]:
+                # keep the most recent file
+                file_names[file_name] = [creation_time, file_swid]
+        else:
+            file_names[file_name] = [creation_time, file_swid]
+            
+    # select the most files
+    D = {}
+    # make a list of file swids to keep
+    to_keep = list(map(lambda x: x[1], list(file_names.values())))
+    for file_swid in files:
+        if file_swid in to_keep:
+            D[file_swid] = files[file_swid]
+    return D        
+    
+    
+
+def exclude_miseq_secords(files):
+    '''
+    (dict) -> dict
+    
+    Returns a new dictionary removing file records in files if sequencing was performed on a MiSeq platform.
+        
+    Parameters
+    ----------
+    - files (dict): Dictionary with file records obtained from parsing FPR
+    '''
+    
+    D = {}
+    exclude = [file_swid for file_swid in files if 'miseq' in files[file_swid]['platform'].lower()]
+    for file_swid in files:
+        if file_swid not in exclude:
+            D[file_swid] = files[file_swid]        
+    return D
+
+      
+def exclude_non_specified_runs(files, runs):
+    '''
+    (dict, list) -> dict
+    
+    Returns a new dictionary removing file records in files if sequencing was performed during a run not specified in runs,
     
     Parameters
     ----------
-    - D (dict): Dictionary with run, list of files key, value pairs to release
-    - K (dict): Dictionary with run, list of files key, value pairs to withold from release
+    - files (dict) : Dictionary with file records obtained from parsing FPR
+    - runs (list): List of run ids to keep
+    '''    
+    
+    D = {}
+    exclude = [file_swid for file_swid in files if files[file_swid]['run_id'] not in runs]
+    for file_swid in files:
+        if file_swid not in exclude:
+            D[file_swid] = files[file_swid]        
+    return D
+    
+
+def exclude_non_specified_libraries(files, libraries):
+    '''
+    (dict, dict) -> dict
+
+    Returns a new dictionary removing file records corresponding to libraries not specified in libraries 
+
+    Parameters
+    ----------
+    - files (dict) : Dictionary with file records obtained from parsing FPR
+    - libraries (dict): Dictionary with libraries tagged for release
+    '''    
+    
+    D = {}
+    exclude = []
+    
+    for file_swid in files:
+        library = files[file_swid]['library']
+        parent_sample = files[file_swid]['parent_sample']
+        aliquot = files[file_swid]['aliquot']
+        if library not in libraries and parent_sample not in libraries:
+            exclude.append(file_swid)
+        else:
+            if library in libraries:
+                if libraries[library] and libraries[library] != aliquot:
+                    exclude.append(file_swid)
+            elif parent_sample in libraries:
+                if libraries[parent_sample] and libraries[parent_sample] != aliquot:
+                    exclude.append(file_swid)
+                    
+    for file_swid in files:
+        if file_swid not in exclude:
+            D[file_swid] = files[file_swid]        
+    return D
+        
+    
+    
+def get_libraries_for_non_release(files, exclude):
+    '''
+    (dict, dict) -> dict
+
+    Returns a dictionary with file records corresponding to libraries tagged for non-release
+
+    Parameters
+    ----------
+    - files (dict) : Dictionary with file records obtained from parsing FPR
+    - exclude (dict): Dictionary with libraries tagged for non-release
+    '''    
+    
+    D = {}
+    for file_swid in files:
+        library = files[file_swid]['library']
+        if library  in exclude:
+            # check if run provided
+            if exclude[library]:
+                if exclude[library] == files[file_swid]['run_id']:
+                    D[file_swid] = files[file_swid]        
+            else:
+                D[file_swid] = files[file_swid]
+    return D
+    
+    
+    
+def generate_links(files, release, project_name, projects_dir, suffix, **keywords):
+    '''
+    (dict, bool, str, str, str, dict) -> None
+    
+    Parameters
+    ----------
+    - files_release (dict): Dictionary with file information
+    - release (bool): True if files were tagged for release and False otherwise
     - project_name (str): Name of the project directory in projects_dir
     - projects_dir (str): Path to the directory in gsi space containing project directories 
     - suffix (str): Indicates fastqs or datafiles
@@ -253,35 +325,67 @@ def generate_links(D, K, project_name, projects_dir, suffix, **keywords):
     working_dir = os.path.join(projects_dir, project_name)
     os.makedirs(working_dir, exist_ok=True)
 
-
-    for run in D:
+    for file_swid in files:
         if 'run_name' in keywords and keywords['run_name']:
             run_name = keywords['run_name']
         else:
-            run_name = run + '.{0}.{1}'.format(project_name, suffix)
+            run_name = files[file_swid]['run_id'] + '.{0}.{1}'.format(project_name, suffix)
+        if release == False:
+            run_name += '.withold'
         run_dir = os.path.join(working_dir, run_name)
         os.makedirs(run_dir, exist_ok=True)
         print('Linking files to folder {0}'.format(run_dir))
-        for file in D[run]:
-            filename = os.path.basename(file)
-            link = os.path.join(run_dir, filename)
-            if os.path.isfile(link) == False:
-                os.symlink(file, link)
+        filename = files[file_swid]['file_name']
+        link = os.path.join(run_dir, filename)
+        file = files[file_swid]['file_path']
+        if os.path.isfile(link) == False:
+            os.symlink(file, link)
 
-    if len(K) != 0:
-        for run in K:
-            if 'run_name' in keywords and keywords['run_name']:
-                run_name = keywords['run_name'] + '.withhold'
-            else:
-                run_name = run + '.{0}.{1}.withhold'.format(project_name, suffix)
-            run_dir = os.path.join(working_dir, run_name)
-            os.makedirs(run_dir, exist_ok=True)
-            for file in K[run]:
-                filename = os.path.basename(file)
-                link = os.path.join(run_dir, filename)
-                if os.path.isfile(link) == False:
-                    os.symlink(file, link)
+
+
+def collect_md5sums(files):
+    '''
+    (dict) -> dict
     
+    Returns a dictionary with lists of md5sums, file_path for each run in dictionary files
+        
+    Parameters
+    ----------
+    - files (dict) : Dictionary with file records obtained from parsing FPR
+    '''
+    
+    # create a dictionary {run: [md5sum, file_path]} 
+    D = {}
+    for file_swid in files:
+        run_name = files[file_swid]['run_id']
+        md5 = files[file_swid]['md5']
+        file_path = files[file_swid]['file_path']
+        if run_name in D:
+            D[run_name].append([md5, file_path])
+        else:
+            D[run_name] = [md5, file_path]
+    return D
+
+
+def exclude_non_specified_files(files, file_names):
+    '''
+    (dict, list) -> dict
+    
+    Returns a new dictionary with file records keeping only the files listed in file_names
+    
+    Parameters
+    ----------
+    - files (dict) : Dictionary with file records obtained from parsing FPR
+    - file_names (list): List of valid file names for release 
+    '''
+    
+    D = {}
+    for file_swid in files:
+        file_name = files[file_swid]['file_name']
+        if file_name in file_names:
+            D[file_swid] = files[file_swid]
+    return D
+
 
 def link_files(args):
     '''
@@ -305,8 +409,7 @@ def link_files(args):
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
     - run_name (str): Specifies the run folder name. Run Id or run.withhold as run folder name if not specified. 
-    - exclude (str | list): File with sample name or libraries to exclude from the release,
-                            or a list of sample name or libraries
+    - exclude (str | list): File with sample name or libraries to exclude from the release
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     - provenance (str): Path to File Provenance Report.
                         Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
@@ -317,49 +420,64 @@ def link_files(args):
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
     
-    # get the list of samples/libraries to exclude
-    try:
-        exclude = list(get_libraries(args.exclude[0]).keys())
-    except:
-        if args.exclude:
-            exclude = list(map(lambda x: x.strip(), args.exclude))
-        else:
-            exclude = []
-     
-    # parse library file if exists 
-    if args.libraries:
-        libraries = get_libraries(args.libraries)
-    else:
-        libraries = {}
-
-    # get the list of allowed file paths if exists
-    if args.files:
-        infile = open(args.files)
-        files_names = infile.read().rstrip().split('\n')
-        files_names = list(map(lambda x: os.path.basename(x), files_names))
-        infile.close()
-    else:
-        files_names = []
-        
-    # extract files from FPR
-    runs = args.runs if args.runs else []
-    project = args.project if args.project else ''
-    files_release, files_withhold, md5sums = extract_files(provenance, project, runs, args.workflow, args.nomiseq, libraries, files_names, exclude, prefix = args.prefix)
+    # parse FPR records
+    files = parse_fpr_records(provenance, args.project, args.workflow)
     print('Extracted files from File Provenance Report')
     
+    # keep most recent workflows
+    files = select_most_recent_workflow(files)
+    
+    # check if a list of valid file names is provided
+    if args.files:
+        infile = open(args.files)
+        file_names = infile.read().rstrip().split('\n')
+        file_names = list(map(lambda x: os.path.basename(x), file_names))
+        infile.close()
+    else:
+        file_names = []
+    if file_names:
+        files = exclude_non_specified_files(files, file_names)
+        
+    # remove files sequenced on miseq if miseq runs are excluded
+    if args.nomiseq:
+        files = exclude_miseq_secords(files)
+        print('discarded MiSeq runs')
+    # keep only files from specified runs
+    # extract files from FPR
+    runs = args.runs if args.runs else []
+    if runs:
+        files = exclude_non_specified_runs(files, runs)
+        print('Kept only specified runs')
+    
+    # keep only files for specified libraries
+    # parse library file if exists 
+    libraries = get_libraries(args.libraries) if args.libraries else {}
+    if libraries:
+        files = exclude_non_specified_libraries(files, libraries)
+        print('kept only specified libraries')
+    
+    # find files corresponding to libraries tagged for non-release
+    exclude = get_libraries(args.exclude) if args.exclude else {}
+    if exclude:
+        files_non_release = get_libraries_for_non_release(files, exclude)
+        
     # link files to project dir
     if args.suffix == 'fastqs':
         assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
-    generate_links(files_release, files_withhold, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
-
-        
+    generate_links(files, True, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+    # generate links for files to be witheld from release
+    if files_non_release:
+        generate_links(files_non_release, False, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+    
     # write summary md5sums
-    run_dir = os.path.join(args.projects_dir, args.project_name)
-    os.makedirs(run_dir, exist_ok=True)
-    for i in md5sums:
-        print('Generating md5sums summary file for run {0}'.format(i))
-        filename = i + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
-        write_md5sums(os.path.join(run_dir, filename), md5sums[i])
+    working_dir = os.path.join(args.projects_dir, args.project_name)
+    os.makedirs(working_dir, exist_ok=True)
+    # create a dictionary {run: [md5sum, file_path]} 
+    md5sums = collect_md5sums(files)
+    for run_id in md5sums:
+        print('Generating md5sums summary file for run {0}'.format(run_id))
+        filename = run_id + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
+        write_md5sums(os.path.join(working_dir, filename), md5sums[run_id])
     print('Files were extracted from FPR {0}'.format(provenance))
 
 
@@ -538,36 +656,6 @@ def is_gzipped(file):
         return False
   
 
-def get_FPR_records(name, provenance, level):
-    '''
-    (str, str, str) -> list
-    
-    Returns a list with all the records from the File Provenance Report for a given project or run
-    Each individual record in the list is a list of fields    
-    
-    Parameters
-    ----------
-    - name (str): Name of a project or run as it appears in File Provenance Report
-    - provenance (str): Path to File Provenance Report.
-    - level (str): Run or project: Parse FPR for a given run or project
-    '''
-        
-    # get the records for a single project
-    records = []
-    # open provenance for reading. allow gzipped file or not
-    if is_gzipped(provenance):
-        infile = gzip.open(provenance, 'rt', errors='ignore')
-    else:
-        infile = open(provenance)
-    for line in infile:
-        if name in line:
-            line = line.rstrip().split('\t')
-            if level == 'project' and name == line[1]:
-                records.append(line)
-            elif level == 'run' and name == line[18]:
-                records.append(line)
-    infile.close()
-    return records
 
 
 def collect_info_fastqs(records, prefix = None):
@@ -2777,11 +2865,11 @@ if __name__ == '__main__':
     l_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files', required = True)
     l_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required=True)
     l_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-    l_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used')
+    l_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     l_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     l_parser.add_argument('-rn', '--run_name', dest='run_name', help='Optional run name parameter. Replaces run ID and run.withhold folder names if used')
-    l_parser.add_argument('-e', '--exclude', dest='exclude', nargs='*', help='File with sample name or libraries to exclude from the release, or a list of sample name or libraries')
+    l_parser.add_argument('-e', '--exclude', dest='exclude', help='File with sample name or libraries to exclude from the release')
     l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     l_parser.add_argument('-f', '--files', dest='files', help='File with file names to be released')
     l_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
