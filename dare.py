@@ -628,7 +628,6 @@ def map_external_ids(args):
     - provenance (str): Path to File Provenance Report.
                         Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
     - project (str): Project name as it appears in File Provenance Report.
-    - workflow (str): Worflow used to generate the output files
     - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
                            Prefix is added to the relative path in FPR to determine the full file path.
     - release_files (str | None): Path to file with file names to be released 
@@ -640,7 +639,6 @@ def map_external_ids(args):
                               The second and optional column is the library aliquot ID (eg. LDI32439).
                               Only the samples with these library aliases are used if provided'
     - exclude (str | None): File with sample name or libraries to exclude from the release
-    - suffix (str): Indicates map for fastqs or datafiles in the output file name
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
     - timepoints (bool): Add time points column to sample map if True
@@ -651,12 +649,8 @@ def map_external_ids(args):
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
     
-    # get file information for release and eventually for files that should not be released
-    files, files_non_release = collect_files_for_release(provenance, args.project, args.workflow, args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
-    
-    # link files to project dir
-    if args.suffix == 'fastqs':
-        assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
+    # get raw sequence file info
+    files, files_non_release = collect_files_for_release(provenance, args.project, 'bcl2fastq', args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, 'fastqs')
     
     # get time points
     if args.timepoints:
@@ -666,8 +660,8 @@ def map_external_ids(args):
     
     # add time points
     for file_swid in files:
-        assert len(files[file_swid]['library']) == 0
-        library = files[file_swid]['library']
+        assert len(files[file_swid]['library']) == 1
+        library = files[file_swid]['library'][0]
         if library in time_points:
             files[file_swid]['time_point'] = time_points[library]
         else:
@@ -2902,14 +2896,12 @@ if __name__ == '__main__':
     m_parser.add_argument('-l', '--libraries', dest='libraries', help='Path to 1 or 2 columns tab-delimited file with library IDs.\
                           The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM). The second and optional column is the library aliquot ID (eg. LDI32439).\
                           Only the samples with these library aliases are used if provided')
-    m_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files', required = True)
     m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required=True)
     m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used')
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with sample name or libraries to exclude from the release')
-    m_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
     m_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to sample map if option is used. By default, time points are not added.')
     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
