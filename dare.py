@@ -230,7 +230,7 @@ def select_most_recent_workflow(files):
                 file_names[file_name] = [creation_time, file_swid]
         else:
             file_names[file_name] = [creation_time, file_swid]
-            
+      
     # select the most files
     D = {}
     # make a list of file swids to keep
@@ -274,14 +274,15 @@ def exclude_non_specified_runs(files, runs):
     '''    
     
     D = {}
-    exclude = [file_swid for file_swid in files if files[file_swid]['run_id'] not in runs]
+    exclude = [file_swid for file_swid in files if set(files[file_swid]['run_id']).intersection(set(runs)) != set(files[file_swid]['run_id'])]
+    
     for file_swid in files:
         if file_swid not in exclude:
             D[file_swid] = files[file_swid]        
     return D
     
 
-def exclude_non_specified_libraries(files, libraries):
+def exclude_non_specified_libraries(files, valid_libraries):
     '''
     (dict, dict) -> dict
 
@@ -290,25 +291,31 @@ def exclude_non_specified_libraries(files, libraries):
     Parameters
     ----------
     - files (dict) : Dictionary with file records obtained from parsing FPR
-    - libraries (dict): Dictionary with libraries tagged for release
+    - valid_libraries (dict): Dictionary with libraries tagged for release
     '''    
     
     D = {}
     exclude = []
     
     for file_swid in files:
-        library = files[file_swid]['library']
-        parent_sample = files[file_swid]['parent_sample']
-        aliquot = files[file_swid]['aliquot']
-        if library not in libraries and parent_sample not in libraries:
+        libraries = files[file_swid]['library']
+        if set(libraries).intersection(valid_libraries.keys()) != set(libraries):
             exclude.append(file_swid)
-        else:
-            if library in libraries:
-                if libraries[library] and libraries[library] != aliquot:
-                    exclude.append(file_swid)
-            elif parent_sample in libraries:
-                if libraries[parent_sample] and libraries[parent_sample] != aliquot:
-                    exclude.append(file_swid)
+        
+        
+        
+        # library = files[file_swid]['library']
+        # parent_sample = files[file_swid]['parent_sample']
+        # aliquot = files[file_swid]['aliquot']
+        # if library not in libraries and parent_sample not in libraries:
+        #     exclude.append(file_swid)
+        # else:
+        #     if library in libraries:
+        #         if libraries[library] and libraries[library] != aliquot:
+        #             exclude.append(file_swid)
+        #     elif parent_sample in libraries:
+        #         if libraries[parent_sample] and libraries[parent_sample] != aliquot:
+        #             exclude.append(file_swid)
                     
     for file_swid in files:
         if file_swid not in exclude:
@@ -332,21 +339,29 @@ def get_libraries_for_non_release(files, exclude):
     D = {}
     for file_swid in files:
         library = files[file_swid]['library']
-        if library  in exclude:
-            # check if run provided
-            if exclude[library]:
-                if exclude[library] == files[file_swid]['run_id']:
-                    D[file_swid] = files[file_swid]        
-            else:
-                D[file_swid] = files[file_swid]
+        if set(library).intersection(exclude.keys()):
+            exclude.append(file_swid)
+
+        # NEED TO CHECK RUN ID IF RUN ID IS SPECIFIED IN EXCLUDE FILE 
+        
+        
+        # if library  in exclude:
+        #     # check if run provided
+        #     if exclude[library]:
+        #         if exclude[library] == files[file_swid]['run_id']:
+        #             D[file_swid] = files[file_swid]        
+        #     else:
+        #         D[file_swid] = files[file_swid]
     return D
     
     
     
-def generate_links(files, release, project_name, projects_dir, suffix, **keywords):
+def generate_fastq_links(files, release, project_name, projects_dir, suffix, **keywords):
     '''
     (dict, bool, str, str, str, dict) -> None
     
+    Link fastq files to run directories under the project dir
+        
     Parameters
     ----------
     - files_release (dict): Dictionary with file information
@@ -361,15 +376,18 @@ def generate_links(files, release, project_name, projects_dir, suffix, **keyword
     os.makedirs(working_dir, exist_ok=True)
 
     for file_swid in files:
+        assert len(files[file_swid]['run_id']) == 1
+        run = files[file_swid]['run_id'][0]
         if 'run_name' in keywords and keywords['run_name']:
             run_name = keywords['run_name']
         else:
-            run_name = files[file_swid]['run_id'] + '.{0}.{1}'.format(project_name, suffix)
+            run_name = run + '.{0}.{1}'.format(project_name, suffix)
         if release == False:
             run_name += '.withold'
+        
         run_dir = os.path.join(working_dir, run_name)
+        
         os.makedirs(run_dir, exist_ok=True)
-        print('Linking files to folder {0}'.format(run_dir))
         filename = files[file_swid]['file_name']
         link = os.path.join(run_dir, filename)
         file = files[file_swid]['file_path']
@@ -392,13 +410,13 @@ def collect_md5sums(files):
     # create a dictionary {run: [md5sum, file_path]} 
     D = {}
     for file_swid in files:
-        run_name = files[file_swid]['run_id']
+        run_name = ';'.join(files[file_swid]['run_id'])
         md5 = files[file_swid]['md5']
         file_path = files[file_swid]['file_path']
         if run_name in D:
             D[run_name].append([md5, file_path])
         else:
-            D[run_name] = [md5, file_path]
+            D[run_name] = [[md5, file_path]]
     return D
 
 
@@ -457,7 +475,7 @@ def collect_files_for_release(provenance, project, workflow, prefix, release_fil
     
     # keep most recent workflows
     files = select_most_recent_workflow(files)
-    
+       
     # check if a list of valid file names is provided
     if release_files:
         infile = open(release_files)
@@ -472,20 +490,17 @@ def collect_files_for_release(provenance, project, workflow, prefix, release_fil
     # remove files sequenced on miseq if miseq runs are excluded
     if nomiseq:
         files = exclude_miseq_secords(files)
-        print('discarded MiSeq runs')
-    
+        
     # keep only files from specified runs
     if runs:
         files = exclude_non_specified_runs(files, runs)
-        print('Kept only specified runs')
-    
+        
     # keep only files for specified libraries
     # parse library file if exists 
     valid_libraries = get_libraries(libraries) if libraries else {}
     if valid_libraries:
         files = exclude_non_specified_libraries(files, valid_libraries)
-        print('kept only specified libraries')
-    
+        
     # find files corresponding to libraries tagged for non-release
     excluded_libraries = get_libraries(exclude) if exclude else {}
     if excluded_libraries:
@@ -532,16 +547,24 @@ def link_files(args):
     # link files to project dir
     if args.suffix == 'fastqs':
         assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
-    generate_links(files, True, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
-    # generate links for files to be witheld from release
-    if files_non_release:
-        generate_links(files_non_release, False, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+    
+    if args.workflow == 'bcl2fastq':
+        generate_fastq_links(files, True, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+        # generate links for files to be witheld from release
+        if files_non_release:
+            generate_fastq_links(files_non_release, False, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+    
+    
+    # NEED CODE TO LINK ANALYSIS FILES
+    
+    
     
     # write summary md5sums
     working_dir = os.path.join(args.projects_dir, args.project_name)
     os.makedirs(working_dir, exist_ok=True)
     # create a dictionary {run: [md5sum, file_path]} 
     md5sums = collect_md5sums(files)
+    
     for run_id in md5sums:
         print('Generating md5sums summary file for run {0}'.format(run_id))
         filename = run_id + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
