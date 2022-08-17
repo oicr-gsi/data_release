@@ -648,9 +648,12 @@ def map_external_ids(args):
 
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
+
+    # sample maps are generated using fastq-generating workflows
+    workflow, suffix = 'bcl2fastq', 'fastqs'
     
     # get raw sequence file info
-    files, files_non_release = collect_files_for_release(provenance, args.project, 'bcl2fastq', args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, 'fastqs')
+    files, files_non_release = collect_files_for_release(provenance, args.project, workflow, args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, suffix)
     
     # get time points
     if args.timepoints:
@@ -676,7 +679,7 @@ def map_external_ids(args):
     
     for run in sample_info:
         header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
-        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.txt'.format(run, args.project_name, args.suffix))
+        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.txt'.format(run, args.project_name, suffix))
         newfile = open(output_map, 'w')
         if args.timepoints:
            header.append('time_points')
@@ -684,11 +687,11 @@ def map_external_ids(args):
             header.append('panel')
         newfile.write('\t'.join(header) + '\n')
         for i in sample_info[run]:
-            line = i[:-2]
+            line = i
             if args.timepoints:
-                line.append(i[-2])
+                line.append(files[file_swid]['time_point'])
             if args.add_panel:
-                line.append(i[-1])
+                line.append(files[file_swid]['panel'])
             newfile.write('\t'.join(line) + '\n')
         newfile.close()
     print('Generated sample maps in {0}'.format(working_dir))
