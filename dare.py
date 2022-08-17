@@ -679,7 +679,7 @@ def map_external_ids(args):
     
     for run in sample_info:
         header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
-        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.txt'.format(run, args.project_name, suffix))
+        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.tsv'.format(run, args.project_name, suffix))
         newfile = open(output_map, 'w')
         if args.timepoints:
            header.append('time_points')
