@@ -356,7 +356,7 @@ def get_libraries_for_non_release(files, exclude):
     
     
     
-def generate_fastq_links(files, release, project_name, projects_dir, suffix, **keywords):
+def generate_links(files, release, project_name, projects_dir, suffix, **keywords):
     '''
     (dict, bool, str, str, str, dict) -> None
     
@@ -548,11 +548,10 @@ def link_files(args):
     if args.suffix == 'fastqs':
         assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
     
-    if args.workflow == 'bcl2fastq':
-        generate_fastq_links(files, True, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
-        # generate links for files to be witheld from release
-        if files_non_release:
-            generate_fastq_links(files_non_release, False, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+    generate_links(files, True, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+    # generate links for files to be witheld from release
+    if files_non_release:
+        generate_links(files_non_release, False, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
     
     
     # NEED CODE TO LINK ANALYSIS FILES
@@ -2816,6 +2815,7 @@ def mark_files_nabu(args):
 
     Parameters
     ----------    
+    - project (str): Name of Project in FPR
     - directory (str): Directory with links organized by project and run in gsi space 
     - status (str): Mark files accordingly when released or withheld. Valid options:
                      - pass: files that are released
@@ -2851,7 +2851,7 @@ def mark_files_nabu(args):
     # dereference FPR
     provenance = os.path.realpath(args.provenance)
     try:
-        records = get_FPR_records(run_id, provenance, 'run')
+        records = get_FPR_records(args.project, provenance)
     except:
         raise ValueError('Cannot find records for run {0} in FPR {1}'.format(run_id, provenance))
     else:
@@ -2915,6 +2915,7 @@ if __name__ == '__main__':
 
     # mark files in nabu 
     n_parser = subparsers.add_parser('mark', help="Mark released or withheld files in Nabu")
+    n_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project', required = True)
     n_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
     n_parser.add_argument('-s', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
