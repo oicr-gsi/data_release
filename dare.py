@@ -359,7 +359,31 @@ def get_libraries_for_non_release(files, exclude):
     
     
     
-def generate_links(files, release, project_name, projects_dir, suffix, **keywords):
+def create_working_dir(project, project_dir, project_name=None):
+    '''    
+    (str, str, str | None) -> str
+    
+    Creates and returns path to a sub-directory in project_dir named iether after project or after project_name if defined
+        
+    Parameters
+    ----------
+    - project (str): Project name as it appears in File Provenance Report.
+    - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
+    - project_name (str | None): Project name used to create the project directory in gsi space
+    '''
+    
+    # use project as project name if not specified
+    if project_name:
+        name = project_name
+    else:
+        name = project
+
+    working_dir = os.path.join(project_dir, name)
+    os.makedirs(working_dir, exist_ok=True)
+    return working_dir
+    
+
+def generate_links(files, release, project, working_dir, suffix, **keywords):
     '''
     (dict, bool, str, str, str, dict) -> None
     
@@ -369,22 +393,19 @@ def generate_links(files, release, project_name, projects_dir, suffix, **keyword
     ----------
     - files_release (dict): Dictionary with file information
     - release (bool): True if files were tagged for release and False otherwise
-    - project_name (str): Name of the project directory in projects_dir
-    - projects_dir (str): Path to the directory in gsi space containing project directories 
+    - project (str): Name of the project as it appears in FPR
+    - working_dir (str): Path to the project sub-directory in GSI space  
     - suffix (str): Indicates fastqs or datafiles
     - keywords (str): Optional run name parameter. Valid option: run_name
     '''
     
-    working_dir = os.path.join(projects_dir, project_name)
-    os.makedirs(working_dir, exist_ok=True)
-
     for file_swid in files:
         assert len(files[file_swid]['run_id']) == 1
         run = files[file_swid]['run_id'][0]
         if 'run_name' in keywords and keywords['run_name']:
             run_name = keywords['run_name']
         else:
-            run_name = run + '.{0}.{1}'.format(project_name, suffix)
+            run_name = run + '.{0}.{1}'.format(project, suffix)
         if release == False:
             run_name += '.withold'
         
@@ -471,7 +492,7 @@ def collect_files_for_release(provenance, project, workflow, prefix, release_fil
     
     # dereference link to FPR
     provenance = os.path.realpath(provenance)
-    
+
     # parse FPR records
     files = parse_fpr_records(provenance, project, workflow, prefix)
     print('Extracted files from File Provenance Report')
@@ -543,7 +564,10 @@ def link_files(args):
     
     if args.runs and args.libraries:
         sys.exit('-r and -l are exclusive parameters')
-        
+    
+    # create a working directory to link files and save md5sums 
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
     
@@ -553,11 +577,11 @@ def link_files(args):
     # link files to project dir
     if args.suffix == 'fastqs':
         assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
-    
-    generate_links(files, True, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+
+    generate_links(files, True, args.project, working_dir, args.suffix, run_name = args.run_name)
     # generate links for files to be witheld from release
     if files_non_release:
-        generate_links(files_non_release, False, args.project_name, args.projects_dir, args.suffix, run_name = args.run_name)
+        generate_links(files_non_release, False, args.project, working_dir, args.suffix, run_name = args.run_name)
     
     
     # NEED CODE TO LINK ANALYSIS FILES
@@ -565,14 +589,11 @@ def link_files(args):
     
     
     # write summary md5sums
-    working_dir = os.path.join(args.projects_dir, args.project_name)
-    os.makedirs(working_dir, exist_ok=True)
     # create a dictionary {run: [md5sum, file_path]} 
     md5sums = collect_md5sums(files)
-    
     for run_id in md5sums:
         print('Generating md5sums summary file for run {0}'.format(run_id))
-        filename = run_id + '.{0}.{1}.md5sums'.format(args.project_name, args.suffix)
+        filename = run_id + '.{0}.{1}.md5sums'.format(args.project, args.suffix)
         write_md5sums(os.path.join(working_dir, filename), md5sums[run_id])
     print('Files were extracted from FPR {0}'.format(provenance))
 
@@ -669,11 +690,6 @@ def map_external_ids(args):
     else:
         time_points = {}
     
-    
-    
-            
-    
-    
     # add time points
     for file_swid in files:
         assert len(files[file_swid]['library']) == 1
@@ -687,12 +703,10 @@ def map_external_ids(args):
     sample_info = group_sample_info_mapping(files)        
     
     # write sample maps
-    working_dir = os.path.join(args.projects_dir, args.project_name)
-    os.makedirs(working_dir, exist_ok=True)
-    
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     for run in sample_info:
         header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
-        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.tsv'.format(run, args.project_name, suffix))
+        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.tsv'.format(run, args.project, suffix))
         newfile = open(output_map, 'w')
         if args.timepoints:
            header.append('time_points')
