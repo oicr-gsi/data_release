@@ -383,9 +383,9 @@ def create_working_dir(project, project_dir, project_name=None):
     return working_dir
     
 
-def generate_links(files, release, project, working_dir, suffix, **keywords):
+def generate_links(files, release, project, working_dir, suffix):
     '''
-    (dict, bool, str, str, str, dict) -> None
+    (dict, bool, str, str, str) -> None
     
     Link fastq files to run directories under the project dir
         
@@ -396,16 +396,12 @@ def generate_links(files, release, project, working_dir, suffix, **keywords):
     - project (str): Name of the project as it appears in FPR
     - working_dir (str): Path to the project sub-directory in GSI space  
     - suffix (str): Indicates fastqs or datafiles
-    - keywords (str): Optional run name parameter. Valid option: run_name
     '''
     
     for file_swid in files:
         assert len(files[file_swid]['run_id']) == 1
         run = files[file_swid]['run_id'][0]
-        if 'run_name' in keywords and keywords['run_name']:
-            run_name = keywords['run_name']
-        else:
-            run_name = run + '.{0}.{1}'.format(project, suffix)
+        run_name = run + '.{0}.{1}'.format(project, suffix)
         if release == False:
             run_name += '.withold'
         
@@ -559,7 +555,6 @@ def link_files(args):
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
-    - run_name (str | None): Specifies the run folder name. Run Id or run.withhold as run folder name if not specified. 
     '''
     
     if args.runs and args.libraries:
@@ -578,10 +573,10 @@ def link_files(args):
     if args.suffix == 'fastqs':
         assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
 
-    generate_links(files, True, args.project, working_dir, args.suffix, run_name = args.run_name)
+    generate_links(files, True, args.project, working_dir, args.suffix)
     # generate links for files to be witheld from release
     if files_non_release:
-        generate_links(files_non_release, False, args.project, working_dir, args.suffix, run_name = args.run_name)
+        generate_links(files_non_release, False, args.project, working_dir, args.suffix)
     
     
     # NEED CODE TO LINK ANALYSIS FILES
@@ -2917,7 +2912,6 @@ if __name__ == '__main__':
     l_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     l_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
-    l_parser.add_argument('-rn', '--run_name', dest='run_name', help='Optional run name parameter. Replaces run ID and run.withhold folder names if used')
     l_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
     l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
     l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names of the files to be released')
