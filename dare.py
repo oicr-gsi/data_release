@@ -2907,7 +2907,7 @@ if __name__ == '__main__':
     l_parser = subparsers.add_parser('link', help="Link files extracted from FPR to gsi space")
     l_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     l_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files', required = True)
-    l_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required=True)
+    l_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     l_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     l_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
@@ -2923,7 +2923,7 @@ if __name__ == '__main__':
    	# map external IDs 
     m_parser = subparsers.add_parser('map', help="Map files to external IDs")
     m_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
-    m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required=True)
+    m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used')
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
