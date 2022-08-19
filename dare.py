@@ -20,21 +20,22 @@ import math
 import requests
 import gzip
 import io
+import sys
 
 
 def get_libraries(library_file):
     '''
     (str) -> dict
     
-    Returns a dictionary with library alias as key and library aliquot ID as value if 
-    provided in library_file or the empty string
+    Returns a dictionary with library, run key, value pairs, or a dictionary of library, empty string 
+    key, value pairs if runs are not specified. 
+    Note: runs need to be specified or missing for all libraries
     
     Parameters
     ----------
     - sample_file (str): Path to sample file. Sample file is a tab delimited file
                          that includes 1 or 2 columns. The first column is always 
-                         the library alias (TGL17_0009_Ct_T_PE_307_CM).
-                         The second and optional column is the library aliquot ID (eg. LDI32439)
+                         the library alias, and the second optional column is run id
     '''
     D = {}
     
@@ -48,8 +49,14 @@ def get_libraries(library_file):
             elif len(line) == 2:
                 D[line[0]] = line[1]
     infile.close()
-    return D
+
+    L = list(D.values())
+    # check that run id is specified or missing for all libraries
+    if not (all(map(lambda x: x != '', L)) or all(map(lambda x: x == '', L))):
+        raise ValueError('Run id must be specified or absent for all libraries')    
     
+    return D
+
 
 def get_FPR_records(project, provenance):
     '''
@@ -296,27 +303,20 @@ def exclude_non_specified_libraries(files, valid_libraries):
     
     D = {}
     exclude = []
+
+    # make a list of valid runs if runs are specified in valid_libraries
+    valid_runs = list(valid_libraries.values())
     
     for file_swid in files:
         libraries = files[file_swid]['library']
         if set(libraries).intersection(valid_libraries.keys()) != set(libraries):
             exclude.append(file_swid)
+        # check if runs are defined
+        if all(valid_runs):
+            runs = files[file_swid]['run_id']
+            if set(runs).intersection(set(valid_runs)) != set(runs):
+                exclude.append(file_swid)
         
-        
-        
-        # library = files[file_swid]['library']
-        # parent_sample = files[file_swid]['parent_sample']
-        # aliquot = files[file_swid]['aliquot']
-        # if library not in libraries and parent_sample not in libraries:
-        #     exclude.append(file_swid)
-        # else:
-        #     if library in libraries:
-        #         if libraries[library] and libraries[library] != aliquot:
-        #             exclude.append(file_swid)
-        #     elif parent_sample in libraries:
-        #         if libraries[parent_sample] and libraries[parent_sample] != aliquot:
-        #             exclude.append(file_swid)
-                    
     for file_swid in files:
         if file_swid not in exclude:
             D[file_swid] = files[file_swid]        
@@ -335,23 +335,26 @@ def get_libraries_for_non_release(files, exclude):
     - files (dict) : Dictionary with file records obtained from parsing FPR
     - exclude (dict): Dictionary with libraries tagged for non-release
     '''    
+
+    # make a list of runs to be excluded
+    exclude_runs = list(exclude.values())
+    
+    # make a list of files to exclude
+    L = []
     
     D = {}
     for file_swid in files:
         library = files[file_swid]['library']
         if set(library).intersection(exclude.keys()):
-            exclude.append(file_swid)
-
-        # NEED TO CHECK RUN ID IF RUN ID IS SPECIFIED IN EXCLUDE FILE 
-        
-        
-        # if library  in exclude:
-        #     # check if run provided
-        #     if exclude[library]:
-        #         if exclude[library] == files[file_swid]['run_id']:
-        #             D[file_swid] = files[file_swid]        
-        #     else:
-        #         D[file_swid] = files[file_swid]
+            L.append(file_swid)
+        # check if runs are defined
+        if all(exclude_runs):
+            runs = files[file_swid]['run_id']
+            if set(runs).intersection(set(exclude_runs)):
+                L.append(file_swid)
+        if file_swid in L:
+            D[file_swid] = files[file_swid]
+    
     return D
     
     
@@ -538,6 +541,9 @@ def link_files(args):
     - run_name (str | None): Specifies the run folder name. Run Id or run.withhold as run folder name if not specified. 
     '''
     
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')
+        
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
     
@@ -645,6 +651,9 @@ def map_external_ids(args):
     - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
     '''
 
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')
+    
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
 
@@ -659,6 +668,11 @@ def map_external_ids(args):
         time_points = get_time_points(extract_sample_info(args.sample_provenance))
     else:
         time_points = {}
+    
+    
+    
+            
+    
     
     # add time points
     for file_swid in files:
@@ -2484,7 +2498,7 @@ def get_time_points(sample_information):
             D[sample].extend(time_point)
         else:
             D[sample] = time_point
-    
+        
     for i in D:
         D[i] = ';'.join(sorted(list(set(D[i]))))
         if not D[i]:
@@ -2877,9 +2891,7 @@ if __name__ == '__main__':
     
    	# link files in gsi space 
     l_parser = subparsers.add_parser('link', help="Link files extracted from FPR to gsi space")
-    l_parser.add_argument('-l', '--libraries', dest='libraries', help='Path to 1 or 2 columns tab-delimited file with library IDs.\
-                          The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM). The second and optional column is the library aliquot ID (eg. LDI32439).\
-                          Only the samples with these library aliases are used if provided')
+    l_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     l_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files', required = True)
     l_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required=True)
     l_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
@@ -2887,24 +2899,22 @@ if __name__ == '__main__':
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     l_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     l_parser.add_argument('-rn', '--run_name', dest='run_name', help='Optional run name parameter. Replaces run ID and run.withhold folder names if used')
-    l_parser.add_argument('-e', '--exclude', dest='exclude', help='File with sample name or libraries to exclude from the release')
+    l_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
     l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
-    l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
+    l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names of the files to be released')
     l_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     l_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
     m_parser = subparsers.add_parser('map', help="Map files to external IDs")
-    m_parser.add_argument('-l', '--libraries', dest='libraries', help='Path to 1 or 2 columns tab-delimited file with library IDs.\
-                          The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM). The second and optional column is the library aliquot ID (eg. LDI32439).\
-                          Only the samples with these library aliases are used if provided')
+    m_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required=True)
     m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used')
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
-    m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with sample name or libraries to exclude from the release')
+    m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
     m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
     m_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to sample map if option is used. By default, time points are not added.')
     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
