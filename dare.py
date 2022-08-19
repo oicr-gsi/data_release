@@ -589,12 +589,16 @@ def link_files(args):
     
     
     # write summary md5sums
-    # create a dictionary {run: [md5sum, file_path]} 
-    md5sums = collect_md5sums(files)
-    for run_id in md5sums:
-        print('Generating md5sums summary file for run {0}'.format(run_id))
-        filename = run_id + '.{0}.{1}.md5sums'.format(args.project, args.suffix)
-        write_md5sums(os.path.join(working_dir, filename), md5sums[run_id])
+    # create a dictionary {run: [md5sum, file_path]}
+    current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
+    outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.md5sums'.format(args.project, current_time, args.suffix))
+    newfile = open(outputfile, 'w')
+    for file_swid in files:
+        md5 = files[file_swid]['md5']
+        file_path = files[file_swid]['file_path']
+        newfile.write('\t'.join([file_path, md5]) + '\n')
+    newfile.close()
+    
     print('Files were extracted from FPR {0}'.format(provenance))
 
 
@@ -704,23 +708,24 @@ def map_external_ids(args):
     
     # write sample maps
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
+    outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
+    newfile = open(outputfile, 'w')
+    header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
+    if args.timepoints:
+       header.append('time_points')
+    if args.add_panel:
+        header.append('panel')
+    newfile.write('\t'.join(header) + '\n')
+    
     for run in sample_info:
-        header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
-        output_map = os.path.join(working_dir, '{0}.{1}.{2}.map.tsv'.format(run, args.project, suffix))
-        newfile = open(output_map, 'w')
-        if args.timepoints:
-           header.append('time_points')
-        if args.add_panel:
-            header.append('panel')
-        newfile.write('\t'.join(header) + '\n')
         for i in sample_info[run]:
-            line = i
             if args.timepoints:
-                line.append(files[file_swid]['time_point'])
+                i.append(files[file_swid]['time_point'])
             if args.add_panel:
-                line.append(files[file_swid]['panel'])
-            newfile.write('\t'.join(line) + '\n')
-        newfile.close()
+                i.append(files[file_swid]['panel'])
+            newfile.write('\t'.join(list(map(lambda x: str(x), i))) + '\n')
+    newfile.close()
     print('Generated sample maps in {0}'.format(working_dir))
     print('Information was extracted from FPR {0}'.format(provenance))
 
