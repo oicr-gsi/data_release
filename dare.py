@@ -632,7 +632,7 @@ def group_sample_info_mapping(files):
         assert len(files[file_swid]['groupid']) == 1
         group_id = files[file_swid]['groupid'][0]
               
-        L = [sample, library, library_source, tissue_type, tissue_origin, run, barcode, external_id, group_id, group_description] 
+        L = [sample, external_id, library, library_source, tissue_type, tissue_origin, run, barcode, group_id, group_description] 
         
         if run_id not in D:
             D[run_id] = []
@@ -706,7 +706,7 @@ def map_external_ids(args):
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
     newfile = open(outputfile, 'w')
-    header = ['sample', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'external_id', 'group_id', 'group_description']
+    header = ['sample', 'sample_id', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'group_id', 'group_description']
     if args.timepoints:
        header.append('time_points')
     if args.add_panel:
