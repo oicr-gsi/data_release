@@ -597,9 +597,9 @@ def link_files(args):
     print('Files were extracted from FPR {0}'.format(provenance))
 
 
-def group_sample_info_mapping(files):
+def group_sample_info_mapping(files, add_time_points, add_panel):
     '''
-    (dict) -> dict    
+    (dict, dict, bool, bool) -> dict    
     
     Returns a dictionary of sample information organized by run
         
@@ -612,6 +612,7 @@ def group_sample_info_mapping(files):
     D = {}
     
     for file_swid in files:
+        file_path = files[file_swid]['file_path']
         assert len(files[file_swid]['run']) == 1
         run = files[file_swid]['run'][0]
         assert len(files[file_swid]['run_id']) == 1
@@ -631,13 +632,25 @@ def group_sample_info_mapping(files):
         group_description = files[file_swid]['groupdesc'][0]
         assert len(files[file_swid]['groupid']) == 1
         group_id = files[file_swid]['groupid'][0]
-              
-        L = [sample, external_id, library, library_source, tissue_type, tissue_origin, run, barcode, group_id, group_description] 
+        panel = files[file_swid]['panel']
+        timepoint = files[file_swid]['time_point']
         
-        if run_id not in D:
-            D[run_id] = []
-        if L not in D[run_id]:
-            D[run_id].append(L)
+        # group files by sample, library, run and lane
+        key = '_'.join([sample, library, run])
+        
+        
+        L = [sample, external_id, library, library_source, tissue_type, tissue_origin, run, barcode, group_id, group_description]
+        if add_time_points:
+            L.append(timepoint)
+        if add_panel:
+            L.append(panel)
+            
+        if key not in D:
+            D[key] = {'info': L, 'files': [file_path]}
+        else:
+            assert D[key]['info'] == L
+            D[key]['files'].append(file_path)
+        
     return D            
 
 
@@ -684,11 +697,7 @@ def map_external_ids(args):
     files, files_non_release = collect_files_for_release(provenance, args.project, workflow, args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, suffix)
     
     # get time points
-    if args.timepoints:
-        time_points = get_time_points(extract_sample_info(args.sample_provenance))
-    else:
-        time_points = {}
-    
+    time_points = get_time_points(extract_sample_info(args.sample_provenance))
     # add time points
     for file_swid in files:
         assert len(files[file_swid]['library']) == 1
@@ -699,27 +708,26 @@ def map_external_ids(args):
             files[file_swid]['time_point'] = 'NA'
     
     # group sample information by run            
-    sample_info = group_sample_info_mapping(files)        
+    sample_info = group_sample_info_mapping(files, args.timepoints, args.add_panel)        
     
     # write sample maps
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
     newfile = open(outputfile, 'w')
-    header = ['sample', 'sample_id', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'group_id', 'group_description']
+    header = ['sample', 'sample_id', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'group_id', 'group_description', 'files']
     if args.timepoints:
-       header.append('time_points')
+       #header.append('time_points')
+       header.insert(-1, 'time_points')  
     if args.add_panel:
-        header.append('panel')
+        #header.append('panel')
+        header.insert(-1, 'panel')
     newfile.write('\t'.join(header) + '\n')
-    
-    for run in sample_info:
-        for i in sample_info[run]:
-            if args.timepoints:
-                i.append(files[file_swid]['time_point'])
-            if args.add_panel:
-                i.append(files[file_swid]['panel'])
-            newfile.write('\t'.join(list(map(lambda x: str(x), i))) + '\n')
+    for k in sample_info:
+        files = ';'.join(list(map(lambda x: os.path.basename(x), sample_info[k]['files'])))
+        info = sample_info[k]['info']
+        info.append(files)        
+        newfile.write('\t'.join(list(map(lambda x: str(x), info))) + '\n')
     newfile.close()
     print('Generated sample maps in {0}'.format(working_dir))
     print('Information was extracted from FPR {0}'.format(provenance))
