@@ -21,6 +21,7 @@ import requests
 import gzip
 import io
 import sys
+import json
 
 
 def get_libraries(library_file):
@@ -90,21 +91,16 @@ def get_FPR_records(project, provenance):
 
 def parse_fpr_records(provenance, project, workflow, prefix=None):
     '''
-    (str, str, list, str, bool, dict, list, list, str | None) -> (dict, dict, dict)
+    (str, str, list, str | None) -> dict
   
-    Returns a tuple with dictionaries with files extracted from FPR and their corresponding run
-    respectively from release and withheld from release, and a dictionary with md5sums of the release files.
-    Returns the files corresponding to the most recent workflow iteration if duplicate files
+    Returns a dictionary with file info extracted from FPR for a given project 
+    and a given workflow if workflow is speccified. 
             
     Parameters
     ----------
     - provenance (str): Path to File Provenance Report
-    - project (str): Project name as it appears in File Provenance Report or empty string.
-                     Used to parse the FPR by project. Files are further filtered
-                     by run is runs parameter if provided, or all files for
-                     the project and workflow are used
-    - workflow (str): Worflow used to generate the output files
-    - files_release (list): List of file names to release
+    - project (str): Project name as it appears in File Provenance Report. 
+    - workflow (list): List of workflows used to generate the output files.
     - prefix (str | None): Prefix used to recover file full paths when File Provevance contains relative paths.
     '''
     
@@ -118,15 +114,21 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
     for i in records:
         # keep records for project
         if project == i[1]:
+            pipeline_workflow = i[30]
             # check workflow
-            if workflow == 'bcl2fastq':
-                # skip if not fastq-related workflows    
-                if i[30].lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
-                    continue
+            if len(workflow) == 1:
+                if workflow[0] == 'bcl2fastq':
+                    # skip if not fastq-related workflows    
+                    if pipeline_workflow.lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
+                        continue
+                else:
+                    # skip if not provided workflow
+                    if workflow[0].lower() != pipeline_workflow.lower():
+                        continue
             else:
-                # skip if not provided workflow
-                if workflow.lower() != i[30].lower():
+                if pipeline_workflow.lower() not in list(map(lambda x: x.lower(), workflow)):
                     continue
+            
             # get file path
             if prefix:
                 file_path = os.path.join(prefix, i[46])
@@ -147,11 +149,12 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
             # record platform
             platform = i[22]
             
-            
             # get md5sum
             md5 = i[47]
             # get workdlow swid
             workflow_run_id = i[36]
+            # get workflow version
+            workflow_version = i[31]
             # get file swid
             file_swid = i[44]
   
@@ -183,9 +186,10 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                     # removes misannotations
                     geo[j] = geo[j].replace('&2011-04-19', '').replace('2011-04-19&', '')
                    
-            d = {'workflow': i[30], 'file_path': file_path, 'file_name': file_name,
+            d = {'workflow': pipeline_workflow, 'file_path': file_path, 'file_name': file_name,
                  'sample_name': sample_name, 'creation_date': creation_date, 'platform': platform,
-                 'md5': md5, 'workflow_run_id': workflow_run_id, 'file_swid': file_swid, 'external_name': geo['geo_external_name'],
+                 'md5': md5, 'workflow_run_id': workflow_run_id, 'workflow_version': workflow_version,
+                 'file_swid': file_swid, 'external_name': geo['geo_external_name'],
                  'panel': geo['geo_targeted_resequencing'], 'library_source': geo['geo_library_source_template_type'],
                  'parent_sample': [parent_sample], 'run_id': [run_id], 'run': [run],
                  'limskey': [limskey], 'aliquot': [aliquot], 'library': [library],
@@ -399,6 +403,8 @@ def generate_links(files, release, project, working_dir, suffix):
     '''
     
     for file_swid in files:
+        if len(files[file_swid]['run_id']) != 1:
+            sys.exit('Use parameter -a to specify how files should be linked')
         assert len(files[file_swid]['run_id']) == 1
         run = files[file_swid]['run_id'][0]
         run_name = run + '.{0}.{1}'.format(project, suffix)
@@ -413,6 +419,36 @@ def generate_links(files, release, project, working_dir, suffix):
         file = files[file_swid]['file_path']
         if os.path.isfile(link) == False:
             os.symlink(file, link)
+
+
+
+def link_pipeline_data(pipeline_data, working_dir):
+    '''
+    (dict, str) -> None
+    
+    Link pipeline files according to hierarchy encoded in pipeline_data structure under working_dir
+        
+    Parameters
+    ----------
+    - pipeline_data (dict): Dictionary with files for each sample and workflow
+    - working_dir (str): Path to the project sub-directory in GSI space  
+    '''
+      
+    for sample_name in pipeline_data:
+        sample_dir = os.path.join(working_dir, sample_name)
+        os.makedirs(sample_dir, exist_ok=True)
+        
+        # create sample dir
+        for workflow_name in pipeline_data[sample_name]:
+            # create workflow dir
+            workflow_dir = os.path.join(sample_dir, workflow_name)
+            os.makedirs(workflow_dir, exist_ok=True)
+            for i in pipeline_data[sample_name][workflow_name]:
+                file = i[0]
+                filename = os.path.basename(file)
+                link = os.path.join(workflow_dir, filename)
+                if os.path.isfile(link) == False:
+                    os.symlink(file, link)
 
 
 
@@ -460,20 +496,16 @@ def exclude_non_specified_files(files, file_names):
     return D
 
 
-def collect_files_for_release(provenance, project, workflow, prefix, release_files, nomiseq, runs, libraries, exclude, suffix):
+def collect_files_for_release(files, release_files, nomiseq, runs, libraries, exclude, suffix):
     '''
-    (str, str, str, str | None, str | None, bool, list | None, str | None, str | None, str) -> (dict, dict)
+    (dict, str | None, bool, list | None, str | None, str | None, str) -> (dict, dict)
     
     Returns dictionaries with file records for files tagged for release and files that should not be released, if any, or an empty dictionary.
         
     Parameters
     ----------
-    - provenance (str): Path to File Provenance Report.
+    - files (str): Dictionary with file records for a entire project or a specific workflow for a given project
                         Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
-    - project (str): Project name as it appears in File Provenance Report.
-    - workflow (str): Worflow used to generate the output files
-    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
-                           Prefix is added to the relative path in FPR to determine the full file path.
     - release_files (str | None): Path to file with file names to be released 
     - nomiseq (bool): Exclude MiSeq runs if True
     - runs (list | None): List of run IDs. Include one or more run Id separated by white space.
@@ -485,13 +517,6 @@ def collect_files_for_release(provenance, project, workflow, prefix, release_fil
     - exclude (str | None): File with sample name or libraries to exclude from the release
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     '''
-    
-    # dereference link to FPR
-    provenance = os.path.realpath(provenance)
-
-    # parse FPR records
-    files = parse_fpr_records(provenance, project, workflow, prefix)
-    print('Extracted files from File Provenance Report')
     
     # keep most recent workflows
     files = select_most_recent_workflow(files)
@@ -531,6 +556,42 @@ def collect_files_for_release(provenance, project, workflow, prefix, release_fil
     return files, files_non_release
 
 
+def get_pipeline_data(data_structure, files):
+    '''
+    (dict, dict)    
+    
+    Returns a dictionary with the files for each sample and workflow specified in the data_structure
+    
+    Parameters
+    ----------
+    - data_structure (str): Dictionary with samples, workflows and workflow_run_id hierarchical structure
+    - files (dict): Dictionary with all file records for a given project extracted from FPR
+    '''
+
+    
+    D = {}
+    
+    for file_swid in files:
+        sample = files[file_swid]['sample_name']
+        workflow = files[file_swid]['workflow']
+        if sample in data_structure:
+            if workflow in data_structure[sample]:
+                if files[file_swid]['workflow_version'] == data_structure[sample][workflow]['workflow_version']:
+                    # get workflow run id
+                    if files[file_swid]['workflow_run_id'] == data_structure[sample][workflow]['workflow_id']:
+                        if sample not in D:
+                            D[sample] = {}
+                        if 'name' in data_structure[sample][workflow]:
+                            workflow_name = data_structure[sample][workflow]['name']
+                        else:
+                            workflow_name = workflow
+                        if workflow_name not in D[sample]:
+                            D[sample][workflow_name] = []
+                        D[sample][workflow_name].append([files[file_swid]['file_path'], files[file_swid]['md5']])
+    
+    return D                        
+                        
+    
 def link_files(args):
     '''
     (str, str, str, str | None, str | None, bool, list | None, str | None, str | None, str, str, str, str | None)
@@ -555,45 +616,79 @@ def link_files(args):
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
+    - analysis (str): Path to file with json structure of samples, workflows, workflow run ids hierarchy
     '''
     
     if args.runs and args.libraries:
         sys.exit('-r and -l are exclusive parameters')
-    
+
+    if args.analysis and args.workflow:
+        sys.exit('-w and -a are exclusive parameters. Specify a single worklow or use a json structure to collect files')
+    if not args.analysis:
+        if not args.workflow:
+            sys.exit('Use -w to specify the workflow')
+    if not args.workflow:
+        if not args.analysis:
+            sys.exit('Use -a to indicate the pipeline workflows')
+   
     # create a working directory to link files and save md5sums 
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    
-    # get file information for release and eventually for files that should not be released
-    files, files_non_release = collect_files_for_release(provenance, args.project, args.workflow, args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
-    
-    # link files to project dir
-    if args.suffix == 'fastqs':
-        assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
 
-    generate_links(files, True, args.project, working_dir, args.suffix)
-    # generate links for files to be witheld from release
-    if files_non_release:
-        generate_links(files_non_release, False, args.project, working_dir, args.suffix)
+    if args.workflow:
+        if not args.suffix:
+            sys.exit('Suffix -s is required')
+        # parse FPR records
+        files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
+        print('Extracted files from File Provenance Report')
+        # get file information for release and eventually for files that should not be released
+        files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
+        # link files to project dir
+        if args.suffix == 'fastqs':
+            assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
+        generate_links(files, True, args.project, working_dir, args.suffix)
+        # generate links for files to be witheld from release
+        if files_non_release:
+            generate_links(files_non_release, False, args.project, working_dir, args.suffix)
     
-    
-    # NEED CODE TO LINK ANALYSIS FILES
-    
-    
+    elif args.analysis:
+        infile = open(args.analysis)
+        data_structure = json.load(infile)
+        infile.close()
+        
+        # parse FPR records
+        # make a list of workflows
+        workflows = []
+        for i in data_structure:
+            workflows.extend(list(data_structure[i].keys()))
+        workflows = list(set(workflows))    
+        files = parse_fpr_records(provenance, args.project, workflows, args.prefix)
+        print('Extracted files from File Provenance Report')
+        pipeline_data = get_pipeline_data(data_structure, files)
+        link_pipeline_data(pipeline_data, working_dir)
     
     # write summary md5sums
     # create a dictionary {run: [md5sum, file_path]}
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
-    outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.md5sums'.format(args.project, current_time, args.suffix))
-    newfile = open(outputfile, 'w')
-    for file_swid in files:
-        md5 = files[file_swid]['md5']
-        file_path = files[file_swid]['file_path']
-        newfile.write('\t'.join([file_path, md5]) + '\n')
-    newfile.close()
+    if args.workflow:
+        outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.md5sums'.format(args.project, current_time, args.suffix))
+        newfile = open(outputfile, 'w')
+        for file_swid in files:
+            md5 = files[file_swid]['md5']
+            file_path = files[file_swid]['file_path']
+            newfile.write('\t'.join([file_path, md5]) + '\n')
+        newfile.close()
     
+    elif args.analysis:
+        outputfile = os.path.join(working_dir, '{0}.release.{1}.pipeline.md5sums'.format(args.project, current_time))
+        newfile = open(outputfile, 'w')
+        for sample in pipeline_data:
+            for workflow_name in pipeline_data[sample]:
+                for i in pipeline_data[sample][workflow_name]:
+                    newfile.write('\t'.join([i[0], i[1]]) + '\n')
+        newfile.close()
     print('Files were extracted from FPR {0}'.format(provenance))
 
 
@@ -693,8 +788,15 @@ def map_external_ids(args):
     # sample maps are generated using fastq-generating workflows
     workflow, suffix = 'bcl2fastq', 'fastqs'
     
+    # create a working directory to link files and save md5sums 
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    
+    # parse FPR records
+    files = parse_fpr_records(provenance, args.project, [workflow], args.prefix)
+    print('Extracted files from File Provenance Report')
+    
     # get raw sequence file info
-    files, files_non_release = collect_files_for_release(provenance, args.project, workflow, args.prefix, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, suffix)
+    files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
     
     # get time points
     time_points = get_time_points(extract_sample_info(args.sample_provenance))
@@ -2914,17 +3016,18 @@ if __name__ == '__main__':
    	# link files in gsi space 
     l_parser = subparsers.add_parser('link', help="Link files extracted from FPR to gsi space")
     l_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
-    l_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files', required = True)
+    l_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files')
     l_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     l_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     l_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     l_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     l_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
-    l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name.', required=True)
+    l_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name')
     l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names of the files to be released')
     l_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz')
     l_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
+    l_parser.add_argument('-a', '--analysis', dest='analysis', help='Path to the file with hierarchical structure storing sample and workflow ids')
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
