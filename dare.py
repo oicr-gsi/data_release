@@ -446,7 +446,11 @@ def link_pipeline_data(pipeline_data, working_dir):
             os.makedirs(workflow_dir, exist_ok=True)
             for i in pipeline_data[sample_name][workflow_name]:
                 file = i['file_path']
-                filename = os.path.basename(file)
+                if 'file_name' in i:
+                    # use new file name to name link
+                    filename = i['file_name']
+                else:
+                    filename = os.path.basename(file)
                 link = os.path.join(workflow_dir, filename)
                 if os.path.isfile(link) == False:
                     os.symlink(file, link)
@@ -600,6 +604,17 @@ def get_pipeline_data(data_structure, files):
                             # files are collected based on file name
                             if os.path.basename(files[file_swid]['file_path']) in list(map(lambda x: os.path.basename(x),  data_structure[sample][workflow]['files'])):
                                 D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
+                        elif 'rename_files' in data_structure[sample][workflow]:
+                            # files are collected based on file name and renamed
+                            # make a list of file names
+                            file_paths = list(map(lambda x: os.path.basename(x), [i['file_path'] for i in data_structure[sample][workflow]['rename_files']]))
+                            file_names = [i['file_name'] for i in data_structure[sample][workflow]['rename_files']]
+                            if os.path.basename(files[file_swid]['file_path']) in file_paths:
+                                # collect file path, md5 and new file name used to name the link
+                                j = file_paths.index(os.path.basename(files[file_swid]['file_path']))
+                                D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'],
+                                                                 'md5': files[file_swid]['md5'],
+                                                                 'file_name': file_names[j]})
                         else:
                             D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
     
