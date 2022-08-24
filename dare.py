@@ -22,6 +22,7 @@ import gzip
 import io
 import sys
 import json
+import pathlib
 
 
 def get_libraries(library_file):
@@ -444,7 +445,7 @@ def link_pipeline_data(pipeline_data, working_dir):
             workflow_dir = os.path.join(sample_dir, workflow_name)
             os.makedirs(workflow_dir, exist_ok=True)
             for i in pipeline_data[sample_name][workflow_name]:
-                file = i[0]
+                file = i['file_path']
                 filename = os.path.basename(file)
                 link = os.path.join(workflow_dir, filename)
                 if os.path.isfile(link) == False:
@@ -587,7 +588,20 @@ def get_pipeline_data(data_structure, files):
                             workflow_name = workflow
                         if workflow_name not in D[sample]:
                             D[sample][workflow_name] = []
-                        D[sample][workflow_name].append([files[file_swid]['file_path'], files[file_swid]['md5']])
+                        
+                        # check which files are collected
+                        if 'extension' in data_structure[sample][workflow]:
+                            # files are collected based on file extension
+                            # get the file extension
+                            extension = pathlib.Path(files[file_swid]['file_path']).suffix
+                            if extension in data_structure[sample][workflow]['extension']:
+                                D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
+                        elif 'files' in data_structure[sample][workflow]:
+                            # files are collected based on file name
+                            if os.path.basename(files[file_swid]['file_path']) in list(map(lambda x: os.path.basename(x),  data_structure[sample][workflow]['files'])):
+                                D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
+                        else:
+                            D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
     
     return D                        
                         
@@ -687,7 +701,7 @@ def link_files(args):
         for sample in pipeline_data:
             for workflow_name in pipeline_data[sample]:
                 for i in pipeline_data[sample][workflow_name]:
-                    newfile.write('\t'.join([i[0], i[1]]) + '\n')
+                    newfile.write('\t'.join([i['file_path'], i['md5']]) + '\n')
         newfile.close()
     print('Files were extracted from FPR {0}'.format(provenance))
 
