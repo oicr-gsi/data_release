@@ -760,7 +760,7 @@ def group_sample_info_mapping(files, add_time_points, add_panel):
         timepoint = files[file_swid]['time_point']
         
         # group files by sample, library, run and lane
-        key = '_'.join([sample, library, run])
+        key = '_'.join([sample, library, run, barcode])
         
         
         L = [sample, external_id, library, library_source, tissue_type, tissue_origin, run, barcode, group_id, group_description]
@@ -825,7 +825,7 @@ def map_external_ids(args):
     print('Extracted files from File Provenance Report')
     
     # get raw sequence file info
-    files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
+    files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, suffix)
     
     # get time points
     time_points = get_time_points(extract_sample_info(args.sample_provenance))
