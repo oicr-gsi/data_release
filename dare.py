@@ -170,6 +170,8 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
             run_id = i[18]
             # get run
             run = i[23]   
+            # get lane
+            lane = i[24]
             # get barcode
             barcode = i[27]  
           
@@ -186,7 +188,17 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                 if j == 'geo_group_id':
                     # removes misannotations
                     geo[j] = geo[j].replace('&2011-04-19', '').replace('2011-04-19&', '')
-                   
+       
+            read_count = i[45]
+            if read_count:
+                read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
+            if 'read_count' in read_count:
+                read_count = int(read_count['read_count'])
+            else:
+                read_count = -1
+       
+            sample_id = sample_name + '_' + geo['geo_tissue_origin']+ '_' + geo['geo_tissue_type'] + '_' + geo['geo_library_source_template_type'] + '_' + geo['geo_group_id']
+         
             d = {'workflow': pipeline_workflow, 'file_path': file_path, 'file_name': file_name,
                  'sample_name': sample_name, 'creation_date': creation_date, 'platform': platform,
                  'md5': md5, 'workflow_run_id': workflow_run_id, 'workflow_version': workflow_version,
@@ -196,12 +208,15 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                  'limskey': [limskey], 'aliquot': [aliquot], 'library': [library],
                  'barcode': [barcode], 'tissue_type': [geo['geo_tissue_type']],
                  'tissue_origin': [geo['geo_tissue_origin']], 'groupdesc': [geo['geo_group_id_description']],
-                 'groupid': [geo['geo_group_id']]}
+                 'groupid': [geo['geo_group_id']], 'read_count': read_count, 'sample_id': [sample_id], 'lane': [lane]}
             
             if file_swid not in D:
                 D[file_swid] = d
             else:
+                assert D[file_swid]['file_path'] == file_path
                 assert D[file_swid]['external_name'] == geo['geo_external_name']
+                assert D[file_swid]['read_count'] == read_count
+                D[file_swid]['sample_id'].append(sample_id)
                 D[file_swid]['parent_sample'].append(parent_sample)
                 D[file_swid]['run_id'].append(run_id)
                 D[file_swid]['run'].append(run)
@@ -213,6 +228,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                 D[file_swid]['tissue_origin'].append(geo['geo_tissue_origin'])
                 D[file_swid]['groupdesc'].append(geo['geo_group_id_description'])
                 D[file_swid]['groupid'].append(geo['geo_group_id'])
+                D[file_swid]['lane'].append(lane)
                        
     return D    
         
@@ -788,7 +804,6 @@ def map_external_ids(args):
     Parameters
     ----------    
     - provenance (str): Path to File Provenance Report.
-                        Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
     - project (str): Project name as it appears in File Provenance Report.
     - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
                            Prefix is added to the relative path in FPR to determine the full file path.
@@ -886,28 +901,6 @@ def list_files_release_folder(directories):
 
 
 
-def map_filename_workflow_accession(files):
-    '''
-    (list) -> dict
-    
-    Returns a dictionary mapping the file name of the released fastqs to the
-    workflow accession that generated them
-    
-    Parameters
-    ---------
-    - files (list): List of full paths to the released fastqs 
-    '''
-    
-    # map file names to their workflow accession
-    file_names = {}
-    for file in files:
-        filename = os.path.basename(file)
-        workflow_accession = get_workflow_id(file)
-        assert filename not in file_names
-        file_names[filename] = workflow_accession
-    return file_names
-
-
 def is_gzipped(file):
     '''
     (str) -> bool
@@ -928,88 +921,6 @@ def is_gzipped(file):
     else:
         return False
   
-
-
-
-def collect_info_fastqs(records, prefix = None):
-    '''
-    (list, str | None) -> dict
-    
-    Returns a dictionary with relevant information for fastqs by parsing the
-    File Provenance Report for a given project 
-    
-    Parameters
-    ----------
-    - records (list): Project level records from File Provenance Report
-    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
-                           Prefix is added to the relative path in FPR to determine the full file path.
-    '''
-    
-    # initiate dict
-    D = {}
-    
-    # loop through each record. each individual record is a list of fields 
-    for i in records:
-        # only consider workflows generating fastqs
-        if i[30].lower() in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
-            # get file path
-            if prefix:
-                file = os.path.join(prefix, i[46])
-            else:
-                file = i[46]
-            # get workflow accession from file path
-            workflow_accession = get_workflow_id(file)
-            # get file name
-            filename = os.path.basename(file)
-            # get md5sum, file SWID (unique file identifier) and get the lane of the flow cell
-            md5sum, file_swid, lane = i[47], i[44], i[24]
-            # get the run ID
-            run = i[23]
-            # remove lane from run
-            run_alias = run[:run.index('_lane')]
-            # get read count
-            read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
-            read_count = int(read_count['read_count'])
-            # get instrument, aliquit ID and barcode and ID
-            instrument, lid, barcode, ID = i[22], i[13], i[27], i[7]
-            # get information about external sample ID, group ID, description and tube ID 
-            geo = {k.split('=')[0]:k.split('=')[1] for k in i[12].split(';')}
-            externalid = geo['geo_external_name']
-            if 'geo_group_id' in geo:
-                groupid = geo['geo_group_id']
-                # remove misannotations
-                groupid = groupid.replace('&2011-04-19', '').replace('2011-04-19&', '')
-            else:
-                groupid = 'NA'
-            if 'geo_group_id_description' in geo:
-                groupdesc = geo['geo_group_id_description']
-            else:
-                groupdesc = 'NA'
-            if 'geo_tube_id' in geo:
-                tubeid = geo['geo_tube_id']
-            else:
-                tubeid = 'NA'
-            if 'geo_library_source_template_type' in geo:
-                library_source = geo['geo_library_source_template_type']
-            else:
-                library_source = 'NA'
-            if 'geo_tissue_type' in geo:
-                tissue_type = geo['geo_tissue_type']
-            else:
-                tissue_type = 'NA'
-            if 'geo_tissue_origin' in geo:
-                tissue_origin = geo['geo_tissue_origin']
-            else:
-                tissue_origin = 'NA'
-            
-            sample_name = ID + '_' + tissue_origin + '_' + tissue_type +'_' + library_source + '_' + groupid
-            
-            D[file] = {'filename': filename, 'workflow_id': workflow_accession, 'md5sum': md5sum, 'file_swid': file_swid, 'ID': ID, 'lid': lid,
-                       'run': run, 'barcode': barcode, 'external_id': externalid, 'group_id': groupid, 'group_desc': groupdesc,
-                       'tube_id': tubeid, 'instrument': instrument, 'read_count': read_count, 'lane': lane, 'run_alias': run_alias,
-                       'library_source': library_source, 'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
-                       'sample_name': sample_name}
-    return D
 
 
 
@@ -2708,213 +2619,214 @@ def write_report(args):
     
     # check that runs are specified for single data release report
     if args.level == 'single' and args.run_directories is None:
-        raise ValueError('Please provide a list of run folders')
+        sys.exit('Please provide a list of run folders')
     # emit warning if time points are used with cumulative report
     if args.level == 'cumulative' and args.timepoints:
         print('Option timepoint has no effect. Time points are only added to batch level reports')
         
-    
     # get the project directory with release run folders
-    project_dir = os.path.join(args.working_dir, args.project_name)
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
     records = get_FPR_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about fastqs for project 
-    FPR_info = collect_info_fastqs(records, prefix = args.prefix)
+    files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
+        
     # keep only info about released fastqs
     if args.level == 'single':
         # make a list of full paths to the released fastqs resolving the links in the run directories
-        files = list_files_release_folder(args.run_directories)
-    elif args.level == 'cumulative':
-        files = list_released_fastqs_project(args.api, FPR_info)
-    # map file names to their workflow accession
-    file_names = map_filename_workflow_accession(files)
-    # keep information about the listed fastqs
-    to_remove = [i for i in FPR_info if os.path.basename(i) not in file_names or file_names[os.path.basename(i)] != FPR_info[i]['workflow_id']]
-    for i in to_remove:
-        del FPR_info[i]
+        released_files = list_files_release_folder(args.run_directories)
+    #elif args.level == 'cumulative':
+    #     released_files = list_released_fastqs_project(args.api, FPR_info)
     
-    # count the number of released fastq pairs for each run and instrument
-    fastq_counts = count_released_fastqs_by_instrument(FPR_info, 'read1')
+    
+    to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
+    for file_swid in to_remove:
+        del files[file_swid]
+    
+    
+    # # count the number of released fastq pairs for each run and instrument
+    # fastq_counts = count_released_fastqs_by_instrument(FPR_info, 'read1')
         
-    # collect information from bamqc table
-    if args.level == 'single':
-        bamqc_info = parse_bamqc(args.bamqc_table, args.project)
-        # update FPR info with QC info from bamqc table
-        map_bamqc_info_to_fpr(FPR_info, bamqc_info)
-        # re-organize metrics per sample and instrument
-        sample_metrics = get_run_level_sample_metrics(FPR_info)
-        # add time points
-        if args.timepoints:
-            # update sample metrics by adding time points to each sample
-            add_time_points(args.sample_provenance, sample_metrics)
+    # # collect information from bamqc table
+    # if args.level == 'single':
+    #     bamqc_info = parse_bamqc(args.bamqc_table, args.project)
+    #     # update FPR info with QC info from bamqc table
+    #     map_bamqc_info_to_fpr(FPR_info, bamqc_info)
+    #     # re-organize metrics per sample and instrument
+    #     sample_metrics = get_run_level_sample_metrics(FPR_info)
+    #     # add time points
+    #     if args.timepoints:
+    #         # update sample metrics by adding time points to each sample
+    #         add_time_points(args.sample_provenance, sample_metrics)
             
-    elif args.level == 'cumulative':
-        bamqc_info = parse_merged_bamqc(args.bamqc_table, args.project)   
-        # update FPR info with QC info from bamqc merged table
-        map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info)
-        # re-organize metrics per sample and instrument
-        sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
+    # elif args.level == 'cumulative':
+    #     bamqc_info = parse_merged_bamqc(args.bamqc_table, args.project)   
+    #     # update FPR info with QC info from bamqc merged table
+    #     map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info)
+    #     # re-organize metrics per sample and instrument
+    #     sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
             
-    # generate figure files
-    if args.level == 'single':
-        # plot read count, coverage, on target and duplicate rate
-        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target', keep_on_target=False)
-    elif args.level == 'cumulative':
-        # plot read count and coverage
-        figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
+    # # generate figure files
+    # if args.level == 'single':
+    #     # plot read count, coverage, on target and duplicate rate
+    #     figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target', keep_on_target=False)
+    # elif args.level == 'cumulative':
+    #     # plot read count and coverage
+    #     figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
         
-    # get current date (year-month-day)
-    current_date = datetime.today().strftime('%Y-%m-%d')
+    # # get current date (year-month-day)
+    # current_date = datetime.today().strftime('%Y-%m-%d')
     
-    # write md5sums to separate text file
-    if args.level == 'single':
-        md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
-        # make a list of file paths, md5sum inner lists
-        write_md5sums(md5_file, [[FPR_info[file]['md5sum'], FPR_info[file]['filename']] for file in FPR_info])
+    # # write md5sums to separate text file
+    # if args.level == 'single':
+    #     md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
+    #     # make a list of file paths, md5sum inner lists
+    #     write_md5sums(md5_file, [[FPR_info[file]['md5sum'], FPR_info[file]['filename']] for file in FPR_info])
             
-    # make a list to store report
-    Text = []
-    # add title and logo
-    logo = str(get_logo())
-    height, width = resize_image(logo, 0.085)
-    Text.append(generate_header_table(logo, width, height, args.level))
-    Text.append('<br />' * 3)
-    # add information about project and contact personn
-    Text.append(generate_project_table(args.project_name, args.project_full_name, current_date))
-    Text.append('<br />')           
+    # # make a list to store report
+    # Text = []
+    # # add title and logo
+    # logo = str(get_logo())
+    # height, width = resize_image(logo, 0.085)
+    # Text.append(generate_header_table(logo, width, height, args.level))
+    # Text.append('<br />' * 3)
+    # # add information about project and contact personn
+    # Text.append(generate_project_table(args.project_name, args.project_full_name, current_date))
+    # Text.append('<br />')           
     
-    # add description
-    if args.level == 'single':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about newly released raw sequences.</p>')
-    elif args.level == 'cumulative':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about all released raw sequences to date.</p>')
-    Text.append('<br />' * 2)
+    # # add description
+    # if args.level == 'single':
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about newly released raw sequences.</p>')
+    # elif args.level == 'cumulative':
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about all released raw sequences to date.</p>')
+    # Text.append('<br />' * 2)
           
-    # list the file count            
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
-    if args.level == 'single':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
-    elif args.level == 'cumulative':
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
-    Text.append(generate_file_count_table(fastq_counts, ['Platform', 'Run', 'Paired fastq files'], {'Platform': '25%', 'Run': '30%', 'Paired fastq files': '25%'}))
-    Text.append('<br />')           
+    # # list the file count            
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
+    # if args.level == 'single':
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
+    # elif args.level == 'cumulative':
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
+    # Text.append(generate_file_count_table(fastq_counts, ['Platform', 'Run', 'Paired fastq files'], {'Platform': '25%', 'Run': '30%', 'Paired fastq files': '25%'}))
+    # Text.append('<br />')           
     
-    # add page break between plots and tables
-    Text.append('<div style="page-break-after: always;"></div>')
+    # # add page break between plots and tables
+    # Text.append('<div style="page-break-after: always;"></div>')
         
-    # add QC plots
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
-    if args.level == 'single':
-        # count samples with missing values
-        discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level, 'duplicate (%)', 'on_target')
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>')
-    elif args.level == 'cumulative':
-        # count samples with missing values
-        discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level)
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
+    # # add QC plots
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
+    # if args.level == 'single':
+    #     # count samples with missing values
+    #     discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level, 'duplicate (%)', 'on_target')
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>')
+    # elif args.level == 'cumulative':
+    #     # count samples with missing values
+    #     discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level)
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
     
-    if sum(discarded_samples.values()):
-        S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(', '.join(S)))
-    Text.append('<br />')
+    # if sum(discarded_samples.values()):
+    #     S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(', '.join(S)))
+    # Text.append('<br />')
     
     
-    if args.level == 'single':
-        #factor = 0.3
-        factor = 1
+    # if args.level == 'single':
+    #     #factor = 0.3
+    #     factor = 1
         
-    elif args.level == 'cumulative':
-        factor = 1.3
+    # elif args.level == 'cumulative':
+    #     factor = 1.3
     
-    for instrument in sorted(list(sample_metrics.keys())):
-        # check that figures exist for instrument
-        if instrument in figure_files:
-            Text.append(generate_figure_table(figure_files[instrument], factor))
-            Text.append('<br />')
+    # for instrument in sorted(list(sample_metrics.keys())):
+    #     # check that figures exist for instrument
+    #     if instrument in figure_files:
+    #         Text.append(generate_figure_table(figure_files[instrument], factor))
+    #         Text.append('<br />')
                 
-    # add page break between plots and tables
-    Text.append('<div style="page-break-after: always;"></div>')
+    # # add page break between plots and tables
+    # Text.append('<div style="page-break-after: always;"></div>')
         
-    # add table with sample Ids
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 1 provides information about the sequenced samples.</span></p>')
-    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
+    # # add table with sample Ids
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 1 provides information about the sequenced samples.</span></p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
        
-    if args.level == 'single':
-        if args.timepoints:
-            header = ['External ID', 'Case', 'Group ID', 'Library ID (time point)', 'S', 'O', 'T']
-            column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID (time point)': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
-        else:
-            header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
-            column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
-        Text.append(generate_table(sample_metrics, header, column_size))            
-    elif args.level == 'cumulative':
-        header = ['External ID', 'Case', 'Sample', 'Library ID', 'S', 'O', 'T', 'Run']
-        column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Sample': '18%', 'External ID': '11%'}
-        Text.append(generate_cumulative_table(sample_metrics, header, column_size))
+    # if args.level == 'single':
+    #     if args.timepoints:
+    #         header = ['External ID', 'Case', 'Group ID', 'Library ID (time point)', 'S', 'O', 'T']
+    #         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID (time point)': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
+    #     else:
+    #         header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
+    #         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
+    #     Text.append(generate_table(sample_metrics, header, column_size))            
+    # elif args.level == 'cumulative':
+    #     header = ['External ID', 'Case', 'Sample', 'Library ID', 'S', 'O', 'T', 'Run']
+    #     column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Sample': '18%', 'External ID': '11%'}
+    #     Text.append(generate_cumulative_table(sample_metrics, header, column_size))
         
-    Text.append('<br />')
+    # Text.append('<br />')
     
-    # add appendix with library design, tissue origin and type
-    library_design, tissue_type, tissue_origin = list_library_tissue_codes(sample_metrics, args.level)
-    L = ['{0}: {1}'.format(i, get_library_design()[i]) for i in library_design]
-    T = ['{0}: {1}'.format(i, get_tissue_types()[i]) for i in tissue_type]
-    O = ['{0}: {1}'.format(i, get_tissue_origin()[i]) for i in tissue_origin]
+    # # add appendix with library design, tissue origin and type
+    # library_design, tissue_type, tissue_origin = list_library_tissue_codes(sample_metrics, args.level)
+    # L = ['{0}: {1}'.format(i, get_library_design()[i]) for i in library_design]
+    # T = ['{0}: {1}'.format(i, get_tissue_types()[i]) for i in tissue_type]
+    # O = ['{0}: {1}'.format(i, get_tissue_origin()[i]) for i in tissue_origin]
     
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 1</p>')
-    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Library type:</span> {0}.<li/></ul>'.format(', '.join(L)))
-    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Type:</span> {0}.<li/></ul>'.format(', '.join(T)))
-    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Origin:</span> {0}.<li/></ul>'.format(', '.join(O)))
-    # add page break between plots and tables
-    Text.append('<div style="page-break-after: always;"></div>')
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 1</p>')
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Library type:</span> {0}.<li/></ul>'.format(', '.join(L)))
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Type:</span> {0}.<li/></ul>'.format(', '.join(T)))
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Origin:</span> {0}.<li/></ul>'.format(', '.join(O)))
+    # # add page break between plots and tables
+    # Text.append('<div style="page-break-after: always;"></div>')
                 
-    # add QC metrics table
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
+    # # add QC metrics table
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
         
-    if args.level == 'single':
-        header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
-        column_size = {'Case': '10%', 'Library': '22%', 'Sequencing Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
-        Text.append(generate_table(sample_metrics, header, column_size))
-    elif args.level == 'cumulative':
-        header = ['Case', 'Sample', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
-        column_size = {'Case': '15%', 'Sample': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
-        Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
-    # add space
-    Text.append('<br />')    
+    # if args.level == 'single':
+    #     header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
+    #     column_size = {'Case': '10%', 'Library': '22%', 'Sequencing Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
+    #     Text.append(generate_table(sample_metrics, header, column_size))
+    # elif args.level == 'cumulative':
+    #     header = ['Case', 'Sample', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
+    #     column_size = {'Case': '15%', 'Sample': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
+    #     Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
+    # # add space
+    # Text.append('<br />')    
     
-    # add QC metrics appendix
-    Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 2</p>')
-    Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">Raw Coverage:</span> an estimate of the mean depth of coverage in the target space = total bases on target / size of the target space<li/></ul>')
-    if args.level == 'single':
-        Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">On Target Rate:</span> percentage of reads that overlap the target space by at least one base = reads on target/total reads.<li/></ul>')
-        Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Percent duplicate:</span> Percent of duplicate reads estimated by Picard MarkDuplicates.<li/></ul>')
-    elif args.level == 'cumulative':
-        Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Coverage Deduplicated:</span> an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).<li/></ul>')
+    # # add QC metrics appendix
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 2</p>')
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">Raw Coverage:</span> an estimate of the mean depth of coverage in the target space = total bases on target / size of the target space<li/></ul>')
+    # if args.level == 'single':
+    #     Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">On Target Rate:</span> percentage of reads that overlap the target space by at least one base = reads on target/total reads.<li/></ul>')
+    #     Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Percent duplicate:</span> Percent of duplicate reads estimated by Picard MarkDuplicates.<li/></ul>')
+    # elif args.level == 'cumulative':
+    #     Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Coverage Deduplicated:</span> an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).<li/></ul>')
     
-    # add md5sums
-    if args.level == 'single':
-        Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
-        Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
+    # # add md5sums
+    # if args.level == 'single':
+    #     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
         
-    # convert to html
-    renderer = mistune.Markdown()
-    Text = '\n'.join(Text)
-    html_str = renderer(Text)
+    # # convert to html
+    # renderer = mistune.Markdown()
+    # Text = '\n'.join(Text)
+    # html_str = renderer(Text)
     
-    # convert html to pdf    
-    report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
-    report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
-    newfile = open(report_file, "wb")
-    pisa.CreatePDF(html_str, newfile)
-    newfile.close()
+    # # convert html to pdf    
+    # report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
+    # report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
+    # newfile = open(report_file, "wb")
+    # pisa.CreatePDF(html_str, newfile)
+    # newfile.close()
 
-    # remove figure files from disk
-    for i in figure_files:
-        os.remove(figure_files[i])
+    # # remove figure files from disk
+    # for i in figure_files:
+    #     os.remove(figure_files[i])
 
 
 
@@ -3089,8 +3001,8 @@ if __name__ == '__main__':
     
     # write a report
     r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
-    r_parser.add_argument('-p', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
-    r_parser.add_argument('-d', '--directory', dest='working_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Project name as it appears in File Provenance Report')
+    r_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
+    r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required = True)
     r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
