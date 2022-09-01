@@ -1815,8 +1815,9 @@ def count_released_fastqs_by_instrument(FPR_info, reads):
     # count released fastqs by instrument and run
     D = {}
     for file in FPR_info:
-        instrument = FPR_info[file]['instrument']
-        run = FPR_info[file]['run_alias']
+        instrument = FPR_info[file]['platform']
+        assert len(FPR_info[file]['run_id']) == 1
+        run = FPR_info[file]['run_id'][0]
         if instrument not in D:
             D[instrument] = {}
         if reads == 'all_reads':
@@ -1825,7 +1826,7 @@ def count_released_fastqs_by_instrument(FPR_info, reads):
             else:
                 D[instrument][run] += 1
         elif reads == 'read1':
-            if 'R1' in file:
+            if 'R1' in FPR_info[file]['file_path']:
                 if run not in D[instrument]:
                     D[instrument][run] = 1
                 else:
@@ -2642,15 +2643,15 @@ def write_report(args):
     #elif args.level == 'cumulative':
     #     released_files = list_released_fastqs_project(args.api, FPR_info)
     
-    
     to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
     for file_swid in to_remove:
         del files[file_swid]
-    
-    
-    # # count the number of released fastq pairs for each run and instrument
-    # fastq_counts = count_released_fastqs_by_instrument(FPR_info, 'read1')
         
+    # count the number of released fastq pairs for each run and instrument
+    fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
+    
+
+    
     # # collect information from bamqc table
     # if args.level == 'single':
     #     bamqc_info = parse_bamqc(args.bamqc_table, args.project)
