@@ -2598,11 +2598,11 @@ def extract_bamqc_data(bamqc_db):
         for j in range(len(columns)):
             key = columns[j]
             if j < 5:
-                d[j] = i[header.index(key)]
+                d[key] = i[header.index(key)]
             elif 5 <= j <= 7:
-                d[j] = float(i[header.index(key)])
+                d[key] = float(i[header.index(key)])
             elif j > 7:
-                d[j] = int(i[header.index(key)])    
+                d[key] = int(i[header.index(key)])    
         
         # compute on_target rate, not available through qc-etl
         d['on_target'] = compute_on_target_rate(d['bases_mapped'], d['total_bases_on_target']) 
