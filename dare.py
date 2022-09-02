@@ -1115,46 +1115,6 @@ def parse_merged_bamqc(merged_bamqc_table, project):
     return B
 
 
-
-def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
-    '''
-    (dict, dict) -> None
-    
-    Update the information obtained from File Provenance Report in place with information
-    collected from bamqc
-    
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - bamqc_info (dict): QC information for each paired fastq from the bamqc table
-    '''
-    
-    for file in FPR_info:
-        qc_found = False
-        run_alias = FPR_info[file]['run_alias']
-        # check that run in recorded in bamqc
-        if run_alias in bamqc_info:
-            # map file info with bamqc info
-            for d in bamqc_info[run_alias]:
-                if FPR_info[file]['lane'] == d['lane'] \
-                    and FPR_info[file]['sample_name'] == d['sample'] \
-                    and FPR_info[file]['barcode'] == d['barcodes'] \
-                    and FPR_info[file]['instrument'].replace('_', ' ') == d['instrument']:
-                        assert FPR_info[file]['lid'] == d['library']    
-                        qc_found = True
-                        FPR_info[file]['coverage'] = round(d['coverage'], 2)
-                        FPR_info[file]['coverage_dedup'] = round(d['coverage_dedup'], 2)
-                        FPR_info[file]['on_target'] = round(d['on_target'], 2)                
-                        FPR_info[file]['percent_duplicate'] = round(d['percent_duplicate'], 2)
-
-        if qc_found == False:
-            FPR_info[file]['coverage'] = 'NA'
-            FPR_info[file]['coverage_dedup'] = 'NA'
-            FPR_info[file]['on_target'] = 'NA'                
-            FPR_info[file]['percent_duplicate'] = 'NA'
-
-
-           
 def map_merged_bamqc_info_to_fpr(FPR_info, bamqc_info):
     '''
     (dict, dict) -> None
@@ -2643,7 +2603,10 @@ def extract_bamqc_data(bamqc_db):
                 d[j] = float(i[header.index(key)])
             elif j > 7:
                 d[j] = int(i[header.index(key)])    
-                                
+        
+        # compute on_target rate, not available through qc-etl
+        d['on_target'] = compute_on_target_rate(d['bases_mapped'], d['total_bases_on_target']) 
+                        
         run = i[header.index('Run Alias')]
         sample = i[header.index('sample')]
         
@@ -2654,6 +2617,49 @@ def extract_bamqc_data(bamqc_db):
         D[run][sample].append(d)
     return D
      
+
+
+def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
+    '''
+    (dict, dict) -> None
+    
+    Update the information obtained from File Provenance Report in place with information
+    collected from bamqc
+    
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+    - bamqc_info (dict): QC information for each paired fastq from the bamqc table
+    '''
+    
+    for file_swid in FPR_info:
+        qc_found = False
+        run_alias = FPR_info[file_swid]['run_id'][0]
+        sample_id = FPR_info[file_swid]['sample_id'][0]
+        # check that run in recorded in bamqc
+        if run_alias in bamqc_info:
+            if sample_id in bamqc_info[run_alias]:
+                # map file info with bamqc info
+                for d in bamqc_info[run_alias][sample_id]:
+                    if FPR_info[file_swid]['lane'] == d['lane'] \
+                        and FPR_info[file_swid]['sample_name'][0] == d['sample'] \
+                        and FPR_info[file_swid]['barcode'][0] == d['barcodes'] \
+                        and FPR_info[file_swid]['platform'].replace('_', ' ') == d['instrument']:
+                            assert FPR_info[file_swid]['library'][0] == d['library']    
+                            qc_found = True
+                            FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
+                            FPR_info[file_swid]['coverage_dedup'] = round(d['coverage_dedup'], 2)
+                            FPR_info[file_swid]['on_target'] = round(d['on_target'], 2)                
+                            FPR_info[file_swid]['percent_duplicate'] = round(d['percent_duplicate'], 2)
+
+        if qc_found == False:
+            FPR_info[file_swid]['coverage'] = 'NA'
+            FPR_info[file_swid]['coverage_dedup'] = 'NA'
+            FPR_info[file_swid]['on_target'] = 'NA'                
+            FPR_info[file_swid]['percent_duplicate'] = 'NA'
+
+
+
      
         
 def write_report(args):
@@ -2708,12 +2714,36 @@ def write_report(args):
     # collect information from bamqc table
     if args.level == 'single':
        bamqc_info = extract_bamqc_data(args.bamqc_db)
-
-         
+       
+       print(list(bamqc_info.keys())[:10])
+       print('---')
+       print(bamqc_info[list(bamqc_info.keys())[0]])
+       
+       
+       
+       for i in bamqc_info:
+           if '220729_A00469_0336_AHFNL5DSX3' in i:
+               for j in bamqc_info[i]:
+                   if 'WAVE' in j:
+                       print(i)
+                       print(j)
+                       print(bamqc_info[i][j])
+                       print('----')
+       
+       
+       
+       
+       # update FPR info with QC info from bamqc table
+       map_bamqc_info_to_fpr(files, bamqc_info)
+    
+       # print(len(files))
+       
+       # for i in files:
+       #     print(files[i])
+           
     
     
-    #     # update FPR info with QC info from bamqc table
-    #     map_bamqc_info_to_fpr(FPR_info, bamqc_info)
+    
     #     # re-organize metrics per sample and instrument
     #     sample_metrics = get_run_level_sample_metrics(FPR_info)
     #     # add time points
@@ -3064,7 +3094,6 @@ if __name__ == '__main__':
     r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required = True)
     r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
-    r_parser.add_argument('-q', '--qc_table', dest='bamqc_table', help='Path to the bamqc table', required=True)
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
     r_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
     r_parser.add_argument('-l', '--level', dest='level', choices=['single', 'cumulative'], help='Generates a single release report or a cumulative project report', required = True)
