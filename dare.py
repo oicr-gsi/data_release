@@ -795,6 +795,85 @@ def group_sample_info_mapping(files, add_time_points, add_panel):
     return D            
 
 
+def extract_sample_info(sample_provenance):
+    '''
+    (str) -> list
+    
+    Returns a list of dictionary with sample information pulled down from the
+    sample_provenance Pinary API
+
+    Parameters
+    ----------
+    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
+    '''
+    
+    response = requests.get(sample_provenance)
+    if response.ok:
+        L = response.json()
+    else:
+        L = []
+    return L
+
+
+def get_time_points(sample_information):
+    '''
+    (list) -> dict
+    
+    Returns a dictionary of time points for each library
+    
+    Parameters
+    ----------
+    - sample_information (list): List of dictionary with sample information pulled
+                                 down from the inery API 
+    '''
+
+    D = {}
+
+    for i in sample_information:
+        sample = i['sampleName']
+        if 'timepoint' in i['sampleAttributes']:
+            time_point = i['sampleAttributes']['timepoint']
+        else:
+            time_point = []
+        if sample in D:
+            D[sample].extend(time_point)
+        else:
+            D[sample] = time_point
+        
+    for i in D:
+        D[i] = ';'.join(sorted(list(set(D[i]))))
+        if not D[i]:
+            D[i] = 'NA'
+    return D
+
+
+
+def add_time_points(sample_provenance, files):
+    '''
+    (str, dict) -> None
+    
+    Add time points retrieved from sample_provenance to each sample in sample_metrics.
+    Updates files in place
+    
+    Parameters
+    ----------
+    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
+    - files (dict): Dictionary with file information extracted from FPR
+    '''
+
+    
+    time_points = get_time_points(extract_sample_info(sample_provenance))
+    # add time points
+    for file_swid in files:
+        assert len(files[file_swid]['library']) == 1
+        library = files[file_swid]['library'][0]
+        if library in time_points:
+            files[file_swid]['time_point'] = time_points[library]
+        else:
+            files[file_swid]['time_point'] = 'NA'
+
+
+
 
 def map_external_ids(args):
     '''
@@ -843,16 +922,8 @@ def map_external_ids(args):
     # get raw sequence file info
     files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, suffix)
     
-    # get time points
-    time_points = get_time_points(extract_sample_info(args.sample_provenance))
     # add time points
-    for file_swid in files:
-        assert len(files[file_swid]['library']) == 1
-        library = files[file_swid]['library'][0]
-        if library in time_points:
-            files[file_swid]['time_point'] = time_points[library]
-        else:
-            files[file_swid]['time_point'] = 'NA'
+    add_time_points(args.sample_provenance, files)
     
     # group sample information by run            
     sample_info = group_sample_info_mapping(files, args.timepoints, args.add_panel)        
@@ -1312,190 +1383,6 @@ def get_cumulative_level_sample_metrics(FPR_info):
     return D                         
 
                                            
-
-def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel = None):
-    '''
-    (int, int, int, matplotlib.figure.Figure, list, str, str, str | None, str | None)
-    
-    Parameters
-    ----------
-    
-    - row (int): Row position of the plot in figure
-    - col (int): Column position of the plot in figure
-    - figure (matplotlib.figure.Figure): Matplotlib figure
-    - Data (list): List of metrics to plot in graph
-    - YLabel (str): Label of the Y axis
-    - color (str): Color of markers for Data
-    - title (str | None): Title of the graph
-    - XLabel (str | None): Label of the X axis    
-    '''
-    
-    # create ax in figure to plot data
-    ax = figure.add_subplot(row, col, pos)
-    
-    # plot data and median  
-    xcoord = [i/10 for i in range(len(Data))]
-        
-    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color, markeredgecolor = color, markeredgewidth = 1, markersize = 10, alpha=0.5)
-    # compute median the data
-    median = np.median(Data)
-    # plot median and mean. use zorder to bring line to background
-    ax.axhline(y=median, color=color, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
-    
-    # start y axis at 0
-    ax.set_ylim(ymin=0)
-       
-    # write axis labels
-    if XLabel is not None:
-        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
-    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
-    
-    # add title 
-    if title is not None:
-        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':20})
-
-    # set xticks
-    # get all the ticks and set labels to empty str
-    plt.xticks(xcoord, ['' for i in range(len(xcoord))], ha='center', fontsize=12, rotation=0)
-    # set every N ticks
-    N = 3
-    xticks_pos = ax.get_xticks()
-    xticks_labels = ax.get_xticklabels()
-    myticks = [j for i,j in enumerate(xticks_pos) if not i % N]  # index of selected ticks
-    newlabels = [label for i,label in enumerate(xticks_labels) if not i % N]
-    plt.xticks(myticks, newlabels, ha='center', fontsize=12, rotation=0)
-    
-    # add splace bewteen axis and tick labels
-    ax.yaxis.labelpad = 17
-    
-    # do not show frame lines  
-    ax.spines["top"].set_visible(False)    
-    ax.spines["bottom"].set_visible(True)    
-    ax.spines["right"].set_visible(False)    
-    ax.spines["left"].set_visible(False)    
-        
-    # offset the x axis
-    for loc, spine in ax.spines.items():
-        spine.set_position(('outward', 5))
-        #spine.set_smart_bounds(True)
-    
-    # add a light grey horizontal grid to the plot, semi-transparent, 
-    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5, linewidth = 0.5)  
-    # hide these grids behind plot objects
-    ax.set_axisbelow(True)
-
-      
-    
-    
-    # disable scientific notation
-    ax.ticklabel_format(style='plain', axis='y')
-    
-    return ax
-
-
-
-def generate_figures(project_dir, level, project_name,  sample_metrics, metric1, metric2, YLabel1, YLabel2, color1, color2, XLabel, width=13, height=8, metric3=None, metric4=None, color3=None, color4=None, YLabel3=None, YLabel4=None, keep_on_target=True):
-    '''
-    (project_dir, str, str, dict, str, str, str, str, str, str, str, int, int, str | None, str | None, str | None, str | None, str | None, str | None, bool) -> dict
-    
-    Returns a dictionary with figure paths for each instrument
-    
-    Parameters
-    ----------
-    - project_dir (str): Path to the folder where figure files are written
-    - level (str): Single or cumulative
-    - project_name (str): name of the project
-    - sample_metrics (dict): Dictionary with QC metrics of interest from FPR and bamQC for each library 
-    - metric1 (str): Metrics of interest 1
-    - metric2 (str): Metrics of interest 2
-    - YLabel1 (str): Label of the Y axis for Data1
-    - YLabel2 (str): Label of the Y axis for Data2
-    - color1 (str): Color of markers and text related to Data1
-    - color2 (str): Color of markers and text related to Data2
-    - XLabel (str): Label of the X axis
-    - width (int): Width of the figure
-    - height (int): Height of the figure
-    - metric3 (str or None): Metrics of interest 3
-    - metric4 (str or None): Metrics of interest 4
-    - color3 (str or None): Color of markers for Data3 if metric3 is defined
-    - color4 (str or None): Color of markers for Data4 if metric4 is defined
-    - YLabel3 (str or None): Label of the Y axis for Data3 if metric3 defined
-    - YLabel4 (str or None): Label of the Y axis for Data4 if metric4 defined
-    - keep_on_target (bool): Always plot on target rate even if True.
-                              Do not plot on target if all values are 100% if False 
-    '''
-    
-    # make a list of instruments
-    instruments = sorted(list(sample_metrics.keys()))
-        
-    # generate plots for each instrument. keep track of figure file names
-    figure_files = {}
-    for instrument in instruments:
-        # sort read counts in ascending order and other metrics according to read count order
-        Q1, Q2, Q3, Q4 = sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3, metric4)
-        # remove missing values
-        Q1, Q2, Q3, Q4 = clean_up_data_points(Q1, Q2, Q3, Q4)
-                
-        data = [Q1, Q2, Q3, Q4]
-        metrics = [metric1, metric2, metric3, metric4]
-        
-        if keep_on_target == False:
-            pos = metrics.index('on_target')
-            # check if all on_target values are 100%
-            if all(list(map(lambda x: True if x == 100 else False, data[pos]))):
-                # all values are 100% -> delete values, do not plot
-                data[pos] = []
-                # unpack values to update metric data
-                Q1, Q2, Q3, Q4 = data
-        
-        # get the output file name
-        outputfile = '.'.join([project_name, instrument, level])
-        for i in range(len(data)):
-            if data[i]:
-                outputfile = outputfile + ''.join(metrics[i].split()).replace('(%)', '') + '.'
-        outputfile = os.path.join(project_dir, outputfile + '.QC_plots.png')
-        
-        # plot data only if data exists (ie miseq qc metrics may not be in bamqc merged)
-        if Q1 and Q2:
-            figure = plt.figure()
-            figure.set_size_inches(width, height)
-            
-            # make a list with x labels to find out wich subplot should show Samples label
-            labels = ['Samples' if data[i] else None for i in range(len(data))]
-            max_index = 0
-            for i in range(len(labels)):
-                if labels[i]:
-                    max_index = i
-            for i in range(len(labels)):
-                if i < max_index:
-                    labels[i] = None
-                        
-            # determine how many subplots and subplot positions
-            number_subplots = sum([1 if i else 0 for i in data])
-            subplot_pos = [1 if i else 0 for i in data]
-            for i in range(1,len(subplot_pos)):
-                subplot_pos[i] = subplot_pos[i-1] + subplot_pos[i]
-            
-            # plot metric1 and metric2
-            ax1 = create_ax(number_subplots, 1, subplot_pos[0], figure, Q1, YLabel1, color1, title = instrument, XLabel = labels[0])
-            ax2 = create_ax(number_subplots, 1, subplot_pos[1], figure, Q2, YLabel2, color2, title = None, XLabel = labels[1])
-            # check if other metrics defined
-            if Q3:
-                ax3 = create_ax(number_subplots, 1, subplot_pos[2], figure, Q3, YLabel3, color3, title = None, XLabel = labels[2])
-            if Q4:
-                ax4 = create_ax(number_subplots, 1, subplot_pos[3], figure, Q4, YLabel4, color4, title = None, XLabel = labels[3])
-            
-            # make sure axes do not overlap
-            plt.tight_layout(pad = 2.5)
-            # write figure to file  
-            figure.savefig(outputfile, bbox_inches = 'tight')
-            plt.close()
-            
-            assert instrument not in figure_files
-            figure_files[instrument] = outputfile
-    return figure_files
-
-
 def resize_image(image, scaling_factor):
     '''
     (str, float) -> (int, int)
@@ -1607,128 +1494,7 @@ def sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric2,
     return Q
 
     
-def remove_missing_values(Q1, Q2, Q3, Q4):
-    '''
-    (list, list, list, list) -> (list, list, list, list)
     
-    Returns a lists with metrics without missing values NA, keeping the original order of the lists
-    
-    Parameters
-    ----------
-    - Q1 (list): List of metric 1
-    - Q2 (list): List of metric 2
-    - Q3 (list): List of metric 3. Can be en empty list
-    - Q4 (list): List of metric 4. Can be an empty list
-    '''
-    
-    # remove missing QC values for each list
-    while 'NA' in Q1 or 'NA' in Q2 or 'NA' in Q3 or 'NA' in Q4:
-        if 'NA' in Q1:
-            pos = Q1.index('NA')
-            del Q1[pos]
-            del Q2[pos]
-            if Q3:
-                del Q3[pos]
-            if Q4:
-                del Q4[pos]        
-        if 'NA' in Q2:
-            pos = Q2.index('NA')
-            del Q1[pos]
-            del Q2[pos]
-            if Q3:
-                del Q3[pos]
-            if Q4:
-                del Q4[pos]
-        if 'NA' in Q3:
-            pos = Q3.index('NA')
-            del Q1[pos]
-            del Q2[pos]
-            del Q3[pos]
-            if Q4:
-                del Q4[pos]
-        if 'NA' in Q4:
-            pos = Q4.index('NA')
-            del Q1[pos]
-            del Q2[pos]
-            if Q3:
-                del Q3[pos]
-            del Q4[pos]
-    
-    return Q1, Q2, Q3, Q4
-    
-
-
-def clean_up_data_points(Q1, Q2, Q3, Q4):
-    '''
-    (list, list, list, list) -> list, list, list, list
-    
-    Clean up data points to be plotted by removing data points with missing values NA,
-    keeping the original order of the lists
-    
-    Parameters
-    ----------
-    - Q1 (list): List of metric 1
-    - Q2 (list): List of metric 2
-    - Q3 (list): List of metric 3. Can be en empty list
-    - Q4 (list): List of metric 4. Can be an empty list
-    '''
-    
-    # remove missing QC values for each list
-    Q1, Q2, Q3, Q4 = remove_missing_values(Q1, Q2, Q3, Q4)
-    
-    assert len(Q1) == len(Q2)
-    if Q3:
-        assert len(Q1) == len(Q2) == len(Q3)
-    if Q4:
-        assert len(Q1) == len(Q2) == len(Q4)
-
-    return Q1, Q2, Q3, Q4
-    
-
-def sort_metrics(sample_metrics, instrument, metric1, metric2, level, metric3=None, metric4=None):
-    '''
-    (dict, str, str, str, str) -> (list, list)
-    
-    Returns a tuple with lists of metrics 1 and 2 sorted according to metrics 1
-    
-    Parameters
-    ----------
-    
-    - sample_metrics (dict): Run-level or cumulative QC metrics for all samples 
-    - instrument (str): Sequencing intrument
-    - metric1 (str): Name of QC metric 1
-    - metric2 (str): Name of QC metric 2
-    - level (str): Single or cumulative
-    '''
-    
-    # group metric 1 by instrument
-    D1 = group_qc_metric_by_instrument(sample_metrics, metric1, level)
-    
-    # make a sorted list of metric1 in ascending order
-    M = [i for i in D1[instrument] if i[0] != 'NA']
-    M.sort(key = lambda x: x[0])
-    Q1 = [i[0] for i in M]
-    # make a list of samples corresponding to the sorted metric1 values
-    samples = [i[1] for i in M]
-    
-    # sort metric 2 according to the order of metric1
-    Q2 = sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric2, samples, level)
-
-    # sort metric 3 according to the order of metric1
-    if metric3:
-        Q3 = sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric3, samples, level)
-    else:
-        Q3 = []
-    
-    # sort metric 4 according to the order of metric1
-    if metric4:
-        Q4 = sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric4, samples, level)
-    else:
-        Q4 = []
-     
-    return Q1, Q2, Q3, Q4
-
-
 
 def count_samples_with_missing_values(sample_metrics, metric1, metric2, level, metric3=None, metric4=None):
     '''
@@ -2477,92 +2243,7 @@ def list_library_tissue_codes(sample_metrics, level):
 
     return library_design, tissue_type, tissue_origin
 
-
-
-
-def extract_sample_info(sample_provenance):
-    '''
-    (str) -> list
-    
-    Returns a list of dictionary with sample information pulled down from the
-    sample_provenance Pinary API
-
-    Parameters
-    ----------
-    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
-    '''
-    
-    response = requests.get(sample_provenance)
-    if response.ok:
-        L = response.json()
-    else:
-        L = []
-    return L
-
-
-def get_time_points(sample_information):
-    '''
-    (list) -> dict
-    
-    Returns a dictionary of time points for each library
-    
-    Parameters
-    ----------
-    - sample_information (list): List of dictionary with sample information pulled
-                                 down from the inery API 
-    '''
-
-    D = {}
-
-    for i in sample_information:
-        sample = i['sampleName']
-        if 'timepoint' in i['sampleAttributes']:
-            time_point = i['sampleAttributes']['timepoint']
-        else:
-            time_point = []
-        if sample in D:
-            D[sample].extend(time_point)
-        else:
-            D[sample] = time_point
-        
-    for i in D:
-        D[i] = ';'.join(sorted(list(set(D[i]))))
-        if not D[i]:
-            D[i] = 'NA'
-    return D
-
-
-
-def add_time_points(sample_provenance, sample_metrics):
-    '''
-    (str, dict) -> None
-    
-    Add time points retrieved from sample_provenance to each sample in sample_metrics.
-    Updates sample_metrics in place
-    
-    Parameters
-    ----------
-    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
-    - sample_metrics (dict): Dictionary with run-level sample metrics
-    '''
-
-    # pull down sample information from Pinery
-    L  = extract_sample_info(sample_provenance)
-    # extract time points for each library
-    D = get_time_points(L)
-    # add time points to each sample
-    
-    for instrument in sample_metrics:
-        for sample in sample_metrics[instrument]:
-            for d in sample_metrics[instrument][sample]:
-                if d['library'] in D:
-                    d['timepoint'] = D[d['library']]
-                else:
-                    d['timepoint'] = 'NA'
- 
-        
- 
-    
+  
  
 def extract_bamqc_data(bamqc_db):
     '''
@@ -2658,9 +2339,512 @@ def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
             FPR_info[file_swid]['on_target'] = 'NA'                
             FPR_info[file_swid]['percent_duplicate'] = 'NA'
 
-
-
      
+
+
+def get_run_level_metrics(files, platform):
+    '''
+    (dict, str) -> (list, list, list, list, list)
+    
+    Returns a tuple with parallel lists of run-level metrics for a given instrument.
+    Pre-condition: All reads are paired-reads and it exists 2 fastqs for read 1 and read 2
+    
+    Parameters
+    ----------
+    - files (dict): Dictionary with file information extracted from FPR 
+    '''
+     
+    # make a sorted list of file_swids
+    file_swids = sorted(list(files.keys()))
+    
+    reads, coverage, coverage_dedup, on_target, percent_duplicate = [], [], [], [], []    
+    
+    for i in range(len(file_swids) -1):
+        for j in range(i+1, len(file_swids)):
+            if files[file_swids[i]]['run'][0] == files[file_swids[j]]['run'][0] \
+                and files[file_swids[i]]['platform'] == files[file_swids[j]]['platform'] == platform \
+                and files[file_swids[i]]['barcode'][0] == files[file_swids[j]]['barcode'][0] \
+                and files[file_swids[i]]['library'][0] == files[file_swids[j]]['library'][0] \
+                and files[file_swids[i]]['sample_name'] == files[file_swids[j]]['sample_name'] \
+                and files[file_swids[i]]['external_name'] == files[file_swids[j]]['external_name'] \
+                and files[file_swids[i]]['library_source'][0] == files[file_swids[j]]['library_source'][0] \
+                and files[file_swids[i]]['lane'][0] == files[file_swids[j]]['lane'][0] \
+                and files[file_swids[i]]['tissue_origin'][0] == files[file_swids[j]]['tissue_origin'][0] \
+                and files[file_swids[i]]['tissue_type'][0] == files[file_swids[j]]['tissue_type'][0] \
+                and files[file_swids[i]]['sample_id'][0] == files[file_swids[j]]['sample_id'][0] \
+                and files[file_swids[i]]['limskey'][0] == files[file_swids[j]]['limskey'][0]:
+                    assert files[file_swids[i]]['reads'] == files[file_swids[j]]['reads']
+                    files[file_swids[i]]['coverage'] == files[file_swids[j]]['coverage']
+                    files[file_swids[i]]['coverage_dedup'] == files[file_swids[j]]['coverage_dedup']
+                    files[file_swids[i]]['on_target'] == files[file_swids[j]]['on_target']
+                    files[file_swids[i]]['percent_duplicate'] == files[file_swids[j]]['percent_duplicate']
+                    reads.append(files[file_swids[i]]['reads'][0])
+                    coverage.append(files[file_swids[i]]['coverage'])
+                    coverage_dedup.append(files[file_swids[i]]['coverage_dedup'])                
+                    on_target.append(files[file_swids[i]]['on_target'])
+                    percent_duplicate.append(files[file_swids[i]]['percent_duplicate'])
+    
+    return reads, coverage, coverage_dedup, on_target, percent_duplicate                
+           
+
+def clean_up_metrics(reads, coverage, on_target, percent_duplicate):
+    '''
+    (list, list, list, list) -> (list, list, list, list)
+    
+    Returns a tuple of lists with metrics without missing values NA, keeping the original order of the lists
+    
+    Parameters
+    ----------
+    - reads (list): List of read counts
+    - coverage (list): List of coverage
+    - on_target (list): List of on_target rate 
+    - percent_duplicate (list): List of percent_duplicate 
+    '''
+    
+    a = [reads, coverage, on_target, percent_duplicate]
+    while any(list(map(lambda x: 'NA' in x, a))):
+        if 'NA' in reads:
+            pos = reads.index('NA')
+        elif 'NA' in coverage:
+            pos = coverage.index('NA')
+        elif 'NA' in on_target:
+            pos = on_target.index('NA')
+        elif 'NA' in percent_duplicate:
+            pos = percent_duplicate.index('NA')
+        for i in range(len(a)):
+            if a[i]:
+                del a[i][pos]
+        a = [reads, coverage, on_target, percent_duplicate]
+    
+    return reads, coverage, on_target, percent_duplicate
+    
+
+    
+def sort_metrics(reads, coverage, on_target, percent_duplicate):
+    '''
+    (list, list, list, list) -> (list, list, list, list)
+    
+    Returns a tuple of lists of metrics preserving the order among lists and 
+    and sorted according to the order of reads
+    Pre-condition: There is no missing values and all lists have the same length
+        
+    Parameters
+    ----------
+    - reads (list): List of read counts
+    - coverage (list): List of coverage
+    - on_target (list): List of on_target rate 
+    - percent_duplicate (list): List of percent_duplicate 
+    '''
+    
+    # make a list with inner lists containing each the ith value of each metric
+    a = list(zip(reads, coverage, on_target, percent_duplicate))
+    # sort the inner lists according to the read count, it the first value of each inner list
+    a.sort(key=lambda x : x[0])
+    # unpack the sorted list to get back the list of each metric, order-preserved and read-counts sorted
+    reads, coverage, on_target, percent_duplicate = list(zip(*a))
+    return reads, coverage, on_target, percent_duplicate
+
+    
+
+def get_x_axis_labels(data):
+    '''
+    (list) -> list
+    
+    Returns a list of x axis labels.
+    Only the last defined metrics in data is labeled with Samples
+        
+    Parameters
+    ----------
+    - data (list): List of lists with metrics
+    '''
+    
+    
+    # make a list with x labels to find out wich subplot should show Samples label
+    labels = ['Samples' if data[i] else None for i in range(len(data))]
+    max_index = 0
+    for i in range(len(labels)):
+        if labels[i]:
+            max_index = i
+    for i in range(len(labels)):
+        if i < max_index:
+            labels[i] = None
+    return labels
+
+
+def count_subplots(data):
+    '''
+    (list) -> int
+    
+    Returns the number of expected subplots in figure.
+        
+    Parameters
+    ----------
+    - data (list): List of lists with metrics
+    '''
+    
+    # determine how many subplots are expected with defined metrics
+    return sum([1 if i else 0 for i in data])
+     
+
+
+def get_subplot_position(data):
+    '''
+    (list) -> list
+    
+    Returns the position of each subplot for metrics in data.
+        
+    Parameters
+    ----------
+    - data (list): List of lists with metrics
+    '''
+    
+    subplot_pos = [1 if i else 0 for i in data]
+    for i in range(1,len(subplot_pos)):
+        subplot_pos[i] = subplot_pos[i-1] + subplot_pos[i]
+    return subplot_pos
+
+
+def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel = None):
+    '''
+    (int, int, int, matplotlib.figure.Figure, list, str, str, str | None, str | None)
+    
+    Parameters
+    ----------
+    
+    - row (int): Row position of the plot in figure
+    - col (int): Column position of the plot in figure
+    - figure (matplotlib.figure.Figure): Matplotlib figure
+    - Data (list): List of metrics to plot in graph
+    - YLabel (str): Label of the Y axis
+    - color (str): Color of markers for Data
+    - title (str | None): Title of the graph
+    - XLabel (str | None): Label of the X axis    
+    '''
+    
+    # create ax in figure to plot data
+    ax = figure.add_subplot(row, col, pos)
+    
+    # plot data and median  
+    xcoord = [i/10 for i in range(len(Data))]
+        
+    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color, markeredgecolor = color, markeredgewidth = 1, markersize = 10, alpha=0.5)
+    # compute median the data
+    median = np.median(Data)
+    # plot median and mean. use zorder to bring line to background
+    ax.axhline(y=median, color=color, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+    
+    # start y axis at 0
+    ax.set_ylim(ymin=0)
+       
+    # write axis labels
+    if XLabel is not None:
+        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
+    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
+    
+    # add title 
+    if title is not None:
+        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':20})
+
+    # set xticks
+    # get all the ticks and set labels to empty str
+    plt.xticks(xcoord, ['' for i in range(len(xcoord))], ha='center', fontsize=12, rotation=0)
+    # set every N ticks
+    N = 3
+    xticks_pos = ax.get_xticks()
+    xticks_labels = ax.get_xticklabels()
+    myticks = [j for i,j in enumerate(xticks_pos) if not i % N]  # index of selected ticks
+    newlabels = [label for i,label in enumerate(xticks_labels) if not i % N]
+    plt.xticks(myticks, newlabels, ha='center', fontsize=12, rotation=0)
+    
+    # add splace bewteen axis and tick labels
+    ax.yaxis.labelpad = 17
+    
+    # do not show frame lines  
+    ax.spines["top"].set_visible(False)    
+    ax.spines["bottom"].set_visible(True)    
+    ax.spines["right"].set_visible(False)    
+    ax.spines["left"].set_visible(False)    
+        
+    # offset the x axis
+    for loc, spine in ax.spines.items():
+        spine.set_position(('outward', 5))
+        #spine.set_smart_bounds(True)
+    
+    # add a light grey horizontal grid to the plot, semi-transparent, 
+    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5, linewidth = 0.5)  
+    # hide these grids behind plot objects
+    ax.set_axisbelow(True)
+    
+    # disable scientific notation
+    ax.ticklabel_format(style='plain', axis='y')
+    
+    return ax
+
+
+
+def generate_figures(files, project, working_dir, height=16, width=13):
+    '''
+    (dict, str, str, int, int)
+    
+    Generate figures for each instrument with metrics from FPR and QC-etl and returns
+    a dictionary with the figure path for each instrument
+        
+    Parameters
+    ----------
+    - files (dict): Dictionary with file info extracted from FPR and with QC info extracted from qc-etl
+    - project (str): Name of project
+    - working_dir (str): Path to the folder where figure files are written
+    - height (int): Height of the figure
+    - width (int): Width of the figure
+    '''
+    
+    # make a list of instruments
+    instruments = list(set([files[file_swid]['platform'] for file_swid in files]))
+    # track the figure file names for each instrument
+    figure_files = {}
+    for platform in instruments:
+        # make lists with metrics for each instrument 
+        reads, coverage, coverage_dedup, on_target, percent_duplicate = get_run_level_metrics(files, platform)
+        # remove undefined metric values
+        reads, coverage, coverage_dedup, on_target, percent_duplicate = clean_up_metrics(reads, coverage, on_target, percent_duplicate)
+        # sort metrics according to read counts
+        reads, coverage, on_target, percent_duplicate = sort_metrics(reads, coverage, on_target, percent_duplicate)
+        
+        # get the outputfile
+        current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+        outputfile = os.path.join(working_dir, '{0}.{1}.{2}.QC_plots.png'.format(project, platform, current_time))
+    
+        data = [reads, coverage, on_target, percent_duplicate]
+        
+        if reads and coverage:
+            figure = plt.figure()
+            figure.set_size_inches(width, height)
+            # make a list of with X axis labels to determine which subplot should display the Samples label
+            x_labels = get_x_axis_labels(data)
+            # determine how many subplots are expected
+            subplots = count_subplots(data) 
+            # determine the position of each subplot
+            subplot_pos = get_subplot_position(data)
+                        
+            # plot read counts and coverage 
+            ax1 = create_ax(subplots, 1, subplot_pos[0], figure, reads, 'Read counts', '#00CD6C', title = platform, XLabel = x_labels[0])
+            ax2 = create_ax(subplots, 1, subplot_pos[1], figure, coverage, 'Coverage', '#AF58BA', title = None, XLabel = x_labels[1])
+            # check if other metrics defined
+            if on_target:
+                ax3 = create_ax(subplots, 1, subplot_pos[2], figure, on_target, 'On target', '#FFC61E', title = None, XLabel = x_labels[2])
+            if percent_duplicate:
+                ax4 = create_ax(subplots, 1, subplot_pos[3], figure, percent_duplicate, 'Percent duplicate', '#009ADE', title = None, XLabel = x_labels[3])
+                
+            # make sure axes do not overlap
+            plt.tight_layout(pad = 2.5)
+            # write figure to file  
+            figure.savefig(outputfile, bbox_inches = 'tight')
+            plt.close()
+                
+            assert platform not in figure_files
+            figure_files[platform] = outputfile
+    return figure_files
+
+
+
+def write_batch_report(args):
+    '''
+    (str, str, str, str, str, str, str, list, str | None)
+
+    Write a PDF report with QC metrics and released fastqs for a given project
+
+    - project (str): Project name as it appears in File Provenance Report
+    - working-dir (str): Path to the directory with project directories and links to fastqs 
+    - project_name (str): Project name used to create the project directory in gsi space
+    - project_code (str): Project code from MISO
+    - bamqc_table (str): Path to the bamqc table of qc-etl
+    - run_directories (list): List of directories with links to fastqs
+    - provenance (str): Path to File Provenance Report.
+    - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
+    '''
+    
+    # check that runs are specified for single data release report
+    if args.run_directories is None:
+        sys.exit('Please provide a list of run folders')
+    # get the project directory with release run folders
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    
+    # get the records for the project of interest
+    # dereference link to FPR
+    provenance = os.path.realpath(args.provenance)
+    records = get_FPR_records(args.project, provenance)
+    print('Information was extracted from FPR {0}'.format(provenance))
+    # collect relevant information from File Provenance Report about fastqs for project 
+    files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
+    
+    # keep only info about released fastqs
+    # make a list of full paths to the released fastqs resolving the links in the run directories
+    released_files = list_files_release_folder(args.run_directories)
+    to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
+    for file_swid in to_remove:
+        del files[file_swid]
+    
+    # add time points    
+    add_time_points(args.sample_provenance, files)
+        
+    # count the number of released fastq pairs for each run and instrument
+    fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
+    
+    # collect information from bamqc table
+    bamqc_info = extract_bamqc_data(args.bamqc_db)
+    # update FPR info with QC info from bamqc table
+    map_bamqc_info_to_fpr(files, bamqc_info)
+    
+    # generate plots for each instrument and keep track of figure files
+    figure_files = generate_figures(files, args.project, working_dir)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+       
+    current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
+    
+     
+            
+               
+    # # get current date (year-month-day)
+    # current_date = datetime.today().strftime('%Y-%m-%d')
+    
+    # # write md5sums to separate text file
+    #md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
+    # make a list of file paths, md5sum inner lists
+    #write_md5sums(md5_file, [[FPR_info[file]['md5sum'], FPR_info[file]['filename']] for file in FPR_info])
+            
+    # # make a list to store report
+    # Text = []
+    # # add title and logo
+    # logo = str(get_logo())
+    # height, width = resize_image(logo, 0.085)
+    # Text.append(generate_header_table(logo, width, height, args.level))
+    # Text.append('<br />' * 3)
+    # # add information about project and contact personn
+    # Text.append(generate_project_table(args.project_name, args.project_full_name, current_date))
+    # Text.append('<br />')           
+    
+    # # add description
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about newly released raw sequences.</p>')
+    # Text.append('<br />' * 2)
+          
+    # # list the file count            
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
+    # Text.append(generate_file_count_table(fastq_counts, ['Platform', 'Run', 'Paired fastq files'], {'Platform': '25%', 'Run': '30%', 'Paired fastq files': '25%'}))
+    # Text.append('<br />')           
+    
+    # # add page break between plots and tables
+    # Text.append('<div style="page-break-after: always;"></div>')
+        
+    # # add QC plots
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
+    # # count samples with missing values
+    # discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level, 'duplicate (%)', 'on_target')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>')
+    
+    
+    # if sum(discarded_samples.values()):
+    #     S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
+    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(', '.join(S)))
+    # Text.append('<br />')
+    
+    
+    # #factor = 0.3
+    # factor = 1
+        
+    # for instrument in sorted(list(sample_metrics.keys())):
+    #     # check that figures exist for instrument
+    #     if instrument in figure_files:
+    #         Text.append(generate_figure_table(figure_files[instrument], factor))
+    #         Text.append('<br />')
+                
+    # # add page break between plots and tables
+    # Text.append('<div style="page-break-after: always;"></div>')
+        
+    # # add table with sample Ids
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 1 provides information about the sequenced samples.</span></p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
+       
+    # if args.level == 'single':
+    #     if args.timepoints:
+    #         header = ['External ID', 'Case', 'Group ID', 'Library ID (time point)', 'S', 'O', 'T']
+    #         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID (time point)': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
+    #     else:
+    #         header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
+    #         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
+    #     Text.append(generate_table(sample_metrics, header, column_size))            
+           
+    # Text.append('<br />')
+    
+    # # add appendix with library design, tissue origin and type
+    # library_design, tissue_type, tissue_origin = list_library_tissue_codes(sample_metrics, args.level)
+    # L = ['{0}: {1}'.format(i, get_library_design()[i]) for i in library_design]
+    # T = ['{0}: {1}'.format(i, get_tissue_types()[i]) for i in tissue_type]
+    # O = ['{0}: {1}'.format(i, get_tissue_origin()[i]) for i in tissue_origin]
+    
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 1</p>')
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Library type:</span> {0}.<li/></ul>'.format(', '.join(L)))
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Type:</span> {0}.<li/></ul>'.format(', '.join(T)))
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Origin:</span> {0}.<li/></ul>'.format(', '.join(O)))
+    # # add page break between plots and tables
+    # Text.append('<div style="page-break-after: always;"></div>')
+                
+    # # add QC metrics table
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
+        
+    # if args.level == 'single':
+    #     header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
+    #     column_size = {'Case': '10%', 'Library': '22%', 'Sequencing Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
+    #     Text.append(generate_table(sample_metrics, header, column_size))
+    # # add space
+    # Text.append('<br />')    
+    
+    # # add QC metrics appendix
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 2</p>')
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">Raw Coverage:</span> an estimate of the mean depth of coverage in the target space = total bases on target / size of the target space<li/></ul>')
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">On Target Rate:</span> percentage of reads that overlap the target space by at least one base = reads on target/total reads.<li/></ul>')
+    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Percent duplicate:</span> Percent of duplicate reads estimated by Picard MarkDuplicates.<li/></ul>')
+    
+    # # add md5sums
+    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
+    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
+        
+    # # convert to html
+    # renderer = mistune.Markdown()
+    # Text = '\n'.join(Text)
+    # html_str = renderer(Text)
+    
+    # # convert html to pdf    
+    # report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
+    # report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
+    # newfile = open(report_file, "wb")
+    # pisa.CreatePDF(html_str, newfile)
+    # newfile.close()
+
+    # # remove figure files from disk
+    # for i in figure_files:
+    #     os.remove(figure_files[i])
+
+
+
+
+
         
 def write_report(args):
     '''
@@ -2714,32 +2898,9 @@ def write_report(args):
     # collect information from bamqc table
     if args.level == 'single':
        bamqc_info = extract_bamqc_data(args.bamqc_db)
-       
-       print(list(bamqc_info.keys())[:10])
-       print('---')
-       print(bamqc_info[list(bamqc_info.keys())[0]])
-       
-       
-       
-       for i in bamqc_info:
-           if '220729_A00469_0336_AHFNL5DSX3' in i:
-               for j in bamqc_info[i]:
-                   if 'WAVE' in j:
-                       print(i)
-                       print(j)
-                       print(bamqc_info[i][j])
-                       print('----')
-       
-       
-       
-       
        # update FPR info with QC info from bamqc table
        map_bamqc_info_to_fpr(files, bamqc_info)
-    
-       # print(len(files))
        
-       # for i in files:
-       #     print(files[i])
            
     
     
@@ -2915,6 +3076,11 @@ def write_report(args):
     # # remove figure files from disk
     # for i in figure_files:
     #     os.remove(figure_files[i])
+
+
+
+
+
 
 
 
