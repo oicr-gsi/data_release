@@ -2682,11 +2682,11 @@ def get_appendix_identifiers(files):
     for i in ['Library Type', 'Tissue Type', 'Tissue Origin']:
         D[i] = sorted(list(set(D[i])))                
     for i in range(len(D['Library Type'])):
-        D['Library Type'][i] = '{0}: {1}'.format(D[i], library_design[D[i]])
+        D['Library Type'][i] = '{0}: {1}'.format(D['Library Type'][i], library_design[D['Library Type'][i]])
     for i in range(len(D['Tissue Type'])):
-        D['Tissue Type'][i] = '{0}: {1}'.format(D[i], tissue_types[D[i]])
+        D['Tissue Type'][i] = '{0}: {1}'.format(D['Tissue Type'][i], tissue_types[D['Tissue Type'][i]])
     for i in range(len(D['Tissue Origin'])):
-        D['Tissue Origin'][i] = '{0}: {1}'.format(D[i], tissue_origin[D[i]])
+        D['Tissue Origin'][i] = '{0}: {1}'.format(D['Tissue Origin'][i], tissue_origin[D['Tissue Origin'][i]])
         
     return D
 
