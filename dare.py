@@ -2326,7 +2326,8 @@ def sort_metrics(reads, coverage, on_target, percent_duplicate):
     # sort the inner lists according to the read count, it the first value of each inner list
     a.sort(key=lambda x : x[0])
     # unpack the sorted list to get back the list of each metric, order-preserved and read-counts sorted
-    reads, coverage, on_target, percent_duplicate = list(zip(*a))
+    if a:
+        reads, coverage, on_target, percent_duplicate = list(zip(*a))
     return reads, coverage, on_target, percent_duplicate
 
     
