@@ -2491,7 +2491,7 @@ def generate_figures(files, project, working_dir, height=16, width=13):
         # make lists with metrics for each instrument 
         reads, coverage, coverage_dedup, on_target, percent_duplicate = get_run_level_metrics(files, platform)
         # remove undefined metric values
-        reads, coverage, coverage_dedup, on_target, percent_duplicate = clean_up_metrics(reads, coverage, on_target, percent_duplicate)
+        reads, coverage, on_target, percent_duplicate = clean_up_metrics(reads, coverage, on_target, percent_duplicate)
         # sort metrics according to read counts
         reads, coverage, on_target, percent_duplicate = sort_metrics(reads, coverage, on_target, percent_duplicate)
         
