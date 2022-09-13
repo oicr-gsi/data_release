@@ -1,0 +1,109 @@
+{# templates/batch_report_template.html #}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="./static/css/style.css">
+    <title>data_release_report</title>
+</head>
+<body>
+   
+   <table style="width=100%; font-family: Arial, Helvetica, sans-serif; bottom-margin:50px">
+   <tr>
+     <td style="width: 40%; padding: 3px; text-align: left"><img src="./static/images/OICR_Logo_RGB_ENGLISH.png" alt="OICR_logo" title="OICR_logo" style="padding-right: 8px; padding-left:0px; width:10; height:10"></td>
+     <td style="width: 60%; padding: 3px; text-align: left"><p style="text-align: center; color: black; font-size:45px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Data Release Report</p></td>
+   </tr>
+   </table>
+   
+   
+   <table id="project_table">
+   <tr>
+     <th>Project Acronym</th>
+     <th>Project Name</th>
+     <th>Date</th>     
+   </tr>   
+   {% for i in projects %}   
+     <tr>       
+       <td> {{ i['acronym'] }} </td>
+       <td> {{ i['name'] }} </td>        
+       <td> {{ i['date'] }} </td>
+     </tr>
+   {% endfor %}   
+   </table>
+    
+   <p>This report provides detailed sample information and QC metrics about newly released raw sequences.</p>
+   
+   <ol type="1"><li>File Count</li></ol>
+   <p>This release includes {{file_count}} pairs of fastq files. File count is broken down by instrument and run as follow.</p>
+   
+   <table id="file_count_table">
+   <tr>
+     <th>Platform</th>
+     <th>Run</th>
+     <th>Paired fastq files</th>     
+   </tr>   
+   <tr>   
+   {% for instrument in fastq_counts %}
+   </tr>
+       {% for run in fastq_counts[instrument] %}
+         <tr>           
+           <td> {{instrument}} </td>
+           <td> {{run}} </td>
+           <td> {{fastq_counts[instrument][run]}} </td> 
+           {% endfor %}                    
+         </tr>        
+       {% endfor %}               
+                    
+  </table>
+
+  <div style="page-break-after: always;"></div>
+
+             
+  {% if figure_files %}      
+    <ol type="2"><li>QC plots</li></ol>
+    <p>QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>
+    <br>
+    {% if samples_missing_metrics %}   
+      <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is:</p>
+      {% for instrument in samples_missing_metrics %}      
+        <li> {{instrument}}: {{samples_missing_metrics[instrument]}} </li>
+      {% endfor %}               
+    {% endif %}
+    
+    <table>
+    {% for instrument in figure_files %}
+      <tr>
+      <td><img src= {{figure_files[instrument]}} alt=QC_plot</td>
+      </tr>
+    {% endfor %}
+  {% endif %}
+
+  <div style="page-break-after: always;"></div>
+  
+  <ol type="1"><li>Table 1. Sample identifiers</li></ol>
+  <p>Table 1 provides information about the sequenced samples.</p>
+  <p>S: Library type, T: Tissue type, O: Tissue origin</p>
+     
+  
+
+   <table id="file_count_table">
+   <tr>
+     {% for i in headers_identifiers %}
+       <th>{{i}}</th>
+     {% endfor %}
+   </tr>   
+   <tr>   
+   {% for instrument in sample_identifiers %}
+   </tr>
+       {% for i in sample_identifiers[instrument] %}
+         <tr>           
+           <td> {{i}} </td>
+           {% endfor %}                    
+         </tr>        
+       {% endfor %}               
+  </table>
+
+  
+</body>
+</html>
