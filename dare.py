@@ -206,7 +206,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                  'sample_name': sample_name, 'creation_date': creation_date, 'platform': platform,
                  'md5': md5, 'workflow_run_id': workflow_run_id, 'workflow_version': workflow_version,
                  'file_swid': file_swid, 'external_name': geo['geo_external_name'],
-                 'panel': geo['geo_targeted_resequencing'], 'library_source': geo['geo_library_source_template_type'],
+                 'panel': geo['geo_targeted_resequencing'], 'library_source': [geo['geo_library_source_template_type']],
                  'parent_sample': [parent_sample], 'run_id': [run_id], 'run': [run],
                  'limskey': [limskey], 'aliquot': [aliquot], 'library': [library],
                  'barcode': [barcode], 'tissue_type': [geo['geo_tissue_type']],
@@ -229,6 +229,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                 D[file_swid]['barcode'].append(barcode)
                 D[file_swid]['tissue_type'].append(geo['geo_tissue_type'])
                 D[file_swid]['tissue_origin'].append(geo['geo_tissue_origin'])
+                D[file_swid]['library_source'].append(geo['geo_library_source_template_type'])
                 D[file_swid]['groupdesc'].append(geo['geo_group_id_description'])
                 D[file_swid]['groupid'].append(geo['geo_group_id'])
                 D[file_swid]['lane'].append(lane)
@@ -2616,7 +2617,10 @@ def group_sample_metrics(files, table, add_time_points=None):
                 D[platform] = []
             if L not in D[platform]:
                 D[platform].append(L)
-            
+    # sort sample info on sample name
+    for i in D:
+       D[i].sort(key = lambda x: x[0])        
+        
     return D            
 
 
@@ -2673,21 +2677,25 @@ def get_appendix_identifiers(files):
                       'TR': 'Total RNA', 'SW': 'Shallow Whole Genome', 'SM': 'smRNA', 'SC': 'Single Cell',
                       'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
                       'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq'}
-        
+    
     for file_swid in files:
-        D['Library Type'].append(files[file_swid]['library_source'][0])
-        D['Tissue Type'].append(files[file_swid]['tissue_type'][0])
-        D['Tissue Origin'].append(files[file_swid]['tissue_origin'][0])
+        D['Library Type'].extend(files[file_swid]['library_source'])
+        D['Tissue Type'].extend(files[file_swid]['tissue_type'])
+        D['Tissue Origin'].extend(files[file_swid]['tissue_origin'])
     
     for i in ['Library Type', 'Tissue Type', 'Tissue Origin']:
         D[i] = sorted(list(set(D[i])))                
+       
     for i in range(len(D['Library Type'])):
         D['Library Type'][i] = '{0}: {1}'.format(D['Library Type'][i], library_design[D['Library Type'][i]])
     for i in range(len(D['Tissue Type'])):
         D['Tissue Type'][i] = '{0}: {1}'.format(D['Tissue Type'][i], tissue_types[D['Tissue Type'][i]])
     for i in range(len(D['Tissue Origin'])):
         D['Tissue Origin'][i] = '{0}: {1}'.format(D['Tissue Origin'][i], tissue_origin[D['Tissue Origin'][i]])
+    
         
+    print(D)
+    
     return D
 
        
@@ -2720,7 +2728,7 @@ def write_batch_report(args):
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    records = get_FPR_records(args.project, provenance)
+    #records = get_FPR_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
@@ -2750,6 +2758,11 @@ def write_batch_report(args):
     
     # generate plots for each instrument and keep track of figure files
     figure_files = generate_figures(files, args.project, working_dir)
+    
+    
+    print(len(figure_files))
+    
+    
     
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))

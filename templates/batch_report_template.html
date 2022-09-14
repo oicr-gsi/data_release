@@ -85,24 +85,33 @@
   <p>Table 1 provides information about the sequenced samples.</p>
   <p>S: Library type, T: Tissue type, O: Tissue origin</p>
      
-  
 
    <table id="file_count_table">
    <tr>
-     {% for i in headers_identifiers %}
-       <th>{{i}}</th>
-     {% endfor %}
+     <th>{{header_identifiers.0}}</th>
+     <th>{{header_identifiers.1}}</th>
+     <th>{{header_identifiers.2}}</th>
+     <th>{{header_identifiers.3}}</th>
+     <th>{{header_identifiers.4}}</th>
+     <th>{{header_identifiers.5}}</th>
+     <th>{{header_identifiers.6}}</th>
    </tr>   
    <tr>   
    {% for instrument in sample_identifiers %}
    </tr>
        {% for i in sample_identifiers[instrument] %}
-         <tr>           
-           <td> {{i}} </td>
-           {% endfor %}                    
+         <tr>
+           <td> {{i.0}} </td>
+           <td> {{i.1}} </td>
+           <td> {{i.2}} </td>
+           <td> {{i.3}} </td>
+           <td> {{i.4}} </td>
+           <td> {{i.5}} </td>
+           <td> {{i.6}} </td>         
          </tr>        
        {% endfor %}               
-  </table>
+  {% endfor %}
+</table>
 
   
 </body>
