@@ -2683,7 +2683,7 @@ def get_appendix_identifiers(files):
         D['Tissue Type'].extend(files[file_swid]['tissue_type'])
         D['Tissue Origin'].extend(files[file_swid]['tissue_origin'])
     
-    for i in ['Library Type', 'Tissue Type', 'Tissue Origin']:
+    for i in D:
         D[i] = sorted(list(set(D[i])))                
        
     for i in range(len(D['Library Type'])):
@@ -2693,8 +2693,8 @@ def get_appendix_identifiers(files):
     for i in range(len(D['Tissue Origin'])):
         D['Tissue Origin'][i] = '{0}: {1}'.format(D['Tissue Origin'][i], tissue_origin[D['Tissue Origin'][i]])
     
-        
-    print(D)
+    for i in D:
+        D[i] = ', '.join(D[i])                
     
     return D
 
@@ -2789,8 +2789,7 @@ def write_batch_report(args):
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
     appendix_identifiers = get_appendix_identifiers(files)
     
-    
-    
+     
     
     header_metrics = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']            
     
@@ -2823,25 +2822,8 @@ def write_batch_report(args):
     
         
     
-        
     
     
-    
-    
-    
-    
-    # # add appendix with library design, tissue origin and type
-    # library_design, tissue_type, tissue_origin = list_library_tissue_codes(sample_metrics, args.level)
-    # L = ['{0}: {1}'.format(i, get_library_design()[i]) for i in library_design]
-    # T = ['{0}: {1}'.format(i, get_tissue_types()[i]) for i in tissue_type]
-    # O = ['{0}: {1}'.format(i, get_tissue_origin()[i]) for i in tissue_origin]
-    
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 1</p>')
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Library type:</span> {0}.<li/></ul>'.format(', '.join(L)))
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Type:</span> {0}.<li/></ul>'.format(', '.join(T)))
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Origin:</span> {0}.<li/></ul>'.format(', '.join(O)))
-    # # add page break between plots and tables
-    # Text.append('<div style="page-break-after: always;"></div>')
                 
     # # add QC metrics table
     # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
