@@ -2792,6 +2792,7 @@ def write_batch_report(args):
      
     
     header_metrics = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']            
+    qc_metrics = group_sample_metrics(files, 'qc_metrics')
     
     
     
@@ -2803,7 +2804,9 @@ def write_batch_report(args):
                'samples_missing_metrics': samples_missing_metrics,
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
-               'appendix_identifiers': appendix_identifiers}
+               'appendix_identifiers': appendix_identifiers,
+               'header_metrics': header_metrics,
+               'qc_metrics': qc_metrics}
     
     
     ### check function for figure formatting
@@ -2824,10 +2827,6 @@ def write_batch_report(args):
     
     
     
-                
-    # # add QC metrics table
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
         
     # if args.level == 'single':
     #     header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       

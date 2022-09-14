@@ -120,6 +120,43 @@
     <li><span style="font-weight: bold;">Tissue Type:</span> {{appendix_identifiers["Tissue Type"]}}</li>
     <li><span style="font-weight: bold;">Tissue Origin:</span> {{appendix_identifiers["Tissue Origin"]}}</li>
   </ul>
+
+
+  <ol type="1"><li>Table 2. QC metrics</li></ol>
+  <p>Table 2 provides QC metrics about the raw sequences of each sample.</p>
+  
+  <table id="file_count_table">
+   <tr>
+     <th>{{header_metrics.0}}</th>
+     <th>{{header_metrics.1}}</th>
+     <th>{{header_metrics.2}}</th>
+     <th>{{header_metrics.3}}</th>
+     <th>{{header_metrics.4}}</th>
+     <th>{{header_metrics.5}}</th>
+     <th>{{header_metrics.6}}</th>
+   </tr>   
+   <tr>   
+   {% for instrument in qc_metrics %}
+   </tr>
+       {% for i in qc_metrics[instrument] %}
+         <tr>
+           <td> {{i.0}} </td>
+           <td> {{i.1}} </td>
+           <td> {{i.2}} </td>
+           <td> {{i.3}} </td>
+           <td> {{i.4}} </td>
+           <td> {{i.5}} </td>
+           <td> {{i.6}} </td>         
+         </tr>        
+       {% endfor %}               
+  {% endfor %}
+</table>
+
+
+
+
+
+
   
 </body>
 </html>
