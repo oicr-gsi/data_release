@@ -2173,7 +2173,7 @@ def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
             if sample_id in bamqc_info[run_alias]:
                 # map file info with bamqc info
                 for d in bamqc_info[run_alias][sample_id]:
-                    if FPR_info[file_swid]['lane'] == d['lane'] \
+                    if FPR_info[file_swid]['lane'] == d['Lane Number'] \
                         and FPR_info[file_swid]['sample_name'][0] == d['sample'] \
                         and FPR_info[file_swid]['barcode'][0] == d['barcodes'] \
                         and FPR_info[file_swid]['platform'].replace('_', ' ') == d['instrument']:
@@ -2603,7 +2603,7 @@ def group_sample_metrics(files, table, add_time_points=None):
             on_target = i[0]['on_target']
             coverage = i[0]['coverage']
             duplicate = i[0]['percent_duplicate']
-            sequencing_run = '{0} {1}'.format(i[0]['run_id'][0], i[0]['barcode'])
+            sequencing_run = '{0} {1}'.format(i[0]['run'][0], i[0]['barcode'][0])
             
             if table == 'sample_identifiers':
                 L = [external_name, case, sample, library, library_source, tissue_origin, tissue_type]
@@ -2806,7 +2806,8 @@ def write_batch_report(args):
                'sample_identifiers': sample_identifiers,
                'appendix_identifiers': appendix_identifiers,
                'header_metrics': header_metrics,
-               'qc_metrics': qc_metrics}
+               'qc_metrics': qc_metrics,
+               'md5sum': os.path.basename(md5sum_file)}
     
     
     ### check function for figure formatting
@@ -2827,23 +2828,7 @@ def write_batch_report(args):
     
     
     
-        
-    # if args.level == 'single':
-    #     header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
-    #     column_size = {'Case': '10%', 'Library': '22%', 'Sequencing Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
-    #     Text.append(generate_table(sample_metrics, header, column_size))
-    # # add space
-    # Text.append('<br />')    
     
-    # # add QC metrics appendix
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 2</p>')
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">Raw Coverage:</span> an estimate of the mean depth of coverage in the target space = total bases on target / size of the target space<li/></ul>')
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">On Target Rate:</span> percentage of reads that overlap the target space by at least one base = reads on target/total reads.<li/></ul>')
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Percent duplicate:</span> Percent of duplicate reads estimated by Picard MarkDuplicates.<li/></ul>')
-    
-    # # add md5sums
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
-    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
         
     # # convert to html
     # renderer = mistune.Markdown()
@@ -3278,7 +3263,7 @@ if __name__ == '__main__':
     r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
     r_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
     r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-    r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required = True)
+    r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
