@@ -2173,16 +2173,16 @@ def map_bamqc_info_to_fpr(FPR_info, bamqc_info):
             if sample_id in bamqc_info[run_alias]:
                 # map file info with bamqc info
                 for d in bamqc_info[run_alias][sample_id]:
-                    if FPR_info[file_swid]['lane'] == d['Lane Number'] \
-                        and FPR_info[file_swid]['sample_name'][0] == d['sample'] \
-                        and FPR_info[file_swid]['barcode'][0] == d['barcodes'] \
+                    if int(FPR_info[file_swid]['lane'][0]) == int(d['Lane Number']) \
+                        and FPR_info[file_swid]['sample_id'][0] == d['sample'] \
+                        and FPR_info[file_swid]['barcode'][0] == d['Barcodes'] \
                         and FPR_info[file_swid]['platform'].replace('_', ' ') == d['instrument']:
                             assert FPR_info[file_swid]['library'][0] == d['library']    
                             qc_found = True
                             FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
-                            FPR_info[file_swid]['coverage_dedup'] = round(d['coverage_dedup'], 2)
+                            FPR_info[file_swid]['coverage_dedup'] = round(d['coverage deduplicated'], 2)
                             FPR_info[file_swid]['on_target'] = round(d['on_target'], 2)                
-                            FPR_info[file_swid]['percent_duplicate'] = round(d['percent_duplicate'], 2)
+                            FPR_info[file_swid]['percent_duplicate'] = round(d['mark duplicates_PERCENT_DUPLICATION'], 2)
 
         if qc_found == False:
             FPR_info[file_swid]['coverage'] = 'NA'
@@ -2753,6 +2753,59 @@ def write_batch_report(args):
     
     # collect information from bamqc table
     bamqc_info = extract_bamqc_data(args.bamqc_db)
+
+    
+    for sample in bamqc_info['211220_A00469_0258_AHNHGVDRXY']:
+        if 'KLCS' in sample:
+            print(sample)
+
+     
+#     #KLCS_0104_Pl_P_TS_BBCGP_4042_138336_LIB-15-0186_881574_Pl_1
+#      KLCS_0104_Pl_P_TS_BBCGP_4042_138336_LIB-15-0186_881574_Pl_1
+# KLCS_0104_Ly_R_TS_BBCGP_4042_138336_LIB-15-0186_888391_BC_4
+
+
+
+
+
+#     KLCS_0105_Ly_R_TS_BBCGP_4042_138421_LIB-15-0187_891019_BC_4
+# KLCS_0115_Ly_R_TS_BBCGP_4042_104425_LIB-15-0024_818785_BC_4
+# KLCS_0016_Ct_T_TS_BBCGP_4042_98446_LIB-16-0003_298267_Pl_3
+# KLCS_0118_Ly_R_TS_BBCGP_4042_103722_LIB-15-0020_810602_BC_4
+# KLCS_0103_Pl_P_TS_BBCGP_4042_138215_LIB-15-0184_895617_Pl_1
+# KLCS_0112_Ly_R_TS_BBCGP_4042_132233_LIB-15-0170_887482_BC_4
+# KLCS_0004_Pl_P_TS_BBCGP_4042_101116_LIB-15-0011_317524_Pl_1
+# KLCS_0108_Ly_R_TS_BBCGP_4042_141453_LIB-15-0200_903734_BC_4
+# KLCS_0116_Pl_P_TS_BBCGP_4042_109403_LIB-15-0070_834012_Pl_1
+# KLCS_0002_Pl_P_TS_BBCGP_4042_100356_LIB-15-0005_327127_Pl_1
+# KLCS_0114_Ly_R_TS_BBCGP_4042_104017_LIB-15-0023_812977_BC_4
+# KLCS_0121_Pl_P_TS_BBCGP_4042_111208_LIB-15-0087_845706_Pl_1
+# KLCS_0108_Pl_P_TS_BBCGP_4042_141453_LIB-15-0200_903734_Pl_3
+# KLCS_0114_Pl_P_TS_BBCGP_4042_104017_LIB-15-0023_812977_Pl_1
+# KLCS_0121_Pl_P_TS_BBCGP_4042_111208_LIB-15-0087_866218_Pl_1
+# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_803558_Pl_1
+# KLCS_0120_Pl_P_TS_BBCGP_4042_113775_LIB-15-0128_862509_Pl_1
+# KLCS_0105_Pl_P_TS_BBCGP_4042_138421_LIB-15-0187_881815_Pl_1
+# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_818785_Pl_1
+# KLCS_0098_Pl_P_TS_BBCGP_4042_125295_LIB-15-0155_882191_Pl_1
+# KLCS_0105_Pl_P_TS_BBCGP_4042_138421_LIB-15-0187_891019_Pl_1
+# KLCS_0106_Ly_R_TS_BBCGP_4042_138557_LIB-15-0189_890874_BC_4
+# KLCS_0004_Pl_P_TS_BBCGP_4042_101116_LIB-15-0011_807030_Pl_1
+# KLCS_0103_Ly_R_TS_BBCGP_4042_138215_LIB-15-0184_895617_BC_4
+# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_806984_Pl_1
+# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_828660_Pl_1
+# KLCS_0107_Ly_R_TS_BBCGP_4042_140497_LIB-15-0199_896938_BC_4
+# KLCS_0117_Pl_P_TS_BBCGP_4042_111021_LIB-15-0094_844555_Pl_1
+# KLCS_0106_Pl_P_TS_BBCGP_4042_138557_LIB-15-0189_890874_Pl_1
+# KLCS_0104_Pl_P_TS_BBCGP_4042_138336_LIB-15-0186_888390_Pl_1
+# KLCS_0111_Ly_R_TS_BBCGP_4042_111124_LIB-15-0095_856092_BC_4
+# KLCS_0106_Pl_P_TS_BBCGP_4042_138557_LIB-15-0189_885762_Pl_1
+# KLCS_0114_Pl_P_TS_BBCGP_4042_104017_LIB-15-0023_800610_Pl_1
+# KLCS_0105_Pl_P_TS_BBCGP_4042_138421_LIB-15-0187_883722_Pl_1
+# KLCS_0119_Ly_R_TS_BBCGP_4042_98974_LIB-15-0021_809289_BC_4
+
+
+
     # update FPR info with QC info from bamqc table
     map_bamqc_info_to_fpr(files, bamqc_info)
     
