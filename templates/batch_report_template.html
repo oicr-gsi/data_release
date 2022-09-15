@@ -34,10 +34,10 @@
     
    <p>This report provides detailed sample information and QC metrics about newly released raw sequences.</p>
    
-   <ol type="1"><li>File Count</li></ol>
+   <h2>1. File Count</h2>
    <p>This release includes {{file_count}} pairs of fastq files. File count is broken down by instrument and run as follow.</p>
    
-   <table id="file_count_table">
+   <table id="info_table">
    <tr>
      <th>Platform</th>
      <th>Run</th>
@@ -59,9 +59,10 @@
 
   <div style="page-break-after: always;"></div>
 
-             
+
+  <h2>2. QC plots</h2>
+            
   {% if figure_files %}      
-    <ol type="2"><li>QC plots</li></ol>
     <p>QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>
     <br>
     {% if samples_missing_metrics %}   
@@ -77,16 +78,18 @@
       <td><img src= {{figure_files[instrument]}} alt=QC_plot</td>
       </tr>
     {% endfor %}
-  {% endif %}
+  {% else %}
+    <p>Data could not be plotted because of missing QC metrics</p>
+{% endif %}
 
   <div style="page-break-after: always;"></div>
   
-  <ol type="1"><li>Table 1. Sample identifiers</li></ol>
+  <h2>Table 1. Sample identifiers</h2>
   <p>Table 1 provides information about the sequenced samples.</p>
   <p>S: Library type, T: Tissue type, O: Tissue origin</p>
      
 
-   <table id="file_count_table">
+   <table id="info_table">
    <tr>
      <th>{{header_identifiers.0}}</th>
      <th>{{header_identifiers.1}}</th>
@@ -113,19 +116,19 @@
   {% endfor %}
 </table>
 
-  <p>Appendix Table 1</p>
+  <h3>Appendix Table 1</h3>
 
   <ul>
-    <li><b>Library Type:</b> {{appendix_identifiers["Library Type"]}}</li>
-    <li><span style="font-weight: bold;">Tissue Type:</span> {{appendix_identifiers["Tissue Type"]}}</li>
-    <li><span style="font-weight: bold;">Tissue Origin:</span> {{appendix_identifiers["Tissue Origin"]}}</li>
+    <li><i>Library Type:</i> {{appendix_identifiers["Library Type"]}}</li>
+    <li><i>Tissue Type:</i> {{appendix_identifiers["Tissue Type"]}}</li>
+    <li><i>Tissue Origin:</i> {{appendix_identifiers["Tissue Origin"]}}</li>
   </ul>
 
 
-  <ol type="1"><li>Table 2. QC metrics</li></ol>
+  <h2>Table 2. QC metrics</h2>
   <p>Table 2 provides QC metrics about the raw sequences of each sample.</p>
   
-  <table id="file_count_table">
+  <table id="info_table">
    <tr>
      <th>{{header_metrics.0}}</th>
      <th>{{header_metrics.1}}</th>
@@ -153,14 +156,16 @@
 </table>
 
 
-  <p>Appendix Table 2</p>
+  <h3>Appendix Table 2</h3>
 
   <ul>
-    <li><b>Raw Coverage:</b> An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.</li>
-    <li><b>On Target Rate:</b> Percentage of reads that overlap the target space by at least one base = reads on target/total reads.</li>
-    <li><b>Percent duplicate:</b> Percent of duplicate reads estimated by Picard MarkDuplicates.</li>
+    <li><i>Raw Coverage:</i> An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.</li>
+    <li><i>On Target Rate:</i> Percentage of reads that overlap the target space by at least one base = reads on target/total reads.</li>
+    <li><i>Percent duplicate:</i> Percent of duplicate reads estimated by Picard MarkDuplicates.</li>
   </ul>
 
-  
+  <h2>Table 3. List of md5sums</h2>
+  <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
+    
 </body>
 </html>
