@@ -14,12 +14,9 @@ from datetime import datetime
 import time
 #import xhtml2pdf.pisa as pisa
 import mistune
-import base64
-from PIL import Image
 import math
 import requests
 import gzip
-import io
 import sys
 import json
 import pathlib
@@ -475,30 +472,6 @@ def link_pipeline_data(pipeline_data, working_dir):
                 if os.path.isfile(link) == False:
                     os.symlink(file, link)
 
-
-
-def collect_md5sums(files):
-    '''
-    (dict) -> dict
-    
-    Returns a dictionary with lists of md5sums, file_path for each run in dictionary files
-        
-    Parameters
-    ----------
-    - files (dict) : Dictionary with file records obtained from parsing FPR
-    '''
-    
-    # create a dictionary {run: [md5sum, file_path]} 
-    D = {}
-    for file_swid in files:
-        run_name = ';'.join(files[file_swid]['run_id'])
-        md5 = files[file_swid]['md5']
-        file_path = files[file_swid]['file_path']
-        if run_name in D:
-            D[run_name].append([md5, file_path])
-        else:
-            D[run_name] = [[md5, file_path]]
-    return D
 
 
 def exclude_non_specified_files(files, file_names):
@@ -1410,54 +1383,6 @@ def get_cumulative_level_sample_metrics(FPR_info):
     return D                         
 
                                            
-def resize_image(image, scaling_factor):
-    '''
-    (str, float) -> (int, int)
-    
-    Returns new file size with same proportions as a tuple of height and width
-    
-    Parameters
-    ----------
-    - image (str): Path to figure file or base64 encoded image
-    - scaling_factor (float): The factor applied to resize figure 
-    '''
-    
-    if os.path.isfile(image):
-        # extract the original figure size
-        img = Image.open(image)
-    else:
-        imgdata = base64.b64decode(image)
-        img = Image.open(io.BytesIO(imgdata))
-    width, height = img.size
-    # resize while keeping proportions between height and width
-    height, width = list(map(lambda x: x * scaling_factor, [height, width]))
-    return height, width        
-
-
-
-def map_instrument_type(sequencer):
-    '''
-    (str) -> str
-
-    Returns a generic intrument name for the sequencer model
-    
-    Parameters
-    ----------
-    - sequencer (str): Name of the instrument on which libraries are sequenced
-    '''
-    
-    instrument = ''
-    if 'miseq' in sequencer.lower():
-        instrument = 'MiSeq' 
-    elif 'nextseq' in sequencer.lower():
-        instrument = 'NextSeq'
-    elif 'hiseq' in sequencer.lower():
-        instrument = 'HiSeq'
-    elif 'novaseq' in sequencer.lower():
-        instrument = 'NovaSeq'
-    return instrument
-
-
 def group_qc_metric_by_instrument(sample_metrics, metric, level):
     '''
     (dict, str, str) - > dict 
@@ -1494,34 +1419,6 @@ def group_qc_metric_by_instrument(sample_metrics, metric, level):
     return D
 
 
-
-def sort_metric2_according_to_metric1_order(sample_metrics, instrument, metric2, samples1, level):
-    '''
-    (dict, str, str, list, str) -> list
-    
-    Returns a list of metric2 sorted according to order of metric1 
-    
-    Parameters
-    ----------
-    - sample_metrics (dict): Run-level or cumulative QC metrics for all samples 
-    - instrument (str): Sequencing intrument
-    - metric2 (str): Name of QC metric 2
-    - samples1 (str): List of samples sorted according to the order of metric 1
-    - level (str): Report level: single or cumulative
-    '''
-
-    # group metric 2 by instrument
-    D = group_qc_metric_by_instrument(sample_metrics, metric2, level)
-    # make a list of metric2 sorted according to the order of metric1
-    Q = []
-    for i in samples1:
-        for j in D[instrument]:
-            if j[1] == i:
-                Q.append(j[0])
-    return Q
-
-    
-    
 def count_released_fastqs_by_instrument(FPR_info, reads):
     '''
     (dict, str) -> dict
@@ -1555,24 +1452,6 @@ def count_released_fastqs_by_instrument(FPR_info, reads):
                     D[instrument][run] += 1
     return D
     
-
-
-def encode_image(filename):
-    '''
-    (str)- > str
-    
-    Returns a string representing the encoding of image filename in base64
-    
-    Parameters
-    ----------
-    - filename (str): Path to the image file
-    '''
-    
-    # encode image in base64
-    with open(filename, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-    return encoded_string
-
 
 
 def generate_table(sample_metrics, header, column_size):
@@ -1759,62 +1638,6 @@ def generate_cumulative_table(sample_metrics, header, column_size, table_type=No
 
 
 
-
-def generate_table_md5sum(FPR_info, header, column_size):
-    '''
-    (dict, list, dict, str) -> str
-    
-    Returns a html string representing a table
-    
-    Parameters
-    ----------
-    - FPR_info (dict): Dictionary with QC metrics and file info
-    - header (list): List of table column names
-    - column_size (dict): Dictionary of column name, column width key, value pairs
-    '''
-    
-    # count the expected number of cells (excluding header) in tables
-    cells = len(FPR_info)
-            
-    # add padding around text in cells    
-    padding = '3px'
-    
-    # set up counter to track odd and even lines
-    counter = 0
-
-    table = []
-    # add table style
-    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
-    # add header
-    table.append('<tr>')
-    for i in header:
-        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
-    table.append('</tr>')
-    # add lines in table
-    # create a list of file and md5sum
-    files = []
-    for file in FPR_info:
-        files.append([FPR_info[file]['filename'], FPR_info[file]['md5sum']])
-    files.sort()
-    
-    for file in files:
-        if counter % 2 == 0:
-            table.append('<tr style="background-color: #eee">')
-        else:
-            table.append('<tr style="background-color: #fff">')
-        for i in range(len(header)):
-            j = str(file[i])
-            if counter + 1 == cells:
-                table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 9.3px; text-align: left;">{1}</td>'.format(padding, j))
-            else:
-                table.append('<td style="padding: {0}; font-size: 9.3px;; text-align: left;">{1}</td>'.format(padding, j))
-        table.append('</tr>')
-        # update counter
-        counter += 1
-    table.append('</table>')
-    return ''.join(table)
-
-
 def generate_project_table(project_name, project_full_name, current_date):
     '''
     (str, str, str, str, str) -> str
@@ -1846,45 +1669,6 @@ def generate_project_table(project_name, project_full_name, current_date):
     table.append('</tr>')
     table.append('</table>')
     return ''.join(table)
-
-
-
-def generate_figure_table(file1, factor, file2=None):
-   
-    '''
-    (str, str | None) -> str
-
-    Returns a html string representing a table with figure files
-
-    Parameters
-    ----------
-    - file1 (str): Path to the figure file with metrics 1 and 2 
-    - file2 (str | None): Path to the figure file with metrics 3 and 4 if exists
-    - factor (float): Resizing factor
-    '''
-
-    table = []
-    # add table style
-    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
-    # add header
-    table.append('</tr>')
-    table.append('<tr>')
-    # resize figure 1
-    height1, width1 = resize_image(file1, factor)
-    if file2:
-        width = '50%'
-    else:
-        width = '100%'
-    table.append('<td style="width: {0}; padding: 3px; text-align: left"><img src="{1}" alt="{2}" title="{2}" style="padding-right: 0px; padding-left:0px; width:{3}; height:{4}"></td>'.format(width, file1, os.path.basename(file1), width1, height1))
-    if file2:
-        # resize figure 
-        height2, width2 = resize_image(file2, factor)
-        table.append('<td style="width: {0}; padding: 3px; text-align: left"><img src="{1}" alt="{2}" title="{2}" style="padding-right: 0px; padding-left:0px; width:{3}; height:{4}"></td>'.format(width, file2, os.path.basename(file2), width2, height2))
-    table.append('</tr>')
-    table.append('</table>')
-    
-    return ''.join(table)
-
 
 
 def count_all_files(fastq_counts):
@@ -1967,26 +1751,6 @@ def list_released_fastqs_project(api, FPR_info):
             print('WARNING. Could not retrieve QC status from Nabu for {0}'.format(file))
     return L
 
-
-
-def list_sequencers(fastq_counts):
-    '''
-    (dict) -> list
-    
-    Returns a list of sequencer instruments used to sequence the released fastqs
-    
-    Parameters
-    ----------
-    - fastq_counts (dict): Dictionary with counts of released files per run and instrument
-    '''
-        
-    # make a list of possible sequencers
-    sequencers = ['MiSeq', 'NextSeq', 'HiSeq', 'NovaSeq']
-    # remove sequencers if not part of release
-    to_remove = [i for i in sequencers if i not in fastq_counts]
-    for i in to_remove:
-        sequencers.remove(i)
-    return sequencers
 
 
 def write_md5sums(md5_file, md5sums):
@@ -2747,75 +2511,15 @@ def write_batch_report(args):
     fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
     all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
     
-    
-
-
-    
     # collect information from bamqc table
     bamqc_info = extract_bamqc_data(args.bamqc_db)
-
-    
-    for sample in bamqc_info['211220_A00469_0258_AHNHGVDRXY']:
-        if 'KLCS' in sample:
-            print(sample)
-
-     
-#     #KLCS_0104_Pl_P_TS_BBCGP_4042_138336_LIB-15-0186_881574_Pl_1
-#      KLCS_0104_Pl_P_TS_BBCGP_4042_138336_LIB-15-0186_881574_Pl_1
-# KLCS_0104_Ly_R_TS_BBCGP_4042_138336_LIB-15-0186_888391_BC_4
-
-
-
-
-
-#     KLCS_0105_Ly_R_TS_BBCGP_4042_138421_LIB-15-0187_891019_BC_4
-# KLCS_0115_Ly_R_TS_BBCGP_4042_104425_LIB-15-0024_818785_BC_4
-# KLCS_0016_Ct_T_TS_BBCGP_4042_98446_LIB-16-0003_298267_Pl_3
-# KLCS_0118_Ly_R_TS_BBCGP_4042_103722_LIB-15-0020_810602_BC_4
-# KLCS_0103_Pl_P_TS_BBCGP_4042_138215_LIB-15-0184_895617_Pl_1
-# KLCS_0112_Ly_R_TS_BBCGP_4042_132233_LIB-15-0170_887482_BC_4
-# KLCS_0004_Pl_P_TS_BBCGP_4042_101116_LIB-15-0011_317524_Pl_1
-# KLCS_0108_Ly_R_TS_BBCGP_4042_141453_LIB-15-0200_903734_BC_4
-# KLCS_0116_Pl_P_TS_BBCGP_4042_109403_LIB-15-0070_834012_Pl_1
-# KLCS_0002_Pl_P_TS_BBCGP_4042_100356_LIB-15-0005_327127_Pl_1
-# KLCS_0114_Ly_R_TS_BBCGP_4042_104017_LIB-15-0023_812977_BC_4
-# KLCS_0121_Pl_P_TS_BBCGP_4042_111208_LIB-15-0087_845706_Pl_1
-# KLCS_0108_Pl_P_TS_BBCGP_4042_141453_LIB-15-0200_903734_Pl_3
-# KLCS_0114_Pl_P_TS_BBCGP_4042_104017_LIB-15-0023_812977_Pl_1
-# KLCS_0121_Pl_P_TS_BBCGP_4042_111208_LIB-15-0087_866218_Pl_1
-# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_803558_Pl_1
-# KLCS_0120_Pl_P_TS_BBCGP_4042_113775_LIB-15-0128_862509_Pl_1
-# KLCS_0105_Pl_P_TS_BBCGP_4042_138421_LIB-15-0187_881815_Pl_1
-# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_818785_Pl_1
-# KLCS_0098_Pl_P_TS_BBCGP_4042_125295_LIB-15-0155_882191_Pl_1
-# KLCS_0105_Pl_P_TS_BBCGP_4042_138421_LIB-15-0187_891019_Pl_1
-# KLCS_0106_Ly_R_TS_BBCGP_4042_138557_LIB-15-0189_890874_BC_4
-# KLCS_0004_Pl_P_TS_BBCGP_4042_101116_LIB-15-0011_807030_Pl_1
-# KLCS_0103_Ly_R_TS_BBCGP_4042_138215_LIB-15-0184_895617_BC_4
-# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_806984_Pl_1
-# KLCS_0115_Pl_P_TS_BBCGP_4042_104425_LIB-15-0024_828660_Pl_1
-# KLCS_0107_Ly_R_TS_BBCGP_4042_140497_LIB-15-0199_896938_BC_4
-# KLCS_0117_Pl_P_TS_BBCGP_4042_111021_LIB-15-0094_844555_Pl_1
-# KLCS_0106_Pl_P_TS_BBCGP_4042_138557_LIB-15-0189_890874_Pl_1
-# KLCS_0104_Pl_P_TS_BBCGP_4042_138336_LIB-15-0186_888390_Pl_1
-# KLCS_0111_Ly_R_TS_BBCGP_4042_111124_LIB-15-0095_856092_BC_4
-# KLCS_0106_Pl_P_TS_BBCGP_4042_138557_LIB-15-0189_885762_Pl_1
-# KLCS_0114_Pl_P_TS_BBCGP_4042_104017_LIB-15-0023_800610_Pl_1
-# KLCS_0105_Pl_P_TS_BBCGP_4042_138421_LIB-15-0187_883722_Pl_1
-# KLCS_0119_Ly_R_TS_BBCGP_4042_98974_LIB-15-0021_809289_BC_4
-
-
-
     # update FPR info with QC info from bamqc table
     map_bamqc_info_to_fpr(files, bamqc_info)
     
     # generate plots for each instrument and keep track of figure files
     figure_files = generate_figures(files, args.project, working_dir)
-    
-    
-    print(len(figure_files))
-    
-    
+    for i in figure_files:
+        figure_files[i] = os.path.basename(figure_files[i])    
     
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -2825,7 +2529,7 @@ def write_batch_report(args):
     # write report
     
     # get the report template
-    environment = Environment(loader=FileSystemLoader("templates/"))
+    environment = Environment(loader=FileSystemLoader("./templates/"))
     template = environment.get_template("batch_report_template.html")
     
     # make a dict with project information
