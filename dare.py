@@ -29,15 +29,14 @@ def get_libraries(library_file):
     '''
     (str) -> dict
     
-    Returns a dictionary with library, run key, value pairs, or a dictionary of library, empty string 
-    key, value pairs if runs are not specified. 
-    Note: runs need to be specified or missing for all libraries
+    Returns a dictionary with library, run key, value pairs.
+    Note: runs need to be specified for all libraries
     
     Parameters
     ----------
     - sample_file (str): Path to sample file. Sample file is a tab delimited file
-                         that includes 1 or 2 columns. The first column is always 
-                         the library alias, and the second optional column is run id
+                         that includes 2 columns. The first column is always 
+                         the library alias, and the second is run id
     '''
     D = {}
     
@@ -46,16 +45,14 @@ def get_libraries(library_file):
         line = line.rstrip()
         if line != '':
             line = line.split()
-            if len(line) == 1:
-                D[line[0]] = ''
-            elif len(line) == 2:
-                D[line[0]] = line[1]
+            assert len(line) == 2
+            D[line[0]] = line[1]
     infile.close()
 
     L = list(D.values())
-    # check that run id is specified or missing for all libraries
-    if not (all(map(lambda x: x != '', L)) or all(map(lambda x: x == '', L))):
-        raise ValueError('Run id must be specified or absent for all libraries')    
+    # check that run id is specified for all libraries
+    if not all(map(lambda x: x != '', L)):
+        raise ValueError('Run id must be specified for all libraries')    
     
     return D
 
@@ -117,8 +114,8 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
         if project == i[1]:
             pipeline_workflow = i[30]
             # check workflow
-            if len(workflow) == 1:
-                if workflow[0] == 'bcl2fastq':
+            if len(workflow[0]) == 1:
+                if workflow[0].lower() == 'bcl2fastq':
                     # skip if not fastq-related workflows    
                     if pipeline_workflow.lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
                         continue
@@ -230,7 +227,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
                 D[file_swid]['groupdesc'].append(geo['geo_group_id_description'])
                 D[file_swid]['groupid'].append(geo['geo_group_id'])
                 D[file_swid]['lane'].append(lane)
-                       
+    
     return D    
         
             
@@ -326,19 +323,18 @@ def exclude_non_specified_libraries(files, valid_libraries):
     D = {}
     exclude = []
 
-    # make a list of valid runs if runs are specified in valid_libraries
-    valid_runs = list(valid_libraries.values())
-    
     for file_swid in files:
         libraries = files[file_swid]['library']
-        if set(libraries).intersection(valid_libraries.keys()) != set(libraries):
+        runs = files[file_swid]['run_id']
+        if len(libraries) != 1 and len(runs) != 1:
+            sys.exit('Use option -a to link merging-workflows output files')
+        library, run = libraries[0], runs[0]
+        if library not in valid_libraries:
             exclude.append(file_swid)
-        # check if runs are defined
-        if all(valid_runs):
-            runs = files[file_swid]['run_id']
-            if set(runs).intersection(set(valid_runs)) != set(runs):
-                exclude.append(file_swid)
-        
+        elif valid_libraries[library] != run:
+            exclude.append(file_swid)
+            
+    exclude = list(set(exclude))    
     for file_swid in files:
         if file_swid not in exclude:
             D[file_swid] = files[file_swid]        
@@ -358,22 +354,18 @@ def get_libraries_for_non_release(files, exclude):
     - exclude (dict): Dictionary with libraries tagged for non-release
     '''    
 
-    # make a list of runs to be excluded
-    exclude_runs = list(exclude.values())
-    
     # make a list of files to exclude
     L = []
     
     D = {}
     for file_swid in files:
-        library = files[file_swid]['library']
-        if set(library).intersection(exclude.keys()):
+        libraries = files[file_swid]['library']
+        runs = files[file_swid]['run_id']
+        if len(libraries) != 1 and len(runs) != 1:
+            sys.exit('Use option -a to link merging-workflows output files')
+        library, run = libraries[0], runs[0]
+        if library in exclude and exclude[library] == run:
             L.append(file_swid)
-        # check if runs are defined
-        if all(exclude_runs):
-            runs = files[file_swid]['run_id']
-            if set(runs).intersection(set(exclude_runs)):
-                L.append(file_swid)
         if file_swid in L:
             D[file_swid] = files[file_swid]
     
@@ -529,18 +521,19 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
         file_names = []
     if file_names:
         files = exclude_non_specified_files(files, file_names)
-        
+    
     # remove files sequenced on miseq if miseq runs are excluded
     if nomiseq:
         files = exclude_miseq_secords(files)
-        
+    
     # keep only files from specified runs
     if runs:
         files = exclude_non_specified_runs(files, runs)
-        
+    
     # keep only files for specified libraries
     # parse library file if exists 
     valid_libraries = get_libraries(libraries) if libraries else {}
+    
     if valid_libraries:
         files = exclude_non_specified_libraries(files, valid_libraries)
         
@@ -2518,8 +2511,8 @@ def write_batch_report(args):
     
     # generate plots for each instrument and keep track of figure files
     figure_files = generate_figures(files, args.project, working_dir)
-    for i in figure_files:
-        figure_files[i] = os.path.basename(figure_files[i])    
+    # for i in figure_files:
+    #     figure_files[i] = os.path.basename(figure_files[i])    
     
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
