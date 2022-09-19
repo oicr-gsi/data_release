@@ -752,7 +752,8 @@ def group_sample_info_mapping(files, add_time_points, add_panel):
         sample = files[file_swid]['sample_name']
         assert len(files[file_swid]['library']) == 1
         library = files[file_swid]['library'][0]
-        library_source = files[file_swid]['library_source']
+        assert len(files[file_swid]['library_source']) == 1
+        library_source = files[file_swid]['library_source'][0]
         assert len(files[file_swid]['tissue_type']) == 1
         tissue_type = files[file_swid]['tissue_type'][0]
         assert len(files[file_swid]['tissue_origin']) == 1
