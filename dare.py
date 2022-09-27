@@ -114,7 +114,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
         if project == i[1]:
             pipeline_workflow = i[30]
             # check workflow
-            if len(workflow[0]) == 1:
+            if len(workflow) == 1:
                 if workflow[0].lower() == 'bcl2fastq':
                     # skip if not fastq-related workflows    
                     if pipeline_workflow.lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
@@ -612,7 +612,7 @@ def get_pipeline_data(data_structure, files):
     
 def write_md5sum(data, outputfile):
     '''
-    (dict, str, str, str | None) -> None   
+    (dict, str) -> None   
     
     Write a file in working_dir with md5sums for all files contained in data
     
@@ -693,6 +693,7 @@ def link_files(args):
         print('Extracted files from File Provenance Report')
         # get file information for release and eventually for files that should not be released
         files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
+                
         # link files to project dir
         if args.suffix == 'fastqs':
             assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
