@@ -45,15 +45,14 @@ def get_libraries(library_file):
         line = line.rstrip()
         if line != '':
             line = line.split()
-            assert len(line) == 2
-            D[line[0]] = line[1]
+            if len(line) != 2:
+                raise ValueError('Run id must be specified for all libraries')        
+            if line[0] in D:
+                D[line[0]].append(line[1])
+            else:
+                D[line[0]] = [line[1]]
     infile.close()
 
-    L = list(D.values())
-    # check that run id is specified for all libraries
-    if not all(map(lambda x: x != '', L)):
-        raise ValueError('Run id must be specified for all libraries')    
-    
     return D
 
 
@@ -331,7 +330,7 @@ def exclude_non_specified_libraries(files, valid_libraries):
         library, run = libraries[0], runs[0]
         if library not in valid_libraries:
             exclude.append(file_swid)
-        elif valid_libraries[library] != run:
+        elif run not in valid_libraries[library]:
             exclude.append(file_swid)
             
     exclude = list(set(exclude))    
@@ -364,7 +363,7 @@ def get_libraries_for_non_release(files, exclude):
         if len(libraries) != 1 and len(runs) != 1:
             sys.exit('Use option -a to link merging-workflows output files')
         library, run = libraries[0], runs[0]
-        if library in exclude and exclude[library] == run:
+        if library in exclude and run in exclude[library]:
             L.append(file_swid)
         if file_swid in L:
             D[file_swid] = files[file_swid]
@@ -533,7 +532,6 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
     # keep only files for specified libraries
     # parse library file if exists 
     valid_libraries = get_libraries(libraries) if libraries else {}
-    
     if valid_libraries:
         files = exclude_non_specified_libraries(files, valid_libraries)
         
@@ -647,7 +645,7 @@ def link_files(args):
     Parameters
     ----------
     - provenance (str): Path to File Provenance Report.
-                        Default is '/.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz'
+                        Default is /.mounts/labs/seqprodbio/private/backups/seqware_files_report_latest.tsv.gz
     - project (str): Project name as it appears in File Provenance Report.
     - workflow (str): Worflow used to generate the output files
     - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
@@ -656,10 +654,9 @@ def link_files(args):
     - nomiseq (bool): Exclude MiSeq runs if True
     - runs (list | None): List of run IDs. Include one or more run Id separated by white space.
                           Other runs are ignored if provided
-    - libraries (str | None): Path to 1 or 2 columns tab-delimited file with library IDs.
+    - libraries (str | None): Path to 2 columns tab-delimited file with library IDs.
                               The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM).
-                              The second and optional column is the library aliquot ID (eg. LDI32439).
-                              Only the samples with these library aliases are used if provided'
+                              The second column is the run ID. Only the samples with these library aliases are used if provided
     - exclude (str | None): File with sample name or libraries to exclude from the release
     - suffix (str): Indicates map for fastqs or datafiles in the output file name
     - project_name (str): Project name used to create the project directory in gsi space
