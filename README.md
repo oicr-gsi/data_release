@@ -98,17 +98,19 @@ to be released. Different behaviors can be specified using keywords in the json 
 
 The basic structure is organized with sample ids, and workflow names and ids.
 
+```
 {sample_id:
-  {workflow_1:
-     {"workflow_id": "19168526", "workflow_version":"2.0.2"},
-   workflow_2:
-     {"workflow_id":"16962244", "workflow_version":"2.0.2"}
-  }
+   {workflow_1:
+      {"workflow_id": "19168526", "workflow_version":"2.0.2"},
+    workflow_2:
+      {"workflow_id":"16962244", "workflow_version":"2.0.2"}
+   }
 }
-
+```
 
 This will create the following directory structure under the directory specified by the `-p` parameter:
 
+```
 sample_id
  |- workflow_1
     | -file 1
@@ -118,7 +120,7 @@ sample_id
     | -file 1
     | -file 2
     | - ...
-
+```
 
 #### Renaming workflow sub-directories with the name keyword ####
 
