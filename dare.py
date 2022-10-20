@@ -10,10 +10,7 @@ import argparse
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-from datetime import datetime
 import time
-#import xhtml2pdf.pisa as pisa
-#import mistune
 import math
 import requests
 import gzip
@@ -22,11 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-import base64
-#import pdfkit
 from weasyprint import HTML
 from weasyprint import CSS
-#from pathlib import Path
 
 
 
@@ -2480,33 +2474,12 @@ def get_appendix_identifiers(files):
     return D
 
 
-
-
-# def html2pdf(html_path, pdf_path):
-#     """
-#     Convert html to pdf using pdfkit which is a wrapper of wkhtmltopdf
-#     """
-#     options = {
-#         'page-size': 'Letter',
-#         'margin-top': '0.35in',
-#         'margin-right': '0.75in',
-#         'margin-bottom': '0.75in',
-#         'margin-left': '0.75in',
-#         'encoding': "UTF-8",
-#         'no-outline': None,
-#         'enable-local-file-access': None
-#     }
-#     with open(html_path) as f:
-#         pdfkit.from_file(f, pdf_path, options=options)
-
-
 def makepdf(html, outputfile):
     """
     (str) -> None
     
     Generates a PDF file from a string of HTML
-    
-    
+   
     Parameters
     ----------
     - html (str) String of formated HTML
@@ -2517,15 +2490,21 @@ def makepdf(html, outputfile):
     htmldoc.write_pdf(outputfile, stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
 
 
-# def convert_to_pdf():
-#     """Command runner."""
-#     infile = 'data_release_report_test.html'
-#     outfile = 'data_release_report_test.pdf'
-#     html = Path(infile).read_text()
-#     pdf = makepdf(html)
-#     Path(outfile).write_bytes(pdf)
+def write_html(html, outputfile):
+    '''
+    (str) -> None
+    
+    Generates a HTML file from a string of HTML
+   
+    Parameters
+    ----------
+    - html (str) String of formated HTML
+    - outputfile (str): Name of the output HTML file
+    '''
 
-
+    with open(outputfile, mode="w", encoding="utf-8") as message:
+        message.write(html)
+        print(f"... wrote {outputfile}")
 
 
 
@@ -2582,35 +2561,22 @@ def write_batch_report(args):
     
     # generate plots for each instrument and keep track of figure files
     figure_files = generate_figures(files, args.project, working_dir)
-    # for i in figure_files:
-    #     figure_files[i] = os.path.basename(figure_files[i])
-    
-    
-    
-    plots = [figure_files[i] for i in figure_files]
-    # for i in range(len(plots)):
-    #     plots[i] = './static/images/' + plots[i] 
-    # print(plots)    
         
+    plots = [figure_files[i] for i in figure_files]
+            
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
     write_md5sum(files, md5sum_file)
 
     # write report
-    
     # get the report template
     environment = Environment(loader=FileSystemLoader("./templates/"))
     template = environment.get_template("batch_report_template.html")
     
-    # environment = Environment(loader=FileSystemLoader("."))
-    # template = environment.get_template("./templates/batch_report_template.html")
-    
-    
     # template_dir = os.path.join(os.path.dirname(__file__), './templates')
-    # jinja_env = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
-    # template = jinja_env.get_template("batch_report_template.html")
-    
+    # environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
+    # template = environment.get_template("batch_report_template.html")
     
     # make a dict with project information
     projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
@@ -2625,13 +2591,9 @@ def write_batch_report(args):
     
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
     appendix_identifiers = get_appendix_identifiers(files)
-    
-     
-    
+        
     header_metrics = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']            
     qc_metrics = group_sample_metrics(files, 'qc_metrics')
-    
-    
     
     # fill in template
     context = {'projects' : projects,
@@ -2646,56 +2608,19 @@ def write_batch_report(args):
                'qc_metrics': qc_metrics,
                'md5sum': os.path.basename(md5sum_file)}
        
-    
-    ### check function for figure formatting
-    ## generate_figure_table(figure_files[instrument], factor)
-    
-    ### generate_table for sample and metric tables
-    
     # render template html 
     content = template.render(context)
 
-    # filename = "data_release_report_test.html"
-    # with open(filename, mode="w", encoding="utf-8") as message:
-    #     message.write(content)
-    #     print(f"... wrote {filename}")
-
-     
-    #convert_to_pdf() 
-    #convert_to_pdf(content)
-    
     # convert html to PDF
     report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
     makepdf(content, report_file)
-
-
-
-
-    # # convert to html
-    # renderer = mistune.Markdown()
-    # Text = '\n'.join(Text)
-    # html_str = renderer(Text)
-    
-    # # convert html to pdf    
-    # report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
-    # report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
-    #newfile = open(report_file, "wb")
-   
-    # pisa.CreatePDF(html_str, newfile)
-    # newfile.close()
 
     # # remove figure files from disk
     # for i in figure_files:
     #     os.remove(figure_files[i])
 
 
-    # report_file = 'data_release_report_test.pdf'
-    # newfile = open(report_file, "wb")
-    # pisa.CreatePDF(content, newfile)
-    # newfile.close()
-
-    #html2pdf('data_release_report_test.html', 'data_release_report_test.pdf')
-
+    
         
 def write_report(args):
     '''
