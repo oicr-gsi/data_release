@@ -2613,7 +2613,7 @@ def write_batch_report(args):
     
     
     # make a dict with project information
-    projects = [{'acronym': args.project_name, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
+    projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
 
     # count the number of samples with missing metric values
     samples_missing_metrics = count_samples_with_missing_values(files)
