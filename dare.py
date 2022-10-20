@@ -13,7 +13,7 @@ import numpy as np
 from datetime import datetime
 import time
 #import xhtml2pdf.pisa as pisa
-import mistune
+#import mistune
 import math
 import requests
 import gzip
@@ -26,7 +26,7 @@ import base64
 #import pdfkit
 from weasyprint import HTML
 from weasyprint import CSS
-from pathlib import Path
+#from pathlib import Path
 
 
 
@@ -2296,24 +2296,24 @@ def generate_figures(files, project, working_dir, height=16, width=13):
 
 
 
-def convert_image(image):
-    '''
-    (str) -> str
+# def convert_image(image):
+#     '''
+#     (str) -> str
     
-    Returns an image encoded in base64
+#     Returns an image encoded in base64
     
-    Parameters
-    ----------
-    - image (str): Path to image file
-    '''
+#     Parameters
+#     ----------
+#     - image (str): Path to image file
+#     '''
     
-    try:
-        with open(image, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read())
-    except:
-        encoded_string = ''
+#     try:
+#         with open(image, "rb") as image_file:
+#             encoded_string = base64.b64encode(image_file.read())
+#     except:
+#         encoded_string = ''
     
-    return encoded_string
+#     return encoded_string
 
 
 
@@ -2499,27 +2499,31 @@ def get_appendix_identifiers(files):
 #     with open(html_path) as f:
 #         pdfkit.from_file(f, pdf_path, options=options)
 
-def makepdf(html):
-    """Generate a PDF file from a string of HTML."""
-    #htmldoc = HTML(string=html, base_url=".")
+
+def makepdf(html, outputfile):
+    """
+    (str) -> None
     
-    print(html)
+    Generates a PDF file from a string of HTML
+    
+    
+    Parameters
+    ----------
+    - html (str) String of formated HTML
+    - outputfile (str): Name of the output PDF file
+    """
+    
     htmldoc = HTML(string=html, base_url=__file__)
-    
-    #htmldoc = HTML(string=html, base_url="./static/images/")
-    #htmldoc = HTML(string=html)
-    
-    #return htmldoc.write_pdf(stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
-    htmldoc.write_pdf('data_release_report_test.pdf', stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
+    htmldoc.write_pdf(outputfile, stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
 
 
-def convert_to_pdf():
-    """Command runner."""
-    infile = 'data_release_report_test.html'
-    outfile = 'data_release_report_test.pdf'
-    html = Path(infile).read_text()
-    pdf = makepdf(html)
-    Path(outfile).write_bytes(pdf)
+# def convert_to_pdf():
+#     """Command runner."""
+#     infile = 'data_release_report_test.html'
+#     outfile = 'data_release_report_test.pdf'
+#     html = Path(infile).read_text()
+#     pdf = makepdf(html)
+#     Path(outfile).write_bytes(pdf)
 
 
 
@@ -2652,15 +2656,18 @@ def write_batch_report(args):
     # render template html 
     content = template.render(context)
 
-    filename = "data_release_report_test.html"
-    with open(filename, mode="w", encoding="utf-8") as message:
-        message.write(content)
-        print(f"... wrote {filename}")
+    # filename = "data_release_report_test.html"
+    # with open(filename, mode="w", encoding="utf-8") as message:
+    #     message.write(content)
+    #     print(f"... wrote {filename}")
 
      
     #convert_to_pdf() 
     #convert_to_pdf(content)
-    makepdf(content)
+    
+    # convert html to PDF
+    report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
+    makepdf(content, report_file)
 
 
 
