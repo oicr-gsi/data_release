@@ -22,6 +22,12 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
+import base64
+#import pdfkit
+from weasyprint import HTML
+from weasyprint import CSS
+from pathlib import Path
+
 
 
 
@@ -2290,6 +2296,25 @@ def generate_figures(files, project, working_dir, height=16, width=13):
 
 
 
+def convert_image(image):
+    '''
+    (str) -> str
+    
+    Returns an image encoded in base64
+    
+    Parameters
+    ----------
+    - image (str): Path to image file
+    '''
+    
+    try:
+        with open(image, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read())
+    except:
+        encoded_string = ''
+    
+    return encoded_string
+
 
 
 def count_samples_with_missing_values(files):
@@ -2454,7 +2479,50 @@ def get_appendix_identifiers(files):
     
     return D
 
-       
+
+
+
+# def html2pdf(html_path, pdf_path):
+#     """
+#     Convert html to pdf using pdfkit which is a wrapper of wkhtmltopdf
+#     """
+#     options = {
+#         'page-size': 'Letter',
+#         'margin-top': '0.35in',
+#         'margin-right': '0.75in',
+#         'margin-bottom': '0.75in',
+#         'margin-left': '0.75in',
+#         'encoding': "UTF-8",
+#         'no-outline': None,
+#         'enable-local-file-access': None
+#     }
+#     with open(html_path) as f:
+#         pdfkit.from_file(f, pdf_path, options=options)
+
+def makepdf(html):
+    """Generate a PDF file from a string of HTML."""
+    #htmldoc = HTML(string=html, base_url=".")
+    
+    print(html)
+    htmldoc = HTML(string=html, base_url=__file__)
+    
+    #htmldoc = HTML(string=html, base_url="./static/images/")
+    #htmldoc = HTML(string=html)
+    
+    #return htmldoc.write_pdf(stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
+    htmldoc.write_pdf('data_release_report_test.pdf', stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
+
+
+def convert_to_pdf():
+    """Command runner."""
+    infile = 'data_release_report_test.html'
+    outfile = 'data_release_report_test.pdf'
+    html = Path(infile).read_text()
+    pdf = makepdf(html)
+    Path(outfile).write_bytes(pdf)
+
+
+
 
 
 def write_batch_report(args):
@@ -2511,8 +2579,15 @@ def write_batch_report(args):
     # generate plots for each instrument and keep track of figure files
     figure_files = generate_figures(files, args.project, working_dir)
     # for i in figure_files:
-    #     figure_files[i] = os.path.basename(figure_files[i])    
+    #     figure_files[i] = os.path.basename(figure_files[i])
     
+    
+    
+    plots = [figure_files[i] for i in figure_files]
+    # for i in range(len(plots)):
+    #     plots[i] = './static/images/' + plots[i] 
+    # print(plots)    
+        
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
@@ -2523,6 +2598,15 @@ def write_batch_report(args):
     # get the report template
     environment = Environment(loader=FileSystemLoader("./templates/"))
     template = environment.get_template("batch_report_template.html")
+    
+    # environment = Environment(loader=FileSystemLoader("."))
+    # template = environment.get_template("./templates/batch_report_template.html")
+    
+    
+    # template_dir = os.path.join(os.path.dirname(__file__), './templates')
+    # jinja_env = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
+    # template = jinja_env.get_template("batch_report_template.html")
+    
     
     # make a dict with project information
     projects = [{'acronym': args.project_name, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
@@ -2549,14 +2633,15 @@ def write_batch_report(args):
     context = {'projects' : projects,
                'file_count': all_released_files,
                'fastq_counts': fastq_counts,
-               'figure_files': figure_files,
+               'plots': plots,
                'samples_missing_metrics': samples_missing_metrics,
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
                'appendix_identifiers': appendix_identifiers,
                'header_metrics': header_metrics,
                'qc_metrics': qc_metrics,
-               'md5sum': os.path.basename(md5sum_file)}
+               'md5sum': os.path.basename(md5sum_file),
+               'project_dir': working_dir}
     
     
     ### check function for figure formatting
@@ -2572,13 +2657,14 @@ def write_batch_report(args):
         message.write(content)
         print(f"... wrote {filename}")
 
-    
-        
-    
-    
-    
-    
-        
+     
+    #convert_to_pdf() 
+    #convert_to_pdf(content)
+    makepdf(content)
+
+
+
+
     # # convert to html
     # renderer = mistune.Markdown()
     # Text = '\n'.join(Text)
@@ -2587,7 +2673,8 @@ def write_batch_report(args):
     # # convert html to pdf    
     # report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
     # report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
-    # newfile = open(report_file, "wb")
+    #newfile = open(report_file, "wb")
+   
     # pisa.CreatePDF(html_str, newfile)
     # newfile.close()
 
@@ -2596,8 +2683,12 @@ def write_batch_report(args):
     #     os.remove(figure_files[i])
 
 
+    # report_file = 'data_release_report_test.pdf'
+    # newfile = open(report_file, "wb")
+    # pisa.CreatePDF(content, newfile)
+    # newfile.close()
 
-
+    #html2pdf('data_release_report_test.html', 'data_release_report_test.pdf')
 
         
 def write_report(args):
@@ -2984,7 +3075,7 @@ if __name__ == '__main__':
     m_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-    m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used')
+    m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')

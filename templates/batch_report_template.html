@@ -5,6 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="./static/css/style.css">
+    <style> @page { size: letter landscape; margin: 2cm; } </style>
     <title>data_release_report</title>
 </head>
 <body>
@@ -62,7 +63,7 @@
 
   <h2>2. QC plots</h2>
             
-  {% if figure_files %}      
+  {% if plots %}      
     <p>QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>
     <br>
     {% if samples_missing_metrics %}   
@@ -72,17 +73,18 @@
       {% endfor %}               
     {% endif %}
     
-    <table>
-    {% for instrument in figure_files %}
-      <tr>
-      <td><img src= {{figure_files[instrument]}} alt=QC_plot</td>
-      </tr>
+    {% for figure in plots %}
+      <img src="{{figure}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>
+          
     {% endfor %}
-  {% else %}
+    </table>  
+    {% else %}
     <p>Data could not be plotted because of missing QC metrics</p>
-{% endif %}
+     
+  {% endif %}
 
-  <div style="page-break-after: always;"></div>
+
+  <div style="page-break-before: always;"></div>
   
   <h2>Table 1. Sample identifiers</h2>
   <p>Table 1 provides information about the sequenced samples.</p>
