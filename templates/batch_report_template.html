@@ -5,7 +5,6 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="./static/css/style.css">
-    <style> @page { size: letter landscape; margin: 2cm; } </style>
     <title>data_release_report</title>
 </head>
 <body>
@@ -84,7 +83,7 @@
   {% endif %}
 
 
-  <div style="page-break-before: always;"></div>
+  <div class="landscape">
   
   <h2>Table 1. Sample identifiers</h2>
   <p>Table 1 provides information about the sequenced samples.</p>
@@ -125,7 +124,8 @@
     <li><i>Tissue Type:</i> {{appendix_identifiers["Tissue Type"]}}</li>
     <li><i>Tissue Origin:</i> {{appendix_identifiers["Tissue Origin"]}}</li>
   </ul>
-
+  
+  <p style="page-break-before: always;"></p>
 
   <h2>Table 2. QC metrics</h2>
   <p>Table 2 provides QC metrics about the raw sequences of each sample.</p>
@@ -166,6 +166,10 @@
     <li><i>Percent duplicate:</i> Percent of duplicate reads estimated by Picard MarkDuplicates.</li>
   </ul>
 
+  </div>
+
+  <div style="page-break-before: always;"></div>
+ 
   <h2>Table 3. List of md5sums</h2>
   <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
     

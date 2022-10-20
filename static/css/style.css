@@ -93,3 +93,9 @@ img {
 }
 
 
+@page horizontal_page {
+    size: landscape;
+}
+.landscape {
+    page: horizontal_page;
+}
