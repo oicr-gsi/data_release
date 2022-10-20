@@ -2644,9 +2644,8 @@ def write_batch_report(args):
                'appendix_identifiers': appendix_identifiers,
                'header_metrics': header_metrics,
                'qc_metrics': qc_metrics,
-               'md5sum': os.path.basename(md5sum_file),
-               'project_dir': working_dir}
-    
+               'md5sum': os.path.basename(md5sum_file)}
+       
     
     ### check function for figure formatting
     ## generate_figure_table(figure_files[instrument], factor)
