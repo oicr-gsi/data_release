@@ -2384,8 +2384,8 @@ def group_sample_metrics(files, table, add_time_points=None):
             on_target = i[0]['on_target']
             coverage = i[0]['coverage']
             duplicate = i[0]['percent_duplicate']
-            sequencing_run = '{0} {1}'.format(i[0]['run'][0], i[0]['barcode'][0])
-            
+            sequencing_run = '{0} lane_{1}_{2}'.format(i[0]['run_id'][0], i[0]['lane'][0], i[0]['barcode'][0])
+                        
             if table == 'sample_identifiers':
                 L = [external_name, case, sample, library, library_source, tissue_origin, tissue_type]
                 # add time point if selected
