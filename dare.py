@@ -961,6 +961,9 @@ def list_files_release_folder(directories):
         links = [os.path.join(run, i) for i in os.listdir(run) if os.path.isfile(os.path.join(run, i)) and '.fastq.gz' in i]
         filenames = [os.path.realpath(i) for i in links]
         files.extend(filenames)
+        # expect only paired fastqs
+        if len(filenames) % 2 != 0:
+            sys.exit('Odd number of fastqs in {0}: {1}'.format(run, len(filenames)))
     return files
 
 
@@ -1961,38 +1964,41 @@ def find_fastq_pairs(files, platform):
     - files (dict): Dictionary with file information extracted from FPR 
     '''
      
-    # make a sorted list of file_swids
-    file_swids = sorted(list(files.keys()))
+    # make a list with dictionaries of file info
+    file_info = [files[i] for i in files if files[i]['platform'] == platform]
+    if len(file_info) % 2 != 0:
+        sys.exit('Expecting paired fastqs for platform {0}, but got {1} files'.format(platform, len(file_info)))
+    
+    # sort according to file name
+    file_info.sort(key = lambda x: x['file_path'])
     
     L = []
-    
-    for i in range(len(file_swids) -1):
-        for j in range(i+1, len(file_swids)):
-            if files[file_swids[i]]['run'][0] == files[file_swids[j]]['run'][0] \
-                and files[file_swids[i]]['platform'] == files[file_swids[j]]['platform'] == platform \
-                and files[file_swids[i]]['barcode'][0] == files[file_swids[j]]['barcode'][0] \
-                and files[file_swids[i]]['library'][0] == files[file_swids[j]]['library'][0] \
-                and files[file_swids[i]]['sample_name'] == files[file_swids[j]]['sample_name'] \
-                and files[file_swids[i]]['external_name'] == files[file_swids[j]]['external_name'] \
-                and files[file_swids[i]]['library_source'][0] == files[file_swids[j]]['library_source'][0] \
-                and files[file_swids[i]]['lane'][0] == files[file_swids[j]]['lane'][0] \
-                and files[file_swids[i]]['tissue_origin'][0] == files[file_swids[j]]['tissue_origin'][0] \
-                and files[file_swids[i]]['tissue_type'][0] == files[file_swids[j]]['tissue_type'][0] \
-                and files[file_swids[i]]['sample_id'][0] == files[file_swids[j]]['sample_id'][0] \
-                and files[file_swids[i]]['limskey'][0] == files[file_swids[j]]['limskey'][0]:
-                    assert files[file_swids[i]]['read_count'] == files[file_swids[j]]['read_count']
-                    assert files[file_swids[i]]['coverage'] == files[file_swids[j]]['coverage']
-                    assert files[file_swids[i]]['coverage_dedup'] == files[file_swids[j]]['coverage_dedup']
-                    assert files[file_swids[i]]['on_target'] == files[file_swids[j]]['on_target']
-                    assert files[file_swids[i]]['percent_duplicate'] == files[file_swids[j]]['percent_duplicate']
-                    L.append([files[file_swids[i]], files[file_swids[j]]])
-    assert len(L) == len(files) / 2
+    for i in range(0, len(file_info), 2):
+        assert file_info[i]['run'][0] == file_info[i+1]['run'][0] 
+        assert file_info[i]['platform'] == file_info[i+1]['platform'] == platform 
+        assert file_info[i]['barcode'][0] == file_info[i+1]['barcode'][0]
+        assert file_info[i]['library'][0] == file_info[i+1]['library'][0]
+        assert file_info[i]['sample_name'] == file_info[i+1]['sample_name']
+        assert file_info[i]['external_name'] == file_info[i+1]['external_name']
+        assert file_info[i]['library_source'][0] == file_info[i+1]['library_source'][0]
+        assert file_info[i]['lane'][0] == file_info[i+1]['lane'][0] 
+        assert file_info[i]['tissue_origin'][0] == file_info[i+1]['tissue_origin'][0] 
+        assert file_info[i]['tissue_type'][0] == file_info[i+1]['tissue_type'][0] 
+        assert file_info[i]['sample_id'][0] == file_info[i+1]['sample_id'][0] 
+        assert file_info[i]['limskey'][0] == file_info[i+1]['limskey'][0]
+        assert file_info[i]['read_count'] == file_info[i+1]['read_count']
+        assert file_info[i]['coverage'] == file_info[i+1]['coverage']
+        assert file_info[i]['coverage_dedup'] == file_info[i+1]['coverage_dedup']
+        assert file_info[i]['on_target'] == file_info[i+1]['on_target']
+        assert file_info[i]['percent_duplicate'] == file_info[i+1]['percent_duplicate']
+        L.append([file_info[i], file_info[i+1]])
+        
+    assert len(L) == len(file_info) / 2
     for i in L:
         assert i[0]['file_path'] != i[1]['file_path']
         if 'R1' in i[0]['file_name']:
             assert 'R2' in i[1]['file_name']
             r1, r2 = 0, 1
-            
         elif 'R2' in i[0]['file_name']:
             assert 'R1' in i[1]['file_name']
             r1, r2 = 1, 0
@@ -2540,12 +2546,22 @@ def write_batch_report(args):
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
     
+    print('files', len(files))
+    
+    
     # keep only info about released fastqs
     # make a list of full paths to the released fastqs resolving the links in the run directories
     released_files = list_files_release_folder(args.run_directories)
+    
+    print('released files', len(released_files))
+    
     to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
     for file_swid in to_remove:
         del files[file_swid]
+    
+    print('to_remove', len(to_remove))
+    print('files', len(files))
+    
     
     # add time points    
     add_time_points(args.sample_provenance, files)
