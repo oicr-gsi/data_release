@@ -1741,7 +1741,7 @@ def list_released_fastqs_project(api, FPR_info):
         # get file QC status
         qcstatus, ticket = get_QC_status_from_nabu(api, FPR_info[file]['file_swid'])
         ticket = os.path.basename(ticket).upper()
-        if qcstatus == 'PASS' and ticket.startswith('GDR'):
+        if qcstatus == 'PASS':
             L.append(file)
         elif qcstatus is None:
             print('WARNING. Could not retrieve QC status from Nabu for {0}'.format(file))
