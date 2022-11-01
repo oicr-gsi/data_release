@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+#from jinja2 import Environment, FileSystemLoader
+#from weasyprint import HTML
+#from weasyprint import CSS
 
 
 
@@ -1697,6 +1697,9 @@ def get_QC_status_from_nabu(api, file_id):
     - file_id (str): Vidarr file unique identifier
     '''
     
+    # get end-point
+    api += 'get-fileqcs' if api[-1] == '/' else '/get-fileqcs'
+       
     try:
         headers = {'accept': 'application/json','Content-Type': 'application/json'}
         json_data = {'fileids': [file_id]}
@@ -2917,13 +2920,17 @@ def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
     - comment (str): Jira ticket of the release
     '''
     
+    # get end-point
+    api += 'add-fileqcs' if api[-1] == '/' else '/add-fileqcs'
+        
     if qc_status not in ['PASS', 'PENDING', 'FAIL']:
         raise ValueError('QC status is PASS, FAIL or PENDING')
     
+    headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+    json_data = {'fileqcs': [{'fileid': file_swid, 'qcstatus': qc_status, 'username': user_name}]}
     if comment:
-        response = requests.post(api + '/fileqcs?fileswid={0}&qcstatus={1}&username={2}&comment={3}'.format(file_swid, qc_status, user_name, comment))
-    else:
-        response = requests.post(api + '/fileqcs?fileswid={0}&qcstatus={1}&username={2}'.format(file_swid, qc_status, user_name))
+        json_data['fileqcs'][0]['comment'] = comment 
+    response = requests.post(api, headers=headers, json=json_data)
     
     # check response code
     if response.status_code == 201:
@@ -3042,7 +3049,7 @@ if __name__ == '__main__':
     n_parser.add_argument('-s', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
-    n_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
+    n_parser.add_argument('-a', '--api', dest='api', default='https://nabu-dev.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-dev.gsi.oicr.on.ca')
     n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
     n_parser.set_defaults(func=mark_files_nabu)
     
@@ -3055,7 +3062,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
-    r_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
+    r_parser.add_argument('-a', '--api', dest='api', default='https://nabu-dev.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-dev.gsi.oicr.on.ca')
     r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
     r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     r_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
