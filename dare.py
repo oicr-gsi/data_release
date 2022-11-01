@@ -1685,7 +1685,7 @@ def count_all_files(fastq_counts):
 
 
 
-def get_QC_status_from_nabu(api, file_swid):
+def get_QC_status_from_nabu(api, file_id):
     '''
     (str, str) -> (str | None, str)
     
@@ -1694,14 +1694,16 @@ def get_QC_status_from_nabu(api, file_swid):
     Parameters
     ----------
     - api (str): URL of the nabu API
-    - file_swid (str): File unique identifier
+    - file_id (str): Vidarr file unique identifier
     '''
     
     try:
-        response = requests.get(api + '/fileqc/{0}'.format(file_swid), {'accept': 'application/json',})
+        headers = {'accept': 'application/json','Content-Type': 'application/json'}
+        json_data = {'fileids': [file_id]}
+        response = requests.post(api, headers=headers, json=json_data)
     except:
         qcstatus, ticket = None, 'NA'
-            
+    
     # check response code
     if response.status_code == 200:
         d = response.json()
@@ -1718,7 +1720,6 @@ def get_QC_status_from_nabu(api, file_swid):
         qcstatus, ticket = None, 'NA'
 
     return qcstatus, ticket
-        
 
 
 def list_released_fastqs_project(api, FPR_info):
