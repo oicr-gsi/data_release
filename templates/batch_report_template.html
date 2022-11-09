@@ -72,13 +72,15 @@
       {% endfor %}               
     {% endif %}
     <br>
-        
-    {% for figure in plots %}
-      <img src="{{figure}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>
-    {% endfor %}
-      
-    {% else %}
-    <p>Data could not be plotted because of missing QC metrics</p>
+    
+    {% for library_source in libraries %}
+      {% for figure in plots[library_source] %}
+         <img src="{{figure}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>
+      {% endfor %}
+    {% endfor %}  
+   
+  {% else %}
+  <p>Data could not be plotted because of missing QC metrics</p>
      
   {% endif %}
 
@@ -101,9 +103,10 @@
      <th>{{header_identifiers.6}}</th>
    </tr>   
    <tr>   
-   {% for instrument in sample_identifiers %}
-   </tr>
-       {% for i in sample_identifiers[instrument] %}
+   {% for library_source in sample_identifiers %}
+     {% for instrument in sample_identifiers[library_source] %}
+       </tr>
+       {% for i in sample_identifiers[library_source][instrument] %}
          <tr>
            <td> {{i.0}} </td>
            <td> {{i.1}} </td>
@@ -114,8 +117,9 @@
            <td> {{i.6}} </td>         
          </tr>        
        {% endfor %}               
-  {% endfor %}
-</table>
+    {% endfor %}
+   {% endfor %}
+  </table>
 
   <h3>Appendix Table 1</h3>
 
@@ -128,22 +132,22 @@
   <p style="page-break-after: always;"></p>
 
   <h2>Table 2. QC metrics</h2>
-  <p>Table 2 provides QC metrics about the raw sequences of each sample.</p>
+  <p>Provides QC metrics about the raw sequences of each sample.</p>
   
+  {% for library_source in libraries %}
+
+  <h3>{{qc_subtables[library_source]}}</h3>   
+
   <table id="info_table">
    <tr>
-     <th>{{header_metrics.0}}</th>
-     <th>{{header_metrics.1}}</th>
-     <th>{{header_metrics.2}}</th>
-     <th>{{header_metrics.3}}</th>
-     <th>{{header_metrics.4}}</th>
-     <th>{{header_metrics.5}}</th>
-     <th>{{header_metrics.6}}</th>
+     {% for i in header_metrics[library_source] %}
+         <th>{{i}}</th>
+     {% endfor %}
    </tr>   
    <tr>   
-   {% for instrument in qc_metrics %}
+   {% for instrument in qc_metrics[library_source] %}
    </tr>
-       {% for i in qc_metrics[instrument] %}
+       {% for i in qc_metrics[library_source][instrument] %}
          <tr>
            <td> {{i.0}} </td>
            <td> {{i.1}} </td>
@@ -157,15 +161,16 @@
   {% endfor %}
 </table>
 
-
-  <h3>Appendix Table 2</h3>
+  <h3>{{table_appendix[library_source]}}</h3>
 
   <ul>
-    <li><i>Raw Coverage:</i> An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.</li>
-    <li><i>On Target Rate:</i> Percentage of reads that overlap the target space by at least one base = reads on target/total reads.</li>
-    <li><i>Percent duplicate:</i> Percent of duplicate reads estimated by Picard MarkDuplicates.</li>
+    {% for metric in qc_appendices[library_source] %}
+        <li><i>{{metric}}:</i> {{qc_appendices[library_source][metric]}}</li>
+    {% endfor %}
   </ul>
-
+  
+  {% endfor %}
+  <p>style="page-break-before: always;"></p>   
   </div>
 
   <div style="page-break-before: always;"></div>
