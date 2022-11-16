@@ -2096,6 +2096,69 @@ def extract_rnaseqqc_data(rnaseqqc_db):
     return D
 
 
+
+
+
+# [[{'workflow': 'bcl2fastq',
+#    'file_path': '/oicr/data/archive/seqware/seqware_analysis_12/hsqwprod/seqware-results/bcl2fastq_3.1.2/19449910/MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R1.fastq.gz'
+#    'file_name': 'MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R1.fastq.gz', 'sample_name': 'MOCHA_0010', 'creation_date': 1608859811, 'platform': 'Illumina_NovaSeq_6000', 'md5': '55a566e63cf6762af91d75215908206e', 'workflow_run_id': 'd44d2ce07c41f22cb4a25c5d7a310999025451029866c4463f3e98b87f80ea55', 'workflow_version': '3.1.2.17835339', 'file_swid': 'vidarr:research/file/2662629b4e81e5925b1d5b1f9291175f8be57158d3de6eeddccd90ab75b8bc9e', 'external_name': '1_125695,MOCHA-017', 'panel': 'NA', 'library_source': ['WT'], 'parent_sample': ['MOCHA_0010_Es_P_PE_323_WT'], 'run_id': ['201222_A00469_0141_BHFYMLDSXY'], 'run': ['201222_A00469_0141_BHFYMLDSXY_lane_1'], 'limskey': ['4991_1_LDI49527'], 'aliquot': ['LDI49527'], 'library': ['MOCHA_0010_Es_P_PE_323_WT'], 'barcode': ['CGGTTGTT-CATACCAC'], 'tissue_type': ['P'], 'tissue_origin': ['Es'], 'groupdesc': ['LCM Material'], 'groupid': ['526'], 'read_count': 30771189, 'sample_id': ['MOCHA_0010_Es_P_WT_526'], 'lane': ['1'], 'time_point': 'NA', "5'-3' bias": 1.04, 'rRNA contamination': 0.83, 'Coding (%)': 23.264, 'Correct strand reads (%)': 2.449}, {'workflow': 'bcl2fastq', 'file_path': '/oicr/data/archive/seqware/seqware_analysis_12/hsqwprod/seqware-results/bcl2fastq_3.1.2/19449910/MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R2.fastq.gz', 'file_name': 'MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R2.fastq.gz', 'sample_name': 'MOCHA_0010', 'creation_date': 1608859811, 'platform': 'Illumina_NovaSeq_6000', 'md5': 'aac8e4ad253bb3f3a58af0c993edebca', 'workflow_run_id': 'd44d2ce07c41f22cb4a25c5d7a310999025451029866c4463f3e98b87f80ea55', 'workflow_version': '3.1.2.17835339', 'file_swid': 'vidarr:research/file/da6ffe8394b54fa5b4941cc970b0597db32ec266b8ca2bc05947538df2a8c2b6', 'external_name': '1_125695,MOCHA-017', 'panel': 'NA', 'library_source': ['WT'], 'parent_sample': ['MOCHA_0010_Es_P_PE_323_WT'], 'run_id': ['201222_A00469_0141_BHFYMLDSXY'], 'run': ['201222_A00469_0141_BHFYMLDSXY_lane_1'], 'limskey': ['4991_1_LDI49527'], 'aliquot': ['LDI49527'], 'library': ['MOCHA_0010_Es_P_PE_323_WT'], 'barcode': ['CGGTTGTT-CATACCAC'], 'tissue_type': ['P'], 'tissue_origin': ['Es'], 'groupdesc': ['LCM Material'], 'groupid': ['526'], 'read_count': 30771189, 'sample_id': ['MOCHA_0010_Es_P_WT_526'], 'lane': ['1'], 'time_point': 'NA', "5'-3' bias": 1.04, 'rRNA contamination': 0.83, 'Coding (%)': 23.264, 'Correct strand reads (%)': 2.449}]]
+
+
+
+
+
+
+
+
+
+
+def get_file_prefix(file):
+    '''
+    (str) -> str
+    
+    Returns the file prefix of a fastq file.
+    File prefix is the file name without the file extension and read number
+    
+    Parameters
+    ----------
+    - file (str): File path
+    '''
+    
+    file = os.path.basename(file)
+    if 'R1' in file:
+        assert 'R2' not in file
+        assert file.count('R1') == 1
+        read = 'R1'
+    elif 'R2' in file:
+        assert 'R1' not in file
+        assert file.count('R2') == 1
+        read = 'R2'
+    prefix = file[:file.index(read)]
+    if prefix[-1] == '_' or prefix[-1] == '.':
+        prefix = prefix[:-1]
+        
+    return prefix
+                 
+    
+def add_file_prefix(L):
+    '''
+    (list) -> None
+
+    Adds file prefix to each dictionary of file info.
+    L is a list of inner lists with information for paired fastqs
+    
+    Parameters
+    ----------
+    - L (list): List of lists with dictionaries of file information
+    '''
+
+    for i in L:
+        for j in i:
+            file = j['file_path']
+            prefix = get_file_prefix(file)
+            j['prefix'] = prefix
+
+
 def find_fastq_pairs(files, platform):
     '''
     (dict, str) -> list
@@ -2147,7 +2210,7 @@ def find_fastq_pairs(files, platform):
             assert 'R1' in i[1]['file_name']
             r1, r2 = 1, 0
         assert i[r1]['file_name'][:i[r1]['file_name'].index('R1')] == i[r2]['file_name'][:i[r2]['file_name'].index('R2')]
-        
+    
     return L
 
 
@@ -2169,6 +2232,8 @@ def get_run_level_metrics(files, platform, library_source, metrics):
      
     # find fastq pairs
     L = find_fastq_pairs(files, platform)
+    # add file prefix
+    add_file_prefix(L)
     
     QC_metrics = [[] for i in range(len(metrics))]
     
@@ -2485,6 +2550,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             sample = i[0]['sample_id'][0]
             library_source = i[0]['library_source'][0]
             library = i[0]['library'][0]
+            prefix = i[0]['prefix']
             
             # cut library and sample names to fit the table width
             if library.split('_')[-1] == library_source:
@@ -2514,7 +2580,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
                         QC_metrics.append('{:,}'.format(i[0]['read_count']))
                     else:
                         QC_metrics.append(i[0][metric])
-                L = [case, library, sequencing_run]
+                L = [library, prefix]
                 L.extend(QC_metrics)
                 
             if library_source not in D:
@@ -2753,7 +2819,7 @@ def write_batch_report(args):
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
     for i in ['EX', 'TS', 'WG', 'CM', 'WT']:
-        header_metrics[i] = ['OICR Id', 'Library Id', 'Sequencing Run'] + Y_axis[i]
+        header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
                                         
     # get the QC metrics sub-tables and appendices
     counter = 1
