@@ -59,38 +59,14 @@
 
   <div style="page-break-after: always;"></div>
 
-
-  <h2>2. QC plots</h2>
-            
-  {% if plots %}      
-    <p>QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>
-    
-    {% if samples_missing_metrics %}   
-      <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is:</p>
-      {% for instrument in samples_missing_metrics %}      
-        <li> {{instrument}}: {{samples_missing_metrics[instrument]}} </li>
-      {% endfor %}               
-    {% endif %}
-    <br>
-    
-    {% for library_source in libraries %}
-      {% for figure in plots[library_source] %}
-         <img src="{{figure}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>
-      {% endfor %}
-    {% endfor %}  
-   
-  {% else %}
-  <p>Data could not be plotted because of missing QC metrics</p>
-     
-  {% endif %}
-
-
   <div class="landscape">
   
-  <h2>Table 1. Sample identifiers</h2>
-  <p>Table 1 provides information about the sequenced samples.</p>
-  <p>LT: Library Type, TT: Tissue Type, TO: Tissue Origin</p>
+  <h2>2. Sample metadata</h2>
+
+   <p>Provides information about the sequenced samples.</p>
      
+   <h3>Table 1. Sample identifiers</h3>
+   <p>LT: Library Type, TT: Tissue Type, TO: Tissue Origin</p>
 
    <table id="info_table">
    <tr>
@@ -128,10 +104,10 @@
     <li><i>Tissue Type:</i> {{appendix_identifiers["Tissue Type"]}}</li>
     <li><i>Tissue Origin:</i> {{appendix_identifiers["Tissue Origin"]}}</li>
   </ul>
-  
+
   <p style="page-break-after: always;"></p>
 
-  <h2>Table 2. QC metrics</h2>
+  <h2>3. QC metrics</h2>
   <p>Provides QC metrics about the raw sequences of each sample.</p>
   
   {% for library_source in libraries %}
@@ -172,8 +148,33 @@
   {% endfor %}
   </div>
 
+  <div style="page-break-after: always;"></div>
+
+  <h2>4. QC plots</h2>
+            
+  {% if plots %}      
+    <p>QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>
+    
+    {% if samples_missing_metrics %}   
+      <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is:</p>
+      {% for instrument in samples_missing_metrics %}      
+        <li> {{instrument}}: {{samples_missing_metrics[instrument]}} </li>
+      {% endfor %}               
+    {% endif %}
+    <br>
+    
+    {% for library_source in libraries %}
+      {% for figure in plots[library_source] %}
+         <img src="{{figure}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>
+      {% endfor %}
+    {% endfor %}  
+   
+  {% else %}
+  <p>Data could not be plotted because of missing QC metrics</p>
+     
+  {% endif %}
+
   <div style="page-break-before: always;"></div>
- 
   <h2>Table 3. List of md5sums</h2>
   <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
     
