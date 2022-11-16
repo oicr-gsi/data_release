@@ -2743,9 +2743,9 @@ def write_batch_report(args):
     samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
 
     # group metrics by pairs of files
-    header_identifiers =  ['Sample', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
+    header_identifiers =  ['Donor Id', 'OICR Id', 'Sample Id', 'Library Id', 'LT', 'TO', 'TT']
     if args.timepoints:
-        header_identifiers[3] = 'Library ID (time point)'
+        header_identifiers[3] = 'Library Id (time point)'
     
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
     appendix_identifiers = get_appendix_identifiers(files)
@@ -2753,7 +2753,7 @@ def write_batch_report(args):
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
     for i in ['EX', 'TS', 'WG', 'CM', 'WT']:
-        header_metrics[i] = ['Case', 'Library', 'Sequencing Run'] + Y_axis[i]
+        header_metrics[i] = ['OICR Id', 'Library Id', 'Sequencing Run'] + Y_axis[i]
                                         
     # get the QC metrics sub-tables and appendices
     counter = 1
