@@ -19,7 +19,7 @@
    
    <table id="project_table">
    <tr>
-     <th>Project Acronym</th>
+     <th>Project Code</th>
      <th>Project Name</th>
      <th>Date</th>     
    </tr>   
@@ -32,15 +32,15 @@
    {% endfor %}   
    </table>
     
-   <p>This report provides detailed sample information and QC metrics about newly released raw sequences.</p>
+   <p>This report accompanies the release of raw sequence data (fastq format) and provides associated sample information and QC metrics.</p>
    
    <h2>1. File Count</h2>
    <p>This release includes {{file_count}} pairs of fastq files. File count is broken down by instrument and run as follow.</p>
    
    <table id="info_table">
    <tr>
-     <th>Platform</th>
-     <th>Run</th>
+     <th>Sequencing Platform</th>
+     <th>Sequencing Run</th>
      <th>Paired fastq files</th>     
    </tr>   
    <tr>   
@@ -100,9 +100,9 @@
   <h3>Appendix Table 1</h3>
 
   <ul>
-    <li><i>Library Type:</i> {{appendix_identifiers["Library Type"]}}</li>
-    <li><i>Tissue Type:</i> {{appendix_identifiers["Tissue Type"]}}</li>
-    <li><i>Tissue Origin:</i> {{appendix_identifiers["Tissue Origin"]}}</li>
+    <li><i>Library Types:</i> {{appendix_identifiers["Library Type"]}}</li>
+    <li><i>Tissue Types:</i> {{appendix_identifiers["Tissue Type"]}}</li>
+    <li><i>Tissue Origins:</i> {{appendix_identifiers["Tissue Origin"]}}</li>
   </ul>
 
   <p style="page-break-after: always;"></p>
@@ -153,7 +153,7 @@
   <h2>4. QC plots</h2>
             
   {% if plots %}      
-    <p>QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>
+    <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     
     {% if samples_missing_metrics %}   
       <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is:</p>
