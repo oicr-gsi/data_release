@@ -2551,7 +2551,12 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             library_source = i[0]['library_source'][0]
             library = i[0]['library'][0]
             prefix = i[0]['prefix']
-            
+            # reformat prefix to fit the table column
+            if library_source in prefix:
+                prefix = '{0} {1}'.format(prefix[:prefix.index(library_source)+len(library_source)], 
+                                          prefix[prefix.index(library_source)+len(library_source):])
+            else:
+                prefix = '{0} {1}'.format(prefix[:len(prefix)//2], prefix[len(prefix)//2:])
             # cut library and sample names to fit the table width
             if library.split('_')[-1] == library_source:
                 library = library.split('_')
