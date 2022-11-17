@@ -155,7 +155,7 @@
     <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     
     {% if samples_missing_metrics %}   
-      <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is:</p>
+      <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables. The number of discarded samples for each instrument is:</p>
       {% for instrument in samples_missing_metrics %}      
         <li> {{instrument}}: {{samples_missing_metrics[instrument]}} </li>
       {% endfor %}               
@@ -174,7 +174,7 @@
   {% endif %}
 
   <div style="page-break-before: always;"></div>
-  <h2>Table 3. List of md5sums</h2>
+  <h2>5. List of md5sums</h2>
   <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
     
 </body>
