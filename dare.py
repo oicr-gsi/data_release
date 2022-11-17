@@ -2521,6 +2521,29 @@ def count_samples_with_missing_values(files, metrics):
     return D   
 
 
+def fit_into_column(text, library_source):
+    '''
+    (str)- > str
+    
+    
+    Returns text reformatted to fit the table column
+    
+    Parameters
+    ----------
+    - text (str): Value in column 
+    - library_source (str): 2-letters code of the library type
+    '''
+    
+    if library_source in text:
+        text = '{0} {1}'.format(text[:text.index(library_source)+len(library_source)], 
+                                text[text.index(library_source)+len(library_source):])
+    else:
+        text = '{0} {1}'.format(text[:len(text)//2], text[len(text)//2:])
+
+    return text
+       
+
+
 def group_sample_metrics(files, table, metrics = None, add_time_points=None):
     '''
     (dict, str, dict | None, bool| None) -> dict 
@@ -2552,21 +2575,13 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             library = i[0]['library'][0]
             prefix = i[0]['prefix']
             # reformat prefix to fit the table column
-            if library_source in prefix:
-                prefix = '{0} {1}'.format(prefix[:prefix.index(library_source)+len(library_source)], 
-                                          prefix[prefix.index(library_source)+len(library_source):])
-            else:
-                prefix = '{0} {1}'.format(prefix[:len(prefix)//2], prefix[len(prefix)//2:])
-            # cut library and sample names to fit the table width
-            if library.split('_')[-1] == library_source:
-                library = library.split('_')
-                library = '{0}_ {1}'.format('_'.join(library[0:2]), '_'.join(library[2:]))
-            if len(sample) >= 30:
-                if library_source in sample:
-                    assert sample.count(library_source) == 1
-                    sample = sample.split(library_source)
-                    sample = '{0}{1} {2}'.format(sample[0], library_source, sample[1])
-                        
+            if len(prefix) >= 40:
+                prefix = fit_into_column(prefix, library_source)
+            if len(library) >= 30:
+                library = fit_into_column(library, library_source)
+            if len(sample) >= 40:
+                sample = fit_into_column(sample, library_source)
+                
             library_name = '{0} ({1})'.format(i[0]['library'][0], i[0]['time_point'])  
             tissue_origin = i[0]['tissue_origin'][0]
             tissue_type = i[0]['tissue_type'][0]
