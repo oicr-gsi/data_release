@@ -2863,6 +2863,8 @@ def write_batch_report(args):
                'qc_appendices': qc_appendices,
                'table_appendix': table_appendix,
                'libraries': libraries,
+               'user': args.user,
+               'ticket': os.path.basename(args.ticket),
                'md5sum': os.path.basename(md5sum_file)}
        
     # render template html 
@@ -3306,6 +3308,8 @@ if __name__ == '__main__':
     r_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
     r_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
     r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
+    r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
+    r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     r_parser.set_defaults(func=write_batch_report)
     
     # # write a report
