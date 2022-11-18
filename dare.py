@@ -2574,7 +2574,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             library_source = i[0]['library_source'][0]
             library = i[0]['library'][0]
             prefix = i[0]['prefix']
-            groupid = i[0]['group_id'][0]
+            groupid = i[0]['groupid'][0]
             # reformat prefix to fit the table column
             if len(prefix) >= 40:
                 prefix = fit_into_column(prefix, library_source)
@@ -2693,7 +2693,7 @@ def get_library_tissue_types(files):
     return D
 
 
-def get_appendix_identifiers(files):
+def get_identifiers_appendix(files):
     '''
     (dict) -> list
     
@@ -2716,6 +2716,68 @@ def get_appendix_identifiers(files):
          'Tissue Origin (TO): {0}'.format(D['Tissue Origin'])]         
     
     return L
+
+
+
+def get_mqc_metrics_table_names(library_sources):
+    '''
+    (list) -> dict
+    
+    Returns a dictionry with Names of QC metrics tables for each library type
+    
+    Parameters
+    ----------
+    - library_sources (list): Sorted list of library types 
+    '''
+
+    # get the QC metrics sub-tables titles
+    counter = 1
+    qc_subtables = {}
+    for library_type in library_sources:
+        qc_subtables[library_type] = 'Table 2.{0} QC metrics for {1} libraries'.format(counter, library_type)
+        counter += 1
+
+    return qc_subtables
+
+
+def get_metrics_appendix(library_sources):
+    '''
+    (list) -> dict
+    
+    Returns a dictionry with definitions of columns in the sample identifier table
+    
+    Parameters
+    ----------
+    - library_sources (list): Sorted list of library types 
+    '''
+
+    # get the QC metrics sub-tables and appendices
+    
+    columns = ['Library Id: OICR generated library identifier',
+               'File Prefix: the common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
+               'Reads: Number of reads']
+        
+    
+    counter = 1
+    qc_appendix = {'tables': {}, 'metrics': {}}
+    for library_type in library_sources:
+        qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
+        if library_type == 'CM':
+            qc_appendix['metrics'][library_type] = columns + ['AT dropout: AT dropout',
+                                                              'Methylation beta: Methylation beta',
+                                                              'Duplicate: Duplicate']
+        elif library_type == 'WT':
+            qc_appendix['metrics'][library_type] = columns + ["5'-3' bias: 5'-3' bias",
+                                                              'rRNA contamination: rRNA contamination',
+                                                              'Coding (%): Coding (%)',
+                                                              'Correct strand reads (%): Correct strand reads (%)']
+        else:
+            qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.',
+                                                              'On Target Rate: Percentage of reads that overlap the target space by at least one base = reads on target/total reads.',
+                                                              'Percent duplicate: Percent of duplicate reads estimated by Picard MarkDuplicates.']
+        counter += 1
+        
+    return qc_appendix
 
 
 def makepdf(html, outputfile):
@@ -2861,34 +2923,25 @@ def write_batch_report(args):
         header_identifiers[0] = 'Library Id (time point)'
     
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
-    appendix_identifiers = get_appendix_identifiers(files)
+    appendix_identifiers = get_identifiers_appendix(files)
     
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
     for i in ['EX', 'TS', 'WG', 'CM', 'WT']:
         header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
-                                        
-    # get the QC metrics sub-tables and appendices
-    counter = 1
-    qc_subtables, qc_appendices, table_appendix = {}, {}, {}
+    
+
+
+    
+                                    
     libraries = sorted(list(qc_metrics.keys()))
-    for library_type in libraries:
-        qc_subtables[library_type] = 'Table 2.{0} QC metrics for {1} libraries'.format(counter, library_type)
-        table_appendix[library_type] = 'Appendix Table 2.{0}'.format(counter)
-        if library_type == 'CM':
-            qc_appendices[library_type] = {'AT dropout': 'AT dropout',
-                                           'Methylation beta': 'Methylation beta',
-                                           'Duplicate': 'Duplicate'}
-        elif library_type == 'WT':
-            qc_appendices[library_type] = {"5'-3' bias": "5'-3' bias",
-                                           'rRNA contamination': 'rRNA contamination',
-                                           'Coding (%)': 'Coding (%)',
-                                           'Correct strand reads (%)': 'Correct strand reads (%)'}
-        else:
-            qc_appendices[library_type] = {'Raw Coverage': 'An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.',
-                                           'On Target Rate': 'Percentage of reads that overlap the target space by at least one base = reads on target/total reads.',
-                                           'Percent duplicate': 'Percent of duplicate reads estimated by Picard MarkDuplicates.'}
-        counter += 1
+    
+    assert library_sources == libraries
+    
+    # get the qc metrics subtables
+    qc_subtables = get_mqc_metrics_table_names(library_sources)
+    # get the metrics appendix
+    qc_appendices = get_metrics_appendix(library_sources)
     
     # fill in template
     context = {'projects' : projects,
@@ -2903,7 +2956,6 @@ def write_batch_report(args):
                'qc_metrics': qc_metrics,
                'qc_subtables': qc_subtables,
                'qc_appendices': qc_appendices,
-               'table_appendix': table_appendix,
                'libraries': libraries,
                'user': args.user,
                'ticket': os.path.basename(args.ticket),

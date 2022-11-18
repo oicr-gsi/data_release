@@ -66,8 +66,7 @@
    <p>Provides information about the sequenced samples.</p>
      
    <h3>Table 1. Sample identifiers</h3>
-   <p>LT: Library Type, TT: Tissue Type, TO: Tissue Origin</p>
-
+   
    <table id="info_table", style="font-size: 12px;">
    <tr>
      <th>{{header_identifiers.0}}</th>
@@ -102,6 +101,7 @@
   <ul>
     {% for i in appendix_identifiers %}
     <li>{{i}}</li>
+    {% endfor %}
   </ul>
 
   <p style="page-break-after: always;"></p>
@@ -136,11 +136,11 @@
   {% endfor %}
 </table>
 
-  <h3>{{table_appendix[library_source]}}</h3>
+  <h3>{{qc_appendices['tables'][library_source]}}</h3>
 
   <ul>
-    {% for metric in qc_appendices[library_source] %}
-        <li><i>{{metric}}:</i> {{qc_appendices[library_source][metric]}}</li>
+    {% for i in qc_appendices['metrics'][library_source] %}
+        <li>{{i}}</li>
     {% endfor %}
   </ul>
   
