@@ -100,9 +100,8 @@
   <h3>Appendix Table 1</h3>
 
   <ul>
-    <li><i>Library Types:</i> {{appendix_identifiers["Library Type"]}}</li>
-    <li><i>Tissue Types:</i> {{appendix_identifiers["Tissue Type"]}}</li>
-    <li><i>Tissue Origins:</i> {{appendix_identifiers["Tissue Origin"]}}</li>
+    {% for i in appendix_identifiers %}
+    <li>{{i}}</li>
   </ul>
 
   <p style="page-break-after: always;"></p>

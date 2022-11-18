@@ -2574,6 +2574,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             library_source = i[0]['library_source'][0]
             library = i[0]['library'][0]
             prefix = i[0]['prefix']
+            groupid = i[0]['group_id'][0]
             # reformat prefix to fit the table column
             if len(prefix) >= 40:
                 prefix = fit_into_column(prefix, library_source)
@@ -2588,7 +2589,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             sequencing_run = '{0} lane_{1}_{2}'.format(i[0]['run_id'][0], i[0]['lane'][0], i[0]['barcode'][0])
                         
             if table == 'sample_identifiers':
-                L = [external_name, case, sample, library, library_source, tissue_origin, tissue_type]
+                L = [library, case, external_name, groupid, library_source, tissue_type, tissue_origin]
                 # add time point if selected
                 if add_time_points:
                     L[3] = library_name
@@ -2618,7 +2619,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
 
 
 
-def get_appendix_identifiers(files):
+def get_library_tissue_types(files):
     '''
     (dict) -> dict
     
@@ -2690,6 +2691,31 @@ def get_appendix_identifiers(files):
         D[i] = ', '.join(D[i])                
     
     return D
+
+
+def get_appendix_identifiers(files):
+    '''
+    (dict) -> list
+    
+    Returns a list with definitions of columns in the sample identifier table
+    
+    Parameters
+    ----------
+    - files (dict): Dictionary with file information from released libraries extracted from FPR
+    '''
+
+    # get the library type, tissue type and tissue origin 
+    D = get_library_tissue_types(files)
+    
+    L = ['Library Id: OICR-generated library identifier',
+         'Case Id: OICR-generated case identifier',
+         'Donor Id: user supplied donor identifier',
+         'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+         'Library Type (LT): {0}'.format(D['Library Type']),
+         'Tissue Type (TT): {0}'.format(D['Tissue Type']),
+         'Tissue Origin (TO): {0}'.format(D['Tissue Origin'])]         
+    
+    return L
 
 
 def makepdf(html, outputfile):
@@ -2829,9 +2855,10 @@ def write_batch_report(args):
     samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
 
     # group metrics by pairs of files
-    header_identifiers =  ['Donor Id', 'OICR Id', 'Sample Id', 'Library Id', 'LT', 'TO', 'TT']
+    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TT', 'TO']
+    
     if args.timepoints:
-        header_identifiers[3] = 'Library Id (time point)'
+        header_identifiers[0] = 'Library Id (time point)'
     
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
     appendix_identifiers = get_appendix_identifiers(files)
