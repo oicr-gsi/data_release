@@ -96,8 +96,6 @@
    {% endfor %}
   </table>
 
-  <h3>Appendix Table 1</h3>
-
   <ul>
     {% for i in appendix_identifiers %}
     <li>{{i}}</li>
@@ -108,8 +106,7 @@
 
   <h2>3. QC metrics</h2>
   <p>Provides QC metrics about the raw sequences of each sample.</p>
-  <p>File prefix is the common prefix to read1 and read2 fastq files. It includes, the following order: the library Id, date, instrument, flow cell, lane number and barcodes.</p> 
-  
+   
   {% for library_source in libraries %}
 
   <h3>{{qc_subtables[library_source]}}</h3>   
@@ -135,8 +132,6 @@
        {% endfor %}               
   {% endfor %}
 </table>
-
-  <h3>{{qc_appendices['tables'][library_source]}}</h3>
 
   <ul>
     {% for i in qc_appendices['metrics'][library_source] %}
