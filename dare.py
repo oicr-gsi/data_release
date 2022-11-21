@@ -2578,7 +2578,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             # reformat prefix to fit the table column
             if len(prefix) >= 40:
                 prefix = fit_into_column(prefix, library_source)
-            if len(library) >= 30:
+            if len(library) >= 40:
                 library = fit_into_column(library, library_source)
             if len(sample) >= 40:
                 sample = fit_into_column(sample, library_source)
@@ -2589,7 +2589,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             sequencing_run = '{0} lane_{1}_{2}'.format(i[0]['run_id'][0], i[0]['lane'][0], i[0]['barcode'][0])
                         
             if table == 'sample_identifiers':
-                L = [library, case, external_name, groupid, library_source, tissue_type, tissue_origin]
+                L = [library, case, external_name, groupid, library_source, tissue_origin, tissue_type]
                 # add time point if selected
                 if add_time_points:
                     L[3] = library_name
@@ -2712,8 +2712,8 @@ def get_identifiers_appendix(files):
          'Donor Id: user supplied donor identifier',
          'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
          'Library Type (LT): {0}'.format(D['Library Type']),
-         'Tissue Type (TT): {0}'.format(D['Tissue Type']),
-         'Tissue Origin (TO): {0}'.format(D['Tissue Origin'])]         
+         'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+         'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
     
     return L
 
@@ -2917,7 +2917,7 @@ def write_batch_report(args):
     samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
 
     # group metrics by pairs of files
-    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TT', 'TO']
+    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']
     
     if args.timepoints:
         header_identifiers[0] = 'Library Id (time point)'
