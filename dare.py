@@ -2755,7 +2755,7 @@ def get_metrics_appendix(library_sources):
     
     columns = ['Library Id: OICR generated library identifier',
                'File Prefix: the common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
-               'Reads: Number of reads']
+               'Read pairs: Number of read pairs. The number of reads is twice the number of read pairs.']
         
     
     counter = 1
@@ -2880,13 +2880,13 @@ def write_batch_report(args):
     for library_source in ['CM', 'WG', 'TS', 'EX', 'WT']:
         if library_source == 'CM':
             metrics[library_source] = ['read_count', 'AT_dropout', 'methylation_beta', 'duplication']
-            Y_axis[library_source] = ['Reads', 'AT dropout', 'Methyl. beta', 'Duplicate']
+            Y_axis[library_source] = ['Read pairs', 'AT dropout', 'Methyl. beta', 'Duplicate']
         elif library_source == 'WT':
             metrics[library_source] = ['read_count', "5'-3' bias", 'rRNA contamination', 'Coding (%)']
-            Y_axis[library_source] = ['Reads', "5'-3' bias", 'rRNA contamination', 'Coding (%)']
+            Y_axis[library_source] = ['Read pairs', "5'-3' bias", 'rRNA contamination', 'Coding (%)']
         else:
             metrics[library_source] = ['read_count', 'coverage', 'on_target', 'percent_duplicate']
-            Y_axis[library_source] = ['Reads', 'Coverage', 'On target', 'Duplicate (%)']
+            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target', 'Duplicate (%)']
     colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
     for library_type in library_sources:
         figures = generate_figures(files, args.project, library_type, metrics[library_type], Y_axis[library_type], colors, working_dir)
