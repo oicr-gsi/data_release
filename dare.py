@@ -2908,6 +2908,16 @@ def write_batch_report(args):
     # count the number of samples with missing metric values
     samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
 
+    # issue warning if samples with missing QC metrics
+    if samples_missing_metrics:
+        print('========')
+        print('WARNING!!')
+        print('Some samples have missing QC information. Please review')
+        for i in samples_missing_metrics:
+            for j in samples_missing_metrics[i]:
+                print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
+        print('========')        
+    
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
