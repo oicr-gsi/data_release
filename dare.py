@@ -2427,65 +2427,60 @@ def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel =
 
 
 
-def generate_figures(files, project, library_source, metrics, Y_axis, colors, working_dir, height=16, width=13):
+def generate_figures(files, project, library_source, platform, metrics, Y_axis, colors, working_dir, height=16, width=13):
     '''
-    (dict, str, str, str, int, int)
+    (dict, str, str, str, str, int, int) -> str
     
-    Generate figures for each instrument with metrics from FPR and QC-etl and returns
-    a dictionary with the figure path for each instrument
+    Generate a figure with metrics from FPR and QC-etl for a given library type and sequencing platform
+    and returns the path to the figure file
         
     Parameters
     ----------
     - files (dict): Dictionary with file info extracted from FPR and with QC info extracted from qc-etl
     - project (str): Name of project
     - library_source (str): Type of library
+    - platform (str): Sequencing platform
     - working_dir (str): Path to the folder where figure files are written
     - height (int): Height of the figure
     - width (int): Width of the figure
     '''
     
+    # make lists with metrics for each instrument 
+    QC_metrics = get_run_level_metrics(files, platform, library_source, metrics)
+    # remove undefined metric values
+    QC_metrics = clean_up_metrics(QC_metrics)
+    # sort metrics according to read counts (read counts is always first metric)
+    QC_metrics = sort_metrics(QC_metrics)
         
-    # make a list of instruments
-    instruments = list(set([files[file_swid]['platform'] for file_swid in files if files[file_swid]['library_source'][0] == library_source]))
-    # track the figure file names for each instrument
-    figure_files = {}
-    for platform in instruments:
-        # make lists with metrics for each instrument 
-        QC_metrics = get_run_level_metrics(files, platform, library_source, metrics)
-        # remove undefined metric values
-        QC_metrics = clean_up_metrics(QC_metrics)
-        # sort metrics according to read counts (read counts is always first metric)
-        QC_metrics = sort_metrics(QC_metrics)
-        
-        # get the outputfile
-        current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
-        outputfile = os.path.join(working_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project, platform, library_source, current_time))
+    # get the outputfile
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    outputfile = os.path.join(working_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project, platform, library_source, current_time))
     
-        if QC_metrics[0]:
-            figure = plt.figure()
-            figure.set_size_inches(width, height)
-            # make a list of with X axis labels to determine which subplot should display the Samples label
-            x_labels = get_x_axis_labels(QC_metrics)
-            # determine how many subplots are expected
-            subplots = count_subplots(QC_metrics) 
-            # determine the position of each subplot
-            subplot_pos = get_subplot_position(QC_metrics)
+    if QC_metrics[0]:
+        figure = plt.figure()
+        figure.set_size_inches(width, height)
+        # make a list of with X axis labels to determine which subplot should display the Samples label
+        x_labels = get_x_axis_labels(QC_metrics)
+        # determine how many subplots are expected
+        subplots = count_subplots(QC_metrics) 
+        # determine the position of each subplot
+        subplot_pos = get_subplot_position(QC_metrics)
             
-            for i in range(len(QC_metrics)):
-                # determine title
-                title = platform + ' {0} libraries'.format(library_source) if i == 0 else None
-                # plot data
-                create_ax(subplots, 1, subplot_pos[i], figure, QC_metrics[i], Y_axis[i], colors[i], title = title, XLabel = x_labels[i])
+        for i in range(len(QC_metrics)):
+            # determine title
+            title = platform + ' {0} libraries'.format(library_source) if i == 0 else None
+            # plot data
+            create_ax(subplots, 1, subplot_pos[i], figure, QC_metrics[i], Y_axis[i], colors[i], title = title, XLabel = x_labels[i])
                 
-            # make sure axes do not overlap
-            plt.tight_layout(pad = 2.5)
-            # write figure to file  
-            figure.savefig(outputfile, bbox_inches = 'tight')
-            plt.close()
+        # make sure axes do not overlap
+        plt.tight_layout(pad = 2.5)
+        # write figure to file  
+        figure.savefig(outputfile, bbox_inches = 'tight')
+        plt.close()
                 
-            assert platform not in figure_files
-            figure_files[platform] = outputfile
-    return figure_files
+        return outputfile
+    else:
+        return ''
 
 
 
@@ -2493,7 +2488,8 @@ def count_samples_with_missing_values(files, metrics):
     '''
     (dict, str, list) -> dict
     
-    Returns a dictionary with the number of samples with missing metric values for each instrument
+    Returns a dictionary with the number of samples with missing metric values for
+    each library type and instrument
     
     Paraneters
     ----------
@@ -2501,23 +2497,33 @@ def count_samples_with_missing_values(files, metrics):
     - metrics (list): List of metrics of interest
     '''
     
-    # count the number of samples with missing values for each instrument
+    # count the number of samples with missing values for each instrument and library type
     D = {}
     for file_swid in files:
         platform = files[file_swid]['platform']
         sample = files[file_swid]['external_name']
+        library_source = files[file_swid]['library_source'][0]
         for i in metrics:
             if i in files[file_swid]:
                 if files[file_swid][i] == 'NA':
-                    if platform not in D:
-                        D[platform] = set()
-                    D[platform].add(sample)
-        
-    for platform in D:
-        D[platform] = len(list(D[platform]))
-    to_remove = [platform for platform in D if D[platform] == 0]
-    for platform in to_remove:
-        del D[platform]
+                    if library_source not in D:
+                        D[library_source] = {}
+                    if platform not in D[library_source]:
+                        D[library_source][platform] = set()
+                    D[library_source][platform].add(sample)
+    
+    for library_source in D:
+        for platform in D[library_source]:
+            D[library_source][platform] = len(list(D[library_source][platform]))
+    
+    for library_source in D:
+        to_remove = [platform for platform in D[library_source] if D[library_source][platform] == 0]
+        for platform in to_remove:
+            del D[library_source][platform]
+    to_remove = [library_source for library_source in D if len(D[library_source]) == 0]
+    for i in to_remove:
+        del D[i]
+    
     return D   
 
 
@@ -2873,11 +2879,16 @@ def write_batch_report(args):
     
     # make a list of library types
     library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
-    
-    # generate plots for each instrument and keep track of figure files
+    # list all platforms for each library source
+    libraries = {}
+    for library_source in library_sources:
+        instruments = sorted(list(set([files[file_swid]['platform'] for file_swid in files if files[file_swid]['library_source'][0] == library_source])))
+        libraries[library_source] = instruments        
+        
+    # generate plots for each instrument and library source and keep track of figure files
     figure_files = {}
     metrics, Y_axis = {}, {}
-    for library_source in ['CM', 'WG', 'TS', 'EX', 'WT']:
+    for library_source in libraries:
         if library_source == 'CM':
             metrics[library_source] = ['read_count', 'AT_dropout', 'methylation_beta', 'duplication']
             Y_axis[library_source] = ['Read pairs', 'AT dropout', 'Methyl. beta', 'Duplicate']
@@ -2887,15 +2898,16 @@ def write_batch_report(args):
         else:
             metrics[library_source] = ['read_count', 'coverage', 'on_target', 'percent_duplicate']
             Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target', 'Duplicate (%)']
-    colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
-    for library_type in library_sources:
-        figures = generate_figures(files, args.project, library_type, metrics[library_type], Y_axis[library_type], colors, working_dir)
-        figure_files[library_type] = figures
-    
-    plots = {}
-    for i in figure_files:
-        plots[i] = [figure_files[i][j] for j in figure_files[i]]
-    
+        colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
+        for platform in libraries[library_source]:
+            figure = generate_figures(files, args.project, library_source, platform, metrics[library_source], Y_axis[library_source], colors, working_dir)
+            if library_source not in figure_files:
+                figure_files[library_source] = {}
+            figure_files[library_source][platform] = figure
+             
+    # count the number of samples with missing metric values
+    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
+
     # write md5sums to separate file
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
@@ -2927,16 +2939,9 @@ def write_batch_report(args):
     
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
-    for i in ['EX', 'TS', 'WG', 'CM', 'WT']:
+    for i in library_sources:
         header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
     
-
-
-    
-                                    
-    libraries = sorted(list(qc_metrics.keys()))
-    
-    assert library_sources == libraries
     
     # get the qc metrics subtables
     qc_subtables = get_mqc_metrics_table_names(library_sources)
@@ -2947,7 +2952,7 @@ def write_batch_report(args):
     context = {'projects' : projects,
                'file_count': all_released_files,
                'fastq_counts': fastq_counts,
-               'plots': plots,
+               'figure_files': figure_files,
                'samples_missing_metrics': samples_missing_metrics,
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
@@ -2956,7 +2961,8 @@ def write_batch_report(args):
                'qc_metrics': qc_metrics,
                'qc_subtables': qc_subtables,
                'qc_appendices': qc_appendices,
-               'libraries': libraries,
+               'library_sources': library_sources,
+               'libraries': libraries, 
                'user': args.user,
                'ticket': os.path.basename(args.ticket),
                'md5sum': os.path.basename(md5sum_file)}

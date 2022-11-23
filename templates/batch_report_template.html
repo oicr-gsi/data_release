@@ -107,7 +107,7 @@
   <h2>3. QC metrics</h2>
   <p>Provides QC metrics about the raw sequences of each sample.</p>
    
-  {% for library_source in libraries %}
+  {% for library_source in library_sources %}
 
   <h3>{{qc_subtables[library_source]}}</h3>   
 
@@ -145,35 +145,27 @@
   <div style="page-break-after: always;"></div>
 
   <h2>4. QC plots</h2>
-            
-  {% if plots %}      
+  
     <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     
-    {% if samples_missing_metrics %}   
-      <p>Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables. The number of discarded samples for each instrument is:</p>
-      {% for instrument in samples_missing_metrics %}      
-        <li> {{instrument}}: {{samples_missing_metrics[instrument]}} </li>
-      {% endfor %}               
-    {% endif %}
-    <br>
-    
-    {% for library_source in libraries %}
-      {% for figure in plots[library_source] %}
-         <img src="{{figure}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>
-      {% endfor %}
-    {% endfor %}  
-   
-  {% else %}
-  <p>Data could not be plotted because of missing QC metrics</p>
-     
-  {% endif %}
-
-  <div style="page-break-before: always;"></div>
+    {% for library_source in library_sources %}
+        {% for platform in libraries[library_source] %}
+            <h3>{{platform}} {{library_source}} libraries</h3> 
+            {% if figure_files[library_source][platform] %}
+              {% if library_source in samples_missing_metrics and platform in samples_missing_metrics[library_source] %}
+                <p>{{samples_missing_metrics[library_source][platform]}} samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables.</p>
+              {% endif %}               
+              <img src="{{figure_files[library_source][platform]}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>             
+            {% else %}
+              <p>Data could not be plotted because of missing QC metrics</p>
+            {% endif %}
+            <p style="page-break-before: always;"></p>      
+        {% endfor %}
+    {% endfor %}
+              
   <h2>5. List of md5sums</h2>
   <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
 
-  
-  
   <table id="user_table">
     <tr>
       <th colspan="2">For internal use only</th>
