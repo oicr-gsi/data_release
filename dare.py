@@ -947,8 +947,8 @@ def list_files_release_folder(directories):
     '''
     (list) -> list
     
-    Returns a list of full file paths, links resolved, of the fastqs in each folder of the list of direcrories
-    
+    Returns a list of full file paths for all fastqs located in each folder of the list of directories
+        
     Parameters
     ----------
     - directories (list): A list of full paths to directories containining released fastqs 
@@ -959,13 +959,26 @@ def list_files_release_folder(directories):
     for run in directories:
         # make a list of links for the directory
         links = [os.path.join(run, i) for i in os.listdir(run) if os.path.isfile(os.path.join(run, i)) and '.fastq.gz' in i]
-        filenames = [os.path.realpath(i) for i in links]
-        files.extend(filenames)
+        files.extend(links)
         # expect only paired fastqs
-        if len(filenames) % 2 != 0:
-            sys.exit('Odd number of fastqs in {0}: {1}'.format(run, len(filenames)))
+        if len(links) % 2 != 0:
+            sys.exit('Odd number of fastqs in {0}: {1}'.format(run, len(links)))
     return files
 
+
+def resolve_links(filenames):
+    '''
+    (list) -> list
+
+    Returns a list of file paths with links resolved
+
+    Parameters
+    ----------
+    - filenames(list): List of file paths
+    '''
+    
+    files = [os.path.realpath(i) for i in filenames]
+    return files
 
 
 def is_gzipped(file):
@@ -2839,8 +2852,12 @@ def write_batch_report(args):
                            Prefix is added to the relative path in FPR to determine the full file path.
     '''
     
-    # check that runs are specified for single data release report
-    if args.run_directories is None:
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')
+    if args.run_directories and (args.runs or args.libraries or args.release_files or args.exclude or args.nomiseq):
+        sys.exit('-rn cannot be used with options -r, -l, -f, -e or --exclude_miseq')
+    
+    if all(map(lambda x: x is None, [args.runs, args.libraries, args.release_files, args.exclude]))  and args.run_directories is None:
         sys.exit('Please provide a list of run folders')
     # get the project directory with release run folders
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
@@ -2854,8 +2871,13 @@ def write_batch_report(args):
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
     
     # keep only info about released fastqs
-    # make a list of full paths to the released fastqs resolving the links in the run directories
-    released_files = list_files_release_folder(args.run_directories)
+    if args.run_directories:
+        released_files = list_files_release_folder(args.run_directories)
+    else:
+        released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, 'fastqs')
+        released_files = [released_files[i]['file_path'] for i in released_files]
+    # resolve links
+    released_files = resolve_links(released_files)
     to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
     for file_swid in to_remove:
         del files[file_swid]
@@ -3409,7 +3431,12 @@ if __name__ == '__main__':
     r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
-    r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
+    r_parser.add_argument('-rn', '--rundirs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
+    r_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
+    r_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
+    r_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
+    r_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
+    r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
     r_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
