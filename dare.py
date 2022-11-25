@@ -2857,7 +2857,7 @@ def write_batch_report(args):
     if args.run_directories and (args.runs or args.libraries or args.release_files or args.exclude or args.nomiseq):
         sys.exit('-rn cannot be used with options -r, -l, -f, -e or --exclude_miseq')
     
-    if all(map(lambda x: x is None, [args.runs, args.libraries, args.release_files, args.exclude]))  and args.run_directories is None:
+    if all(map(lambda x: x is None, [args.runs, args.libraries, args.release_files, args.exclude, args.nomiseq]))  and args.run_directories is None:
         sys.exit('Please provide a list of run folders')
     # get the project directory with release run folders
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
@@ -3329,36 +3329,40 @@ def mark_files_nabu(args):
     - provenance (str): Path to File Provenance Report
     '''
     
-    # check directory
-    if os.path.isdir(args.directory) == False:
-        raise ValueError('{0} is not a valid directory'.format(args.directory))
-        
-    # make a list of files in directory
-    # get directory name and run Id
-    run = os.path.basename(args.directory)
-    if '.' in run:
-        run_id = run[:run.index('.')]
-    else:
-        run_id = run
-    if '.withhold' in run:
-        if args.status.lower() != 'fail':
-            raise ValueError('this run should not be released. Expected release value is fail')
-    else:
-        if args.status.lower() == 'fail':
-            raise ValueError('this run should be released. Expected release value is pass')
+    # check valid combinations of parameters
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')
+    if args.run_directory and (args.workflow or args.runs or args.libraries or args.release_files or args.exclude or args.prefix or args.nomiseq):
+        sys.exit('-rn cannot be used with options -w, -r, -l, -f, -e, -px or --exclude_miseq')
+    if all(map(lambda x: x is None, [args.workflow, args.runs, args.libraries, args.release_files, args.exclude, args.prefix, args.nomiseq]))  and args.run_directory is None:
+        sys.exit('Please provide a list of run folders')
     
-    # get the real path of the links in directory
-    files = [os.path.realpath(os.path.join(args.directory, i)) for i in os.listdir(args.directory) if os.path.isfile(os.path.join(args.directory, i))]
-    
-    # make a list of swids
-    swids = []
-    # dereference FPR
+    # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    try:
+           
+    if args.run_directory:
+        # check directory
+        if os.path.isdir(args.run_directory) == False:
+            sys.exit('{0} is not a valid directory'.format(args.directory))
+        # make a list of files in directory
+        # get directory name and run Id
+        run = os.path.basename(args.run_directory)
+        if '.' in run:
+            run_id = run[:run.index('.')]
+        else:
+            run_id = run
+        if '.withhold' in run:
+            if args.status.lower() != 'fail':
+                raise ValueError('this run should not be released. Expected release value is fail')
+        else:
+            if args.status.lower() == 'fail':
+                raise ValueError('this run should be released. Expected release value is pass')
+        
+        # get the real path of the links in directory
+        files = [os.path.realpath(os.path.join(args.run_directory, i)) for i in os.listdir(args.run_directory) if os.path.isfile(os.path.join(args.run_directory, i))]
+        # make a list of swids
+        swids = []
         records = get_FPR_records(args.project, provenance)
-    except:
-        raise ValueError('Cannot find records for run {0} in FPR {1}'.format(run_id, provenance))
-    else:
         mapped_files = map_swid_file(records)
         # get the swid Ids
         swids = [mapped_files[file] for file in files if file in mapped_files]
@@ -3366,12 +3370,18 @@ def mark_files_nabu(args):
         no_swids = [file for file in files if file not in mapped_files]
         if no_swids:
             for file in no_swids:
-                print('File {0} in directory {1} does not have a swid'.format(os.path.basename(file), args.directory))
-        # mark files il nabu
-        for i in swids:
-            change_nabu_status(args.api, i, args.status.upper(), args.user, comment=args.comment)
-    print('Information was extracted from FPR {0}'.format(provenance))
-            
+                print('File {0} in directory {1} does not have a swid'.format(os.path.basename(file), args.run_directory))
+    else:
+        # collect relevant information from File Provenance Report about fastqs for project 
+        files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
+        released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
+        swids = list(released_files.keys())
+                
+    # mark files il nabu
+    for i in swids:
+        change_nabu_status(args.api, i, args.status.upper(), args.user, comment=args.comment)
+        print('Information was extracted from FPR {0}'.format(provenance))
+        
     
 if __name__ == '__main__':
 
@@ -3418,13 +3428,20 @@ if __name__ == '__main__':
     n_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project', required = True)
     n_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
     n_parser.add_argument('-s', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
-    n_parser.add_argument('-d', '--directory', dest='directory', help='Directory with links organized by project and run in gsi space', required=True)
+    n_parser.add_argument('-rn', '--rundir', dest='run_directory', help='Directory with links organized by project and run in gsi space')
+    n_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
+    n_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
+    n_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files')
+    n_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
+    n_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
+    n_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
+    n_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
+    n_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name')
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
     n_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
     n_parser.set_defaults(func=mark_files_nabu)
-    
-    
+        
     # write a report
     r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
     r_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
@@ -3449,6 +3466,8 @@ if __name__ == '__main__':
     r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     r_parser.set_defaults(func=write_batch_report)
     
+    
+        
     # # write a report
     # r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
     # r_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
