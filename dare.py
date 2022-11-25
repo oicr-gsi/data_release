@@ -3334,7 +3334,9 @@ def mark_files_nabu(args):
     if args.run_directory and (args.workflow or args.runs or args.libraries or args.release_files or args.exclude or args.prefix or args.nomiseq):
         sys.exit('-rn cannot be used with options -w, -r, -l, -f, -e, -px or --exclude_miseq')
     if all(map(lambda x: x is None, [args.workflow, args.runs, args.libraries, args.release_files, args.exclude, args.prefix, args.nomiseq]))  and args.run_directory is None:
-        sys.exit('Please provide a list of run folders')
+        sys.exit('Please provide the path to a run folders')
+    if args.workflow is None and args.run_directory is None:
+        sys.exit('Please provide the path to a run folder or a workflow')
     
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
