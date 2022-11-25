@@ -3343,7 +3343,7 @@ def mark_files_nabu(args):
     if args.run_directory:
         # check directory
         if os.path.isdir(args.run_directory) == False:
-            sys.exit('{0} is not a valid directory'.format(args.directory))
+            sys.exit('{0} is not a valid directory'.format(args.run_directory))
         # make a list of files in directory
         # get the real path of the links in directory
         files = [os.path.realpath(os.path.join(args.run_directory, i)) for i in os.listdir(args.run_directory) if os.path.isfile(os.path.join(args.run_directory, i))]
