@@ -3351,6 +3351,7 @@ def mark_files_nabu(args):
         # make a list of swids
         swids = []
         records = get_FPR_records(args.project, provenance)
+        print('Information was extracted from FPR {0}'.format(provenance))
         mapped_files = map_swid_file(records)
         # get the swid Ids
         swids = [mapped_files[file] for file in files if file in mapped_files]
@@ -3362,13 +3363,13 @@ def mark_files_nabu(args):
     else:
         # collect relevant information from File Provenance Report about fastqs for project 
         files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
+        print('Information was extracted from FPR {0}'.format(provenance))
         released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
         swids = list(released_files.keys())
                 
     # mark files il nabu
     for i in swids:
         change_nabu_status(args.api, i, args.status.upper(), args.user, comment=args.comment)
-        print('Information was extracted from FPR {0}'.format(provenance))
         
     
 if __name__ == '__main__':
