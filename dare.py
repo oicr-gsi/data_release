@@ -688,7 +688,7 @@ def link_files(args):
         files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
         print('Extracted files from File Provenance Report')
         # get file information for release and eventually for files that should not be released
-        files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
+        files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
                 
         # link files to project dir
         if args.suffix == 'fastqs':
@@ -909,7 +909,7 @@ def map_external_ids(args):
     print('Extracted files from File Provenance Report')
     
     # get raw sequence file info
-    files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, suffix)
+    files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
     
     # add time points
     add_time_points(args.sample_provenance, files)
@@ -2873,7 +2873,7 @@ def write_batch_report(args):
     if args.run_directories:
         released_files = list_files_release_folder(args.run_directories)
     else:
-        released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, 'fastqs')
+        released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
         released_files = [released_files[i]['file_path'] for i in released_files]
     # resolve links
     released_files = resolve_links(released_files)
@@ -3360,7 +3360,7 @@ def mark_files_nabu(args):
     else:
         # collect relevant information from File Provenance Report about fastqs for project 
         files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
-        released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude, args.suffix)
+        released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
         swids = list(released_files.keys())
                 
     # mark files il nabu
@@ -3422,7 +3422,6 @@ if __name__ == '__main__':
     n_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     n_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
     n_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
-    n_parser.add_argument('-s', '--suffix', dest='suffix', help='Indicates if fastqs or datafiles are released by adding suffix to the directory name. Use fastqs or workflow name')
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
     n_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
