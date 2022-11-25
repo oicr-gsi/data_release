@@ -3345,19 +3345,6 @@ def mark_files_nabu(args):
         if os.path.isdir(args.run_directory) == False:
             sys.exit('{0} is not a valid directory'.format(args.directory))
         # make a list of files in directory
-        # get directory name and run Id
-        run = os.path.basename(args.run_directory)
-        if '.' in run:
-            run_id = run[:run.index('.')]
-        else:
-            run_id = run
-        if '.withhold' in run:
-            if args.status.lower() != 'fail':
-                raise ValueError('this run should not be released. Expected release value is fail')
-        else:
-            if args.status.lower() == 'fail':
-                raise ValueError('this run should be released. Expected release value is pass')
-        
         # get the real path of the links in directory
         files = [os.path.realpath(os.path.join(args.run_directory, i)) for i in os.listdir(args.run_directory) if os.path.isfile(os.path.join(args.run_directory, i))]
         # make a list of swids
