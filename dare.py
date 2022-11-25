@@ -485,9 +485,9 @@ def exclude_non_specified_files(files, file_names):
     return D
 
 
-def collect_files_for_release(files, release_files, nomiseq, runs, libraries, exclude, suffix):
+def collect_files_for_release(files, release_files, nomiseq, runs, libraries, exclude):
     '''
-    (dict, str | None, bool, list | None, str | None, str | None, str) -> (dict, dict)
+    (dict, str | None, bool, list | None, str | None, str | None) -> (dict, dict)
     
     Returns dictionaries with file records for files tagged for release and files that should not be released, if any, or an empty dictionary.
         
@@ -504,7 +504,6 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
                               The second and optional column is the library aliquot ID (eg. LDI32439).
                               Only the samples with these library aliases are used if provided'
     - exclude (str | None): File with sample name or libraries to exclude from the release
-    - suffix (str): Indicates map for fastqs or datafiles in the output file name
     '''
     
     # keep most recent workflows
@@ -3414,7 +3413,7 @@ if __name__ == '__main__':
     n_parser = subparsers.add_parser('mark', help="Mark released or withheld files in Nabu")
     n_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project', required = True)
     n_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
-    n_parser.add_argument('-s', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
+    n_parser.add_argument('-st', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     n_parser.add_argument('-rn', '--rundir', dest='run_directory', help='Directory with links organized by project and run in gsi space')
     n_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     n_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
