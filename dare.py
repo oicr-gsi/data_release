@@ -1816,33 +1816,30 @@ def extract_bamqc_data(bamqc_db):
     # get table name
     cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
     table_name = [i[0] for i in cur][0]
-    cur.execute('select * from {0}'.format(table_name))
-    header = [i[0] for i in cur.description]
-    
-    data = cur.fetchall()
-    conn.close()
-    
-    columns = ['sample', 'Run Alias', 'instrument', 'library', 'Barcodes', 
+    # get all data from table
+    conn.row_factory = sqlite3.Row
+    data = conn.execute('select * from {0}'.format(table_name)).fetchall()
+        
+    columns = ['sample', 'Pinery Lims ID', 'Run Alias', 'instrument', 'library', 'Barcodes', 
                'coverage', 'coverage deduplicated', 'mark duplicates_PERCENT_DUPLICATION',
                'mapped reads', 'total bases on target', 'total reads', 'bases mapped', 'Lane Number']
     
     D = {}
     for i in data:
         d = {}
-        for j in range(len(columns)):
-            key = columns[j]
-            if j < 5:
-                d[key] = i[header.index(key)]
-            elif 5 <= j <= 7:
-                d[key] = float(i[header.index(key)])
-            elif j > 7:
-                d[key] = int(i[header.index(key)])    
-        
+        for j in columns:
+            if j in ['coverage', 'coverage deduplicated', 'mark duplicates_PERCENT_DUPLICATION']:
+                d[j] = float(i[j])        
+            elif j in ['mapped reads', 'total bases on target', 'total reads', 'bases mapped', 'Lane Number']:
+                d[j] = int(i[j])  
+            else:
+                d[j] = i[j]
+                
         # compute on_target rate, not available through qc-etl
         d['on_target'] = compute_on_target_rate(d['bases mapped'], d['total bases on target']) 
                         
-        run = i[header.index('Run Alias')]
-        sample = i[header.index('sample')]
+        run = i['Run Alias']
+        sample = i['Pinery Lims ID']
         
         if run not in D:
             D[run] = {}
@@ -1867,6 +1864,7 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
     '''
     
     qc_found = False
+    limskey = FPR_info[file_swid]['limskey'][0]
     run_alias = FPR_info[file_swid]['run_id'][0]
     sample_id = FPR_info[file_swid]['sample_id'][0]
     barcode = FPR_info[file_swid]['barcode'][0]
@@ -1876,17 +1874,19 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
     
     # check that run in recorded in bamqc
     if library_source not in ['CM', 'WT'] and run_alias in bamqc_info:
-        if sample_id in bamqc_info[run_alias]:
+        if limskey in bamqc_info[run_alias]:
             # map file info with bamqc info
-            for d in bamqc_info[run_alias][sample_id]:
-                if int(lane) == int(d['Lane Number']) and sample_id == d['sample'] \
-                    and barcode == d['Barcodes'] and instrument  == d['instrument']:
-                        assert FPR_info[file_swid]['library'][0] == d['library']    
-                        qc_found = True
-                        FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
-                        FPR_info[file_swid]['coverage_dedup'] = round(d['coverage deduplicated'], 2)
-                        FPR_info[file_swid]['on_target'] = round(d['on_target'], 2)                
-                        FPR_info[file_swid]['percent_duplicate'] = round(d['mark duplicates_PERCENT_DUPLICATION'], 2)
+            for d in bamqc_info[run_alias][limskey]:
+                assert int(lane) == int(d['Lane Number'])
+                assert sample_id == d['sample']
+                assert barcode == d['Barcodes']
+                assert instrument  == d['instrument']
+                assert FPR_info[file_swid]['library'][0] == d['library']    
+                qc_found = True
+                FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
+                FPR_info[file_swid]['coverage_dedup'] = round(d['coverage deduplicated'], 2)
+                FPR_info[file_swid]['on_target'] = round(d['on_target'], 2)                
+                FPR_info[file_swid]['percent_duplicate'] = round(d['mark duplicates_PERCENT_DUPLICATION'], 2)
     if library_source not in ['CM', 'WT'] and qc_found == False:
         FPR_info[file_swid]['coverage'] = 'NA'
         FPR_info[file_swid]['coverage_dedup'] = 'NA'
@@ -2106,16 +2106,6 @@ def extract_rnaseqqc_data(rnaseqqc_db):
         D[run][sample].append(d)
            
     return D
-
-
-
-
-
-# [[{'workflow': 'bcl2fastq',
-#    'file_path': '/oicr/data/archive/seqware/seqware_analysis_12/hsqwprod/seqware-results/bcl2fastq_3.1.2/19449910/MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R1.fastq.gz'
-#    'file_name': 'MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R1.fastq.gz', 'sample_name': 'MOCHA_0010', 'creation_date': 1608859811, 'platform': 'Illumina_NovaSeq_6000', 'md5': '55a566e63cf6762af91d75215908206e', 'workflow_run_id': 'd44d2ce07c41f22cb4a25c5d7a310999025451029866c4463f3e98b87f80ea55', 'workflow_version': '3.1.2.17835339', 'file_swid': 'vidarr:research/file/2662629b4e81e5925b1d5b1f9291175f8be57158d3de6eeddccd90ab75b8bc9e', 'external_name': '1_125695,MOCHA-017', 'panel': 'NA', 'library_source': ['WT'], 'parent_sample': ['MOCHA_0010_Es_P_PE_323_WT'], 'run_id': ['201222_A00469_0141_BHFYMLDSXY'], 'run': ['201222_A00469_0141_BHFYMLDSXY_lane_1'], 'limskey': ['4991_1_LDI49527'], 'aliquot': ['LDI49527'], 'library': ['MOCHA_0010_Es_P_PE_323_WT'], 'barcode': ['CGGTTGTT-CATACCAC'], 'tissue_type': ['P'], 'tissue_origin': ['Es'], 'groupdesc': ['LCM Material'], 'groupid': ['526'], 'read_count': 30771189, 'sample_id': ['MOCHA_0010_Es_P_WT_526'], 'lane': ['1'], 'time_point': 'NA', "5'-3' bias": 1.04, 'rRNA contamination': 0.83, 'Coding (%)': 23.264, 'Correct strand reads (%)': 2.449}, {'workflow': 'bcl2fastq', 'file_path': '/oicr/data/archive/seqware/seqware_analysis_12/hsqwprod/seqware-results/bcl2fastq_3.1.2/19449910/MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R2.fastq.gz', 'file_name': 'MOCHA_0010_Es_P_PE_323_WT_201222_A00469_0141_BHFYMLDSXY_1_CGGTTGTT-CATACCAC_R2.fastq.gz', 'sample_name': 'MOCHA_0010', 'creation_date': 1608859811, 'platform': 'Illumina_NovaSeq_6000', 'md5': 'aac8e4ad253bb3f3a58af0c993edebca', 'workflow_run_id': 'd44d2ce07c41f22cb4a25c5d7a310999025451029866c4463f3e98b87f80ea55', 'workflow_version': '3.1.2.17835339', 'file_swid': 'vidarr:research/file/da6ffe8394b54fa5b4941cc970b0597db32ec266b8ca2bc05947538df2a8c2b6', 'external_name': '1_125695,MOCHA-017', 'panel': 'NA', 'library_source': ['WT'], 'parent_sample': ['MOCHA_0010_Es_P_PE_323_WT'], 'run_id': ['201222_A00469_0141_BHFYMLDSXY'], 'run': ['201222_A00469_0141_BHFYMLDSXY_lane_1'], 'limskey': ['4991_1_LDI49527'], 'aliquot': ['LDI49527'], 'library': ['MOCHA_0010_Es_P_PE_323_WT'], 'barcode': ['CGGTTGTT-CATACCAC'], 'tissue_type': ['P'], 'tissue_origin': ['Es'], 'groupdesc': ['LCM Material'], 'groupid': ['526'], 'read_count': 30771189, 'sample_id': ['MOCHA_0010_Es_P_WT_526'], 'lane': ['1'], 'time_point': 'NA', "5'-3' bias": 1.04, 'rRNA contamination': 0.83, 'Coding (%)': 23.264, 'Correct strand reads (%)': 2.449}]]
-
-
 
 
 
