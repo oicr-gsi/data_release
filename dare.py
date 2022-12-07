@@ -1927,12 +1927,12 @@ def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
                          FPR_info[file_swid]['AT_dropout'] = d['AT Dropout']
                          FPR_info[file_swid]['methylation_beta'] = d['Methylation beta']
                          FPR_info[file_swid]['duplication'] = d['Percent Duplication']
-                         FPR_info[file_swid]['enrichment'] = d['Relative CpG Frequency in Regions vs Reference']
+                         FPR_info[file_swid]['CpG_enrichment'] = d['Relative CpG Frequency in Regions vs Reference']
     if library_source == 'CM' and qc_found == False:
         FPR_info[file_swid]['AT_dropout'] = 'NA'
         FPR_info[file_swid]['methylation_beta'] = 'NA'
         FPR_info[file_swid]['duplication'] = 'NA'
-        FPR_info[file_swid]['enrichment'] = 'NA'
+        FPR_info[file_swid]['CpG_enrichment'] = 'NA'
  
 
 
@@ -2781,18 +2781,16 @@ def get_metrics_appendix(library_sources):
     for library_type in library_sources:
         qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
         if library_type == 'CM':
-            qc_appendix['metrics'][library_type] = columns + ['AT dropout: AT dropout',
-                                                              'Methylation beta: Methylation beta',
-                                                              'Duplicate: Duplicate']
-        elif library_type == 'WT':
-            qc_appendix['metrics'][library_type] = columns + ["5'-3' bias: 5'-3' bias",
-                                                              'rRNA contamination: rRNA contamination',
-                                                              'Coding (%): Coding (%)',
-                                                              'Correct strand reads (%): Correct strand reads (%)']
-        else:
+            qc_appendix['metrics'][library_type] = columns + ['Methylation beta: Methylation beta', 'CpG enrichement: CpG enrichement']
+        elif library_type in ['EX', 'TS']:
             qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.',
-                                                              'On Target Rate: Percentage of reads that overlap the target space by at least one base = reads on target/total reads.',
-                                                              'Percent duplicate: Percent of duplicate reads estimated by Picard MarkDuplicates.']
+                                                              'On Target Rate: Percentage of reads that overlap the target space by at least one base = reads on target/total reads.']
+        elif library_type == 'WG':
+            qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.']
+        elif library_type == 'WT':
+            qc_appendix['metrics'][library_type] = columns + ['rRNA contamination: rRNA contamination', 'Coding (%): Coding (%)']
+        else:
+            qc_appendix['metrics'][library_type] = columns
         counter += 1
         
     return qc_appendix
@@ -2829,6 +2827,13 @@ def write_html(html, outputfile):
     with open(outputfile, mode="w", encoding="utf-8") as message:
         message.write(html)
         print(f"... wrote {outputfile}")
+
+
+
+
+
+
+
 
 
 
@@ -2911,14 +2916,20 @@ def write_batch_report(args):
     metrics, Y_axis = {}, {}
     for library_source in libraries:
         if library_source == 'CM':
-            metrics[library_source] = ['read_count', 'AT_dropout', 'methylation_beta', 'duplication']
-            Y_axis[library_source] = ['Read pairs', 'AT dropout', 'Methyl. beta', 'Duplicate']
+            metrics[library_source] = ['read_count', 'methylation_beta', 'CpG_enrichment']
+            Y_axis[library_source] = ['Read pairs', 'Methyl. beta', 'CpG enrichement']
         elif library_source == 'WT':
-            metrics[library_source] = ['read_count', "5'-3' bias", 'rRNA contamination', 'Coding (%)']
-            Y_axis[library_source] = ['Read pairs', "5'-3' bias", 'rRNA contamination', 'Coding (%)']
+            metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
+            Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
+        elif library_source == 'WG':
+            metrics[library_source] = ['read_count', 'coverage']
+            Y_axis[library_source] = ['Read pairs', 'Coverage']
+        elif library_source in ['TS', 'EX']:
+            metrics[library_source] = ['read_count', 'coverage', 'on_target']
+            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
         else:
-            metrics[library_source] = ['read_count', 'coverage', 'on_target', 'percent_duplicate']
-            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target', 'Duplicate (%)']
+            metrics[library_source] = ['read_count']
+            Y_axis[library_source] = ['Read pairs']
         colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
         for platform in libraries[library_source]:
             figure = generate_figures(files, args.project, library_source, platform, metrics[library_source], Y_axis[library_source], colors, working_dir)
@@ -2927,8 +2938,8 @@ def write_batch_report(args):
             figure_files[library_source][platform] = figure
              
     # count the number of samples with missing metric values
-    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
-
+    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage', 'on_target'])
+    
     # issue warning if samples with missing QC metrics
     if samples_missing_metrics:
         print('========')
@@ -2955,9 +2966,6 @@ def write_batch_report(args):
     
     # make a dict with project information
     projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
-
-    # count the number of samples with missing metric values
-    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'coverage', 'on_target', 'percent_duplicate', 'AT_dropout', 'methylation_beta', 'duplication', 'enrichment'])
 
     # group metrics by pairs of files
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']

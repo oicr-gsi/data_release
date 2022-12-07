@@ -122,12 +122,9 @@
    </tr>
        {% for i in qc_metrics[library_source][instrument] %}
          <tr>
-           <td> {{i.0}} </td>
-           <td> {{i.1}} </td>
-           <td> {{i.2}} </td>
-           <td> {{i.3}} </td>
-           <td> {{i.4}} </td>
-           <td> {{i.5}} </td>
+           {% for j in i %}          
+             <td> {{j}} </td>
+           {% endfor %}
          </tr>        
        {% endfor %}               
   {% endfor %}
