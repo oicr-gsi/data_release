@@ -1927,7 +1927,7 @@ def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
                          FPR_info[file_swid]['AT_dropout'] = d['AT Dropout']
                          FPR_info[file_swid]['methylation_beta'] = d['Methylation beta']
                          FPR_info[file_swid]['duplication'] = d['Percent Duplication']
-                         FPR_info[file_swid]['CpG_enrichment'] = d['Relative CpG Frequency in Regions vs Reference']
+                         FPR_info[file_swid]['CpG_enrichment'] = d['Relative CpG Frequency in Regions']
     if library_source == 'CM' and qc_found == False:
         FPR_info[file_swid]['AT_dropout'] = 'NA'
         FPR_info[file_swid]['methylation_beta'] = 'NA'
@@ -2024,7 +2024,7 @@ def extract_cfmedipqc_data(cfmedipqc_db):
     columns = ['AT Dropout',
                'Methylation beta',
                'Percent Duplication',          
-               'Relative CpG Frequency in Regions vs Reference',
+               'Relative CpG Frequency in Regions',
                'Barcodes',
                'Lane Number',
                'Pinery Lims ID',
