@@ -2196,10 +2196,6 @@ def find_fastq_pairs(files, platform):
         assert file_info[i]['sample_id'][0] == file_info[i+1]['sample_id'][0] 
         assert file_info[i]['limskey'][0] == file_info[i+1]['limskey'][0]
         assert file_info[i]['read_count'] == file_info[i+1]['read_count']
-        #assert file_info[i]['coverage'] == file_info[i+1]['coverage']
-        #assert file_info[i]['coverage_dedup'] == file_info[i+1]['coverage_dedup']
-        #assert file_info[i]['on_target'] == file_info[i+1]['on_target']
-        #assert file_info[i]['percent_duplicate'] == file_info[i+1]['percent_duplicate']
         L.append([file_info[i], file_info[i+1]])
         
     assert len(L) == len(file_info) / 2
@@ -2912,10 +2908,10 @@ def write_batch_report(args):
             metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
             Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
         elif library_source == 'WG':
-            metrics[library_source] = ['read_count', 'coverage']
+            metrics[library_source] = ['read_count', 'coverage_dedup']
             Y_axis[library_source] = ['Read pairs', 'Coverage']
         elif library_source in ['TS', 'EX']:
-            metrics[library_source] = ['read_count', 'coverage', 'on_target']
+            metrics[library_source] = ['read_count', 'coverage_dedup', 'on_target']
             Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
         else:
             metrics[library_source] = ['read_count']
@@ -2928,7 +2924,7 @@ def write_batch_report(args):
             figure_files[library_source][platform] = figure
              
     # count the number of samples with missing metric values
-    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage', 'on_target'])
+    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage_dedup', 'on_target'])
     
     # issue warning if samples with missing QC metrics
     if samples_missing_metrics:
