@@ -2767,7 +2767,7 @@ def get_metrics_appendix(library_sources):
     for library_type in library_sources:
         qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
         if library_type == 'CM':
-            qc_appendix['metrics'][library_type] = columns + ['Methylation {0}: Methylation {0}'.format(chr(946)), 'CpG enrichement: CpG enrichement']
+            qc_appendix['metrics'][library_type] = columns + ['Methylation {0}: Proportion of the methylated signal over the total signal'.format(chr(946)), 'CpG enrichement: CpG enrichement']
         elif library_type in ['EX', 'TS']:
             qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.',
                                                               'On Target Rate: Percentage of reads that overlap the target space by at least one base = reads on target/total reads.']
