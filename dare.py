@@ -2744,6 +2744,27 @@ def get_mqc_metrics_table_names(library_sources):
     return qc_subtables
 
 
+
+
+def metrics_definitions():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary with definitions of metrics and identifiers
+    '''
+    
+    definitions = {'CpG enrichment': 'The frequency of CpCs within the captured regions.',
+                   'Methylation {0}'.format(chr(946)): 'Proportion of the methylated signal over the total signal.',
+                   'Coding (%)': 'Percentage of bases in the coding regions of the genome.',
+                   'Coverage': 'Mean depth of coverage corrected for duplication rate.',
+                   'On target': 'Percentage of mapped bases within the target region.',
+                   'rRNA contamination': 'Percentage of reads aligning to ribosomal sequences.',
+                   'Library Id': 'OICR generated library identifier.',
+                   'File prefix': 'The common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
+                   'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.'}
+    return definitions
+
+
 def get_metrics_appendix(library_sources):
     '''
     (list) -> dict
@@ -2757,24 +2778,22 @@ def get_metrics_appendix(library_sources):
 
     # get the QC metrics sub-tables and appendices
     
-    columns = ['Library Id: OICR generated library identifier',
-               'File Prefix: the common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
-               'Read pairs: Number of read pairs. The number of reads is twice the number of read pairs.']
-        
+
+    definitions = metrics_definitions()    
+    columns = [': '.join([i, definitions[i]]) for i in ['Library Id', 'File prefix', 'Read pairs']]
     
     counter = 1
     qc_appendix = {'tables': {}, 'metrics': {}}
     for library_type in library_sources:
         qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
         if library_type == 'CM':
-            qc_appendix['metrics'][library_type] = columns + ['Methylation {0}: Proportion of the methylated signal over the total signal'.format(chr(946)), 'CpG enrichement: CpG enrichement']
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG enrichement']]
         elif library_type in ['EX', 'TS']:
-            qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.',
-                                                              'On Target Rate: Percentage of reads that overlap the target space by at least one base = reads on target/total reads.']
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Coverage', 'On target']]
         elif library_type == 'WG':
-            qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.']
+            qc_appendix['metrics'][library_type] = columns + ['{0}: {1}'.format('Coverage', definitions['Coverage'])]
         elif library_type == 'WT':
-            qc_appendix['metrics'][library_type] = columns + ['rRNA contamination: rRNA contamination', 'Coding (%): Coding (%)']
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']]
         else:
             qc_appendix['metrics'][library_type] = columns
         counter += 1
