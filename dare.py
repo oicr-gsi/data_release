@@ -2767,7 +2767,7 @@ def get_metrics_appendix(library_sources):
     for library_type in library_sources:
         qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
         if library_type == 'CM':
-            qc_appendix['metrics'][library_type] = columns + ['Methylation beta: Methylation beta', 'CpG enrichement: CpG enrichement']
+            qc_appendix['metrics'][library_type] = columns + ['Methylation {0}: Methylation {0}'.format(chr(946)), 'CpG enrichement: CpG enrichement']
         elif library_type in ['EX', 'TS']:
             qc_appendix['metrics'][library_type] = columns + ['Raw Coverage: An estimate of the mean depth of coverage in the target space = total bases on target / size of the target space.',
                                                               'On Target Rate: Percentage of reads that overlap the target space by at least one base = reads on target/total reads.']
@@ -2903,7 +2903,7 @@ def write_batch_report(args):
     for library_source in libraries:
         if library_source == 'CM':
             metrics[library_source] = ['read_count', 'methylation_beta', 'CpG_enrichment']
-            Y_axis[library_source] = ['Read pairs', 'Methyl. beta', 'CpG enrichement']
+            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG enrichement']
         elif library_source == 'WT':
             metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
             Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
