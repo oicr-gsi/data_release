@@ -2840,12 +2840,6 @@ def write_html(html, outputfile):
 
 
 
-
-
-
-
-
-
 def write_batch_report(args):
     '''
     (str, str, str, str, str, str, str, list, str | None)
@@ -3022,10 +3016,11 @@ def write_batch_report(args):
     report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
     makepdf(content, report_file)
 
-    # # remove figure files from disk
-    # for i in figure_files:
-    #     os.remove(figure_files[i])
-
+    # remove figure files from disk
+    for i in figure_files:
+        for j in figure_files[i]:
+            if os.path.isfile(figure_files[i][j]):
+                os.remove(figure_files[i][j])
 
     
         
