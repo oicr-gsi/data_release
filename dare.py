@@ -1921,13 +1921,15 @@ def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
     if library_source == 'CM' and run_alias in cfmedipqc_info:
         if limskey in cfmedipqc_info[run_alias]:
             for d in cfmedipqc_info[run_alias][limskey]:
-                if int(d['Lane Number']) == int(lane) and d['Barcodes'] == barcode and \
-                     d['Pinery Lims ID'] == limskey and d['Run Alias'] == run_alias:
-                         qc_found = True
-                         FPR_info[file_swid]['AT_dropout'] = d['AT Dropout']
-                         FPR_info[file_swid]['methylation_beta'] = d['Methylation beta']
-                         FPR_info[file_swid]['duplication'] = d['Percent Duplication']
-                         FPR_info[file_swid]['CpG_enrichment'] = d['Relative CpG Frequency in Regions']
+                if d['Pinery Lims ID'] == limskey:
+                    assert int(d['Lane Number']) == int(lane)
+                    assert d['Barcodes'] == barcode
+                    assert d['Run Alias'] == run_alias
+                    qc_found = True
+                    FPR_info[file_swid]['AT_dropout'] = d['AT Dropout']
+                    FPR_info[file_swid]['methylation_beta'] = d['Methylation beta']
+                    FPR_info[file_swid]['duplication'] = d['Percent Duplication']
+                    FPR_info[file_swid]['CpG_enrichment'] = d['Relative CpG Frequency in Regions']
     if library_source == 'CM' and qc_found == False:
         FPR_info[file_swid]['AT_dropout'] = 'NA'
         FPR_info[file_swid]['methylation_beta'] = 'NA'
@@ -1961,13 +1963,15 @@ def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
     if library_source == 'WT' and run_alias in rnaseqqc_info:
         if limskey in rnaseqqc_info[run_alias]:
             for d in rnaseqqc_info[run_alias][limskey]:
-                if int(d['Lane Number']) == int(lane) and d['Barcodes'] == barcode and \
-                     d['Pinery Lims ID'] == limskey and d['Run Alias'] == run_alias:
-                         qc_found = True
-                         FPR_info[file_swid]["5'-3' bias"] = d['MEDIAN_5PRIME_TO_3PRIME_BIAS']
-                         FPR_info[file_swid]['rRNA contamination'] = round((d['rrna contamination properly paired'] / d['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
-                         FPR_info[file_swid]['Coding (%)'] = d['PCT_CODING_BASES']
-                         FPR_info[file_swid]['Correct strand reads (%)'] = d['PCT_CORRECT_STRAND_READS']
+                if d['Pinery Lims ID'] == limskey:
+                    assert int(d['Lane Number']) == int(lane)
+                    assert d['Barcodes'] == barcode
+                    assert d['Run Alias'] == run_alias
+                    qc_found = True
+                    FPR_info[file_swid]["5'-3' bias"] = d['MEDIAN_5PRIME_TO_3PRIME_BIAS']
+                    FPR_info[file_swid]['rRNA contamination'] = round((d['rrna contamination properly paired'] / d['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
+                    FPR_info[file_swid]['Coding (%)'] = d['PCT_CODING_BASES']
+                    FPR_info[file_swid]['Correct strand reads (%)'] = d['PCT_CORRECT_STRAND_READS']
     if library_source == 'WT' and qc_found == False:
         FPR_info[file_swid]["5'-3' bias"] = 'NA'
         FPR_info[file_swid]['rRNA contamination'] = 'NA'
@@ -2753,7 +2757,7 @@ def metrics_definitions():
     Returns a dictionary with definitions of metrics and identifiers
     '''
     
-    definitions = {'CpG frequency': 'The frequency of CpCs within the captured regions.',
+    definitions = {'CpG frequency': 'The frequency of CpGs within the captured regions.',
                    'Methylation {0}'.format(chr(946)): 'Proportion of the methylated signal over the total signal.',
                    'Coding (%)': 'Percentage of bases in the coding regions of the genome.',
                    'Coverage': 'Mean depth of coverage corrected for duplication rate.',
