@@ -2753,7 +2753,7 @@ def metrics_definitions():
     Returns a dictionary with definitions of metrics and identifiers
     '''
     
-    definitions = {'CpG enrichment': 'The frequency of CpCs within the captured regions.',
+    definitions = {'CpG frequency': 'The frequency of CpCs within the captured regions.',
                    'Methylation {0}'.format(chr(946)): 'Proportion of the methylated signal over the total signal.',
                    'Coding (%)': 'Percentage of bases in the coding regions of the genome.',
                    'Coverage': 'Mean depth of coverage corrected for duplication rate.',
@@ -2787,7 +2787,7 @@ def get_metrics_appendix(library_sources):
     for library_type in library_sources:
         qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
         if library_type == 'CM':
-            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG enrichement']]
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG frequency']]
         elif library_type in ['EX', 'TS']:
             qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Coverage', 'On target']]
         elif library_type == 'WG':
@@ -2922,7 +2922,7 @@ def write_batch_report(args):
     for library_source in libraries:
         if library_source == 'CM':
             metrics[library_source] = ['read_count', 'methylation_beta', 'CpG_enrichment']
-            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG enrichement']
+            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
         elif library_source == 'WT':
             metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
             Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
