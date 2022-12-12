@@ -1877,16 +1877,21 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
         if limskey in bamqc_info[run_alias]:
             # map file info with bamqc info
             for d in bamqc_info[run_alias][limskey]:
-                assert int(lane) == int(d['Lane Number'])
-                assert sample_id == d['sample']
-                assert barcode == d['Barcodes']
-                assert instrument  == d['instrument']
-                assert FPR_info[file_swid]['library'][0] == d['library']    
-                qc_found = True
-                FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
-                FPR_info[file_swid]['coverage_dedup'] = round(d['coverage deduplicated'], 2)
-                FPR_info[file_swid]['on_target'] = round(d['on_target'], 2)                
-                FPR_info[file_swid]['percent_duplicate'] = round(d['mark duplicates_PERCENT_DUPLICATION'], 2)
+                if d['Pinery Lims ID'] == limskey:
+                    if sample_id != d['sample']:
+                        groupid = FPR_info[file_swid]['groupid'][0]
+                        assert groupid == 'NA'
+                        assert '_'.join(sample_id.split('_')[:-1]) == d['sample']
+                    assert int(lane) == int(d['Lane Number'])
+                    #assert sample_id == d['sample']
+                    assert barcode == d['Barcodes']
+                    assert instrument  == d['instrument']
+                    assert FPR_info[file_swid]['library'][0] == d['library']    
+                    qc_found = True
+                    FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
+                    FPR_info[file_swid]['coverage_dedup'] = round(d['coverage deduplicated'], 2)
+                    FPR_info[file_swid]['on_target'] = round(d['on_target'], 2)                
+                    FPR_info[file_swid]['percent_duplicate'] = round(d['mark duplicates_PERCENT_DUPLICATION'], 2)
     if library_source not in ['CM', 'WT'] and qc_found == False:
         FPR_info[file_swid]['coverage'] = 'NA'
         FPR_info[file_swid]['coverage_dedup'] = 'NA'
