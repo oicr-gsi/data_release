@@ -1,0 +1,132 @@
+h1 {
+    border: 2px #eee solid;
+    color: black;
+    text-align: center;
+    padding: 10px;
+    font-family: Verdana, sans-serif
+}
+
+
+h2 {color: black;
+    text-align: left;
+    padding: 10px;
+    font-family: Verdana, sans-serif;
+    font-weight: bold;
+    font-size: 20px
+}
+
+h3 {color: black;
+    text-align: left;
+    padding: 10px;
+    font-family: Verdana, sans-serif;
+    font-weight: bold;
+    font-size: 16px
+}
+
+
+
+li {
+   font-family: Arial, Helvetica, sans-serif;
+   text-align: left;
+   color: black; font-weight:normal;
+   padding-left:0px;
+   list-style-position: outside;
+}
+
+
+p {
+   font-family: Arial, Helvetica, sans-serif;
+   text-align: left;
+   color: black;
+   font-weight:normal 
+}
+
+
+img {
+  width: 85%;
+}
+
+
+#project_table {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 60px;
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 95%;
+}
+#project_table td, #project_table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+#project_table tr:nth-child(even){background-color: #f2f2f2;}
+#project_table th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #00b300;
+  color: white;
+}
+
+
+#info_table {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 30px;
+  margin-bottom: 30px;
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 95%;
+}
+#info_table td, #info_table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+#info_table tr:nth-child(odd){background-color: #f2f2f2;}
+#info_table th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: white;
+  border: 1px solid #ddd;  
+  color: black;
+}
+
+
+
+
+#user_table {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 30px;
+  margin-bottom: 30px;
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 95%;
+  position: absolute;
+  bottom:0px;
+}
+#user_table td, #user_table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+#user_table th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: white;
+  border: 1px solid #ddd;  
+  color: black;
+}
+
+
+
+
+
+
+@page horizontal_page {
+    size: landscape;
+}
+.landscape {
+    page: horizontal_page;
+}

@@ -1,0 +1,181 @@
+{# templates/batch_report_template.html #}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="./static/css/style.css">
+    <title>data_release_report</title>
+</head>
+<body>
+   
+   <table style="width=100%; font-family: Arial, Helvetica, sans-serif; bottom-margin:50px">
+   <tr>
+     <td style="width: 40%; padding: 3px; text-align: left"><img src="./static/images/OICR_Logo_RGB_ENGLISH.png" alt="OICR_logo" title="OICR_logo" style="padding-right: 8px; padding-left:0px; width:10; height:10"></td>
+     <td style="width: 60%; padding: 3px; text-align: left"><p style="text-align: center; color: black; font-size:45px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Data Release Report</p></td>
+   </tr>
+   </table>
+   
+   
+   <table id="project_table">
+   <tr>
+     <th>Project Code</th>
+     <th>Project Name</th>
+     <th>Date</th>     
+   </tr>   
+   {% for i in projects %}   
+     <tr>       
+       <td> {{ i['acronym'] }} </td>
+       <td> {{ i['name'] }} </td>        
+       <td> {{ i['date'] }} </td>
+     </tr>
+   {% endfor %}   
+   </table>
+    
+   <p>This report accompanies the release of raw sequence data (fastq format) and provides associated sample information and QC metrics.</p>
+   
+   <h2>1. File Count</h2>
+   <p>This release includes {{file_count}} pairs of fastq files. File count is broken down by instrument and run as follow.</p>
+   
+   <table id="info_table">
+   <tr>
+     <th>Sequencing Platform</th>
+     <th>Sequencing Run</th>
+     <th>Paired fastq files</th>     
+   </tr>   
+   <tr>   
+   {% for instrument in fastq_counts %}
+   </tr>
+       {% for run in fastq_counts[instrument] %}
+         <tr>           
+           <td> {{instrument}} </td>
+           <td> {{run}} </td>
+           <td> {{fastq_counts[instrument][run]}} </td> 
+           {% endfor %}                    
+         </tr>        
+       {% endfor %}               
+                    
+  </table>
+
+  <div style="page-break-after: always;"></div>
+
+  <div class="landscape">
+  
+  <h2>2. Sample information for sequenced libraries</h2>
+
+   <p>Provides information about the sequenced samples.</p>
+     
+   <h3>Table 1. Sample identifiers</h3>
+   
+   <table id="info_table", style="font-size: 12px;">
+   <tr>
+     <th>{{header_identifiers.0}}</th>
+     <th>{{header_identifiers.1}}</th>
+     <th>{{header_identifiers.2}}</th>
+     <th>{{header_identifiers.3}}</th>
+     <th>{{header_identifiers.4}}</th>
+     <th>{{header_identifiers.5}}</th>
+     <th>{{header_identifiers.6}}</th>
+   </tr>   
+   <tr>   
+   {% for library_source in sample_identifiers %}
+     {% for instrument in sample_identifiers[library_source] %}
+       </tr>
+       {% for i in sample_identifiers[library_source][instrument] %}
+         <tr>
+           <td> {{i.0}} </td>
+           <td> {{i.1}} </td>
+           <td> {{i.2}} </td>
+           <td> {{i.3}} </td>
+           <td> {{i.4}} </td>
+           <td> {{i.5}} </td>
+           <td> {{i.6}} </td>         
+         </tr>        
+       {% endfor %}               
+    {% endfor %}
+   {% endfor %}
+  </table>
+
+  <ul>
+    {% for i in appendix_identifiers %}
+    <li>{{i}}</li>
+    {% endfor %}
+  </ul>
+
+  <p style="page-break-after: always;"></p>
+
+  <h2>3. QC metrics</h2>
+  <p>Provides QC metrics about the raw sequences of each sample.</p>
+   
+  {% for library_source in library_sources %}
+
+  <h3>{{qc_subtables[library_source]}}</h3>   
+
+  <table id="info_table", style="font-size: 12px;">
+   <tr>
+     {% for i in header_metrics[library_source] %}
+         <th>{{i}}</th>
+     {% endfor %}
+   </tr>   
+   <tr>   
+   {% for instrument in qc_metrics[library_source] %}
+   </tr>
+       {% for i in qc_metrics[library_source][instrument] %}
+         <tr>
+           {% for j in i %}          
+             <td> {{j}} </td>
+           {% endfor %}
+         </tr>        
+       {% endfor %}               
+  {% endfor %}
+</table>
+
+  <ul>
+    {% for i in qc_appendices['metrics'][library_source] %}
+        <li>{{i}}</li>
+    {% endfor %}
+  </ul>
+
+  <div style="page-break-after: always;"></div>   
+  
+  {% endfor %}
+  </div>
+
+  <h2>4. QC plots</h2>
+  
+    <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
+    
+    {% for library_source in library_sources %}
+        {% for platform in libraries[library_source] %}
+            <h3>{{platform}} {{library_source}} libraries</h3> 
+            {% if figure_files[library_source][platform] %}
+              {% if library_source in samples_missing_metrics and platform in samples_missing_metrics[library_source] %}
+                {% if samples_missing_metrics[library_source][platform] == 1 %} 
+                  <p>{{samples_missing_metrics[library_source][platform]}} sample could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables.</p> 
+                {% else %}
+                  <p>{{samples_missing_metrics[library_source][platform]}} samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables.</p>
+                {% endif %}              
+              {% endif %}                 
+              <img src="{{figure_files[library_source][platform]}}" title="metrics_plot" alt="QC_plot" style="padding-right: 2px; padding-left:0px; width:5; height:5"/>             
+            {% else %}
+              <p>Data could not be plotted because of missing QC metrics</p>
+            {% endif %}
+            <p style="page-break-before: always;"></p>      
+        {% endfor %}
+    {% endfor %}
+              
+  <h2>5. List of md5sums</h2>
+  <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
+
+  <table id="user_table">
+    <tr>
+      <th colspan="2">For internal use only</th>
+    </tr>   
+    <tr>
+      <td> {{user}} </td>
+      <td> {{ticket}} </td>
+    </tr>
+  </table>
+   
+</body>
+</html>
