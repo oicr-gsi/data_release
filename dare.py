@@ -1625,49 +1625,9 @@ def count_all_files(fastq_counts):
 
 
 
-def get_QC_status_from_nabu(api, file_id):
+def list_released_fastqs_project(api, project, files):
     '''
-    (str, str) -> (str | None, str)
-    
-    Returns a tuple with the file QC status and release ticket if file is released
-        
-    Parameters
-    ----------
-    - api (str): URL of the nabu API
-    - file_id (str): Vidarr file unique identifier
-    '''
-    
-    # get end-point
-    api += 'get-fileqcs' if api[-1] == '/' else '/get-fileqcs'
-       
-    try:
-        headers = {'accept': 'application/json','Content-Type': 'application/json'}
-        json_data = {'fileids': [file_id]}
-        response = requests.post(api, headers=headers, json=json_data)
-    except:
-        qcstatus, ticket = None, 'NA'
-    
-    # check response code
-    if response.status_code == 200:
-        d = response.json()
-        if d['fileqcs']:
-            assert len(d['fileqcs']) == 1
-            qcstatus = d['fileqcs'][0]['qcstatus']
-            if 'comment' in d['fileqcs'][0]:
-                ticket = d['fileqcs'][0]['comment']
-            else:
-                ticket = 'NA'
-        else:
-            qcstatus, ticket = None, 'NA'
-    else:
-        qcstatus, ticket = None, 'NA'
-
-    return qcstatus, ticket
-
-
-def list_released_fastqs_project(api, FPR_info):
-    '''
-    (str, dict) -> list
+    (str, str, dict) -> list
     
     Returns a list of fastqs for a given project that were previously released by interrogating QC status in Nabu
     Pre-condition: Released files need to be marked in Nabu
@@ -1675,20 +1635,29 @@ def list_released_fastqs_project(api, FPR_info):
     Parameters
     ----------
     - api (str): URL of the nabu API
-    - file_swid (str): File unique identifier
+    - project (str): file_swid (str): File unique identifier
+    - files (dict): Dictionary with file information extracted from FPR
     '''
     
-    L = []
+    # get end-point
+    api += 'get-fileqcs' if api[-1] == '/' else '/get-fileqcs'
     
-    for file in FPR_info:
-        # get file QC status
-        qcstatus, ticket = get_QC_status_from_nabu(api, FPR_info[file]['file_swid'])
-        ticket = os.path.basename(ticket).upper()
-        if qcstatus == 'PASS':
-            L.append(file)
-        elif qcstatus is None:
-            print('WARNING. Could not retrieve QC status from Nabu for {0}'.format(file))
-    return L
+    R = []
+ 
+    # check each fastq-generating workflow
+    headers = {'accept': 'application/json','Content-Type': 'application/json'}
+    json_data = {"project": "{0}".format(project), "fileids": list(files.keys())}
+    response = requests.post(api, headers=headers, json=json_data)
+    # check response code
+    if response.status_code == 200:
+        L = response.json()['fileqcs']
+        if L:
+            for i in L:
+                file_swid = i['fileid']
+                qc_status = i['qcstatus']
+                if qc_status.upper() == 'PASS':
+                    R.append(file_swid)
+    return R    
 
 
 
@@ -3029,7 +2998,7 @@ def write_batch_report(args):
 
     
         
-def write_report(args):
+def write_cumulative_report(args):
     '''
     (str, str, str, str, str, str, str, list, str | None)
 
@@ -3046,43 +3015,183 @@ def write_report(args):
     - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
                            Prefix is added to the relative path in FPR to determine the full file path.
     '''
-    
-    # check that runs are specified for single data release report
-    if args.level == 'single' and args.run_directories is None:
+
+
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')
+    if args.run_directories and (args.runs or args.libraries or args.release_files or args.exclude or args.nomiseq):
+        sys.exit('-rn cannot be used with options -r, -l, -f, -e or --exclude_miseq')
+         
+    if all(map(lambda x: x is None, [args.runs, args.libraries, args.release_files, args.exclude, args.nomiseq]))  and args.run_directories is None:
         sys.exit('Please provide a list of run folders')
-    # emit warning if time points are used with cumulative report
-    if args.level == 'cumulative' and args.timepoints:
-        print('Option timepoint has no effect. Time points are only added to batch level reports')
-        
     # get the project directory with release run folders
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
-    
+         
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    records = get_FPR_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
     
-    # keep only info about released fastqs
-    if args.level == 'single':
-        # make a list of full paths to the released fastqs resolving the links in the run directories
-        released_files = list_files_release_folder(args.run_directories)
-    #elif args.level == 'cumulative':
-    #     released_files = list_released_fastqs_project(args.api, FPR_info)
-    to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
-    for file_swid in to_remove:
-        del files[file_swid]
-        
-    # count the number of released fastq pairs for each run and instrument
-    fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
     
-    # collect information from bamqc table
-    if args.level == 'single':
-       bamqc_info = extract_bamqc_data(args.bamqc_db)
-       # update FPR info with QC info from bamqc table
-       map_bamqc_info_to_fpr(files, bamqc_info)
+    # get all the released files for that project
+    released_files = list_released_fastqs_project(args.api, args.project, files)
+    
+    
+    print(len(files))
+    print(len(released_files))
+      
+         #     released_files = [released_files[i]['file_path'] for i in released_files]
+         # # resolve links
+         # released_files = resolve_links(released_files)
+         # to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
+         # for file_swid in to_remove:
+         #     del files[file_swid]
+         
+         # # add time points    
+         # add_time_points(args.sample_provenance, files)
+             
+         # # count the number of released fastq pairs for each run and instrument
+         # fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
+         # all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
+         
+         # # collect information from bamqc table
+         # bamqc_info = extract_bamqc_data(args.bamqc_db)
+         # # collect information from cfmedip table
+         # cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
+         # # collect information from rnaseq table
+         # rnaseqqc_info = extract_rnaseqqc_data(args.rnaseqqc_db)
+
+         # # update FPR info with QC metrics
+         # map_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info)    
+         
+         # # make a list of library types
+         # library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
+         # # list all platforms for each library source
+         # libraries = {}
+         # for library_source in library_sources:
+         #     instruments = sorted(list(set([files[file_swid]['platform'] for file_swid in files if files[file_swid]['library_source'][0] == library_source])))
+         #     libraries[library_source] = instruments        
+             
+         # # generate plots for each instrument and library source and keep track of figure files
+         # figure_files = {}
+         # metrics, Y_axis = {}, {}
+         # for library_source in libraries:
+         #     if library_source == 'CM':
+         #         metrics[library_source] = ['read_count', 'methylation_beta', 'CpG_enrichment']
+         #         Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
+         #     elif library_source == 'WT':
+         #         metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
+         #         Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
+         #     elif library_source == 'WG':
+         #         metrics[library_source] = ['read_count', 'coverage_dedup']
+         #         Y_axis[library_source] = ['Read pairs', 'Coverage']
+         #     elif library_source in ['TS', 'EX']:
+         #         metrics[library_source] = ['read_count', 'coverage_dedup', 'on_target']
+         #         Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
+         #     else:
+         #         metrics[library_source] = ['read_count']
+         #         Y_axis[library_source] = ['Read pairs']
+         #     colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
+         #     for platform in libraries[library_source]:
+         #         figure = generate_figures(files, args.project, library_source, platform, metrics[library_source], Y_axis[library_source], colors, working_dir)
+         #         if library_source not in figure_files:
+         #             figure_files[library_source] = {}
+         #         figure_files[library_source][platform] = figure
+                  
+         # # count the number of samples with missing metric values
+         # samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage_dedup', 'on_target'])
+         
+         # # issue warning if samples with missing QC metrics
+         # if samples_missing_metrics:
+         #     print('========')
+         #     print('WARNING!!')
+         #     print('Some samples have missing QC information. Please review')
+         #     for i in samples_missing_metrics:
+         #         for j in samples_missing_metrics[i]:
+         #             print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
+         #     print('========')        
+         
+         # # write md5sums to separate file
+         # current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+         # md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
+         # write_md5sum(files, md5sum_file)
+
+         # # write report
+         # # get the report template
+         # environment = Environment(loader=FileSystemLoader("./templates/"))
+         # template = environment.get_template("batch_report_template.html")
+         
+         # # template_dir = os.path.join(os.path.dirname(__file__), './templates')
+         # # environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
+         # # template = environment.get_template("batch_report_template.html")
+         
+         # # make a dict with project information
+         # projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
+
+         # # group metrics by pairs of files
+         # header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']
+         
+         # if args.timepoints:
+         #     header_identifiers[0] = 'Library Id (time point)'
+         
+         # sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
+         # appendix_identifiers = get_identifiers_appendix(files)
+         
+         # qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
+         # header_metrics = {}
+         # for i in library_sources:
+         #     header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
+         
+         
+         # # get the qc metrics subtables
+         # qc_subtables = get_mqc_metrics_table_names(library_sources)
+         # # get the metrics appendix
+         # qc_appendices = get_metrics_appendix(library_sources)
+         
+         # # fill in template
+         # context = {'projects' : projects,
+         #            'file_count': all_released_files,
+         #            'fastq_counts': fastq_counts,
+         #            'figure_files': figure_files,
+         #            'samples_missing_metrics': samples_missing_metrics,
+         #            'header_identifiers': header_identifiers,
+         #            'sample_identifiers': sample_identifiers,
+         #            'appendix_identifiers': appendix_identifiers,
+         #            'header_metrics': header_metrics,
+         #            'qc_metrics': qc_metrics,
+         #            'qc_subtables': qc_subtables,
+         #            'qc_appendices': qc_appendices,
+         #            'library_sources': library_sources,
+         #            'libraries': libraries, 
+         #            'user': args.user,
+         #            'ticket': os.path.basename(args.ticket),
+         #            'md5sum': os.path.basename(md5sum_file)}
+            
+         # # render template html 
+         # content = template.render(context)
+
+         # # convert html to PDF
+         # report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
+         # makepdf(content, report_file)
+
+         # # remove figure files from disk
+         # for i in figure_files:
+         #     for j in figure_files[i]:
+         #         if os.path.isfile(figure_files[i][j]):
+         #             os.remove(figure_files[i][j])
+
+
+        
+    # # count the number of released fastq pairs for each run and instrument
+    # fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
+    
+    # # collect information from bamqc table
+    # if args.level == 'single':
+    #    bamqc_info = extract_bamqc_data(args.bamqc_db)
+    #    # update FPR info with QC info from bamqc table
+    #    map_bamqc_info_to_fpr(files, bamqc_info)
        
            
     
@@ -3472,22 +3581,29 @@ if __name__ == '__main__':
     r_parser.set_defaults(func=write_batch_report)
     
     
-        
-    # # write a report
-    # r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
-    # r_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
-    # r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-    # r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space', required = True)
-    # r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
-    # r_parser.add_argument('-r', '--runs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
-    # r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
-    # r_parser.add_argument('-a', '--api', dest='api', default='http://gsi-dcc.oicr.on.ca:3000', help='URL of the Nabu API. Default is http://gsi-dcc.oicr.on.ca:3000')
-    # r_parser.add_argument('-l', '--level', dest='level', choices=['single', 'cumulative'], help='Generates a single release report or a cumulative project report', required = True)
-    # r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
-    # r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
-    # r_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
-    # r_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
-    # r_parser.set_defaults(func=write_batch_report)
+    # write a report
+    c_parser = subparsers.add_parser('cumulative_report', help="Write a cumulative project PDF report for released FASTQs")
+    c_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
+    c_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
+    c_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
+    c_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
+    c_parser.add_argument('-rn', '--rundirs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
+    c_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
+    c_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
+    c_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
+    c_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
+    c_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
+    c_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
+    c_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
+    c_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
+    c_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
+    c_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
+    c_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
+    c_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
+    c_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
+    c_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
+    c_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
+    c_parser.set_defaults(func=write_cumulative_report)
     
     # get arguments from the command line
     args = parser.parse_args()
