@@ -3034,27 +3034,12 @@ def write_cumulative_report(args):
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
     
-    
     # get all the released files for that project
     released_files = list_released_fastqs_project(args.api, args.project, files)
     
-    
-    print(len(files))
-    print(len(released_files))
-      
-         #     released_files = [released_files[i]['file_path'] for i in released_files]
-         # # resolve links
-         # released_files = resolve_links(released_files)
-         # to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
-         # for file_swid in to_remove:
-         #     del files[file_swid]
-         
-         # # add time points    
-         # add_time_points(args.sample_provenance, files)
-             
-         # # count the number of released fastq pairs for each run and instrument
-         # fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
-         # all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
+    # count the number of released fastq pairs for each run and instrument
+    fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
+    all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
          
          # # collect information from bamqc table
          # bamqc_info = extract_bamqc_data(args.bamqc_db)
@@ -3114,28 +3099,26 @@ def write_cumulative_report(args):
          #     print('========')        
          
          # # write md5sums to separate file
-         # current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
          # md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
          # write_md5sum(files, md5sum_file)
 
-         # # write report
-         # # get the report template
-         # environment = Environment(loader=FileSystemLoader("./templates/"))
-         # template = environment.get_template("batch_report_template.html")
+    # write report
+    # get the report template
+    environment = Environment(loader=FileSystemLoader("./templates/"))
+    template = environment.get_template("cumulative_report_template.html")
          
          # # template_dir = os.path.join(os.path.dirname(__file__), './templates')
          # # environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
          # # template = environment.get_template("batch_report_template.html")
          
-         # # make a dict with project information
-         # projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
+    # make a dict with project information
+    projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
 
          # # group metrics by pairs of files
          # header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']
          
-         # if args.timepoints:
-         #     header_identifiers[0] = 'Library Id (time point)'
-         
+       
          # sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
          # appendix_identifiers = get_identifiers_appendix(files)
          
@@ -3168,19 +3151,36 @@ def write_cumulative_report(args):
          #            'user': args.user,
          #            'ticket': os.path.basename(args.ticket),
          #            'md5sum': os.path.basename(md5sum_file)}
-            
-         # # render template html 
-         # content = template.render(context)
+    
+    # fill in template
+    context = {'projects' : projects,
+                 'file_count': all_released_files,
+                 'fastq_counts': fastq_counts,
+                 'user': args.user,
+                 'ticket': os.path.basename(args.ticket)}
+                 
+     
+    
+    
+    
+    
+    # render template html 
+    content = template.render(context)
 
-         # # convert html to PDF
-         # report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
-         # makepdf(content, report_file)
+    # convert html to PDF
+    report_file = os.path.join(working_dir,  '{0}_cumulative_data_release_report.{1}.pdf'.format(args.project, current_time))
+    makepdf(content, report_file)
 
          # # remove figure files from disk
          # for i in figure_files:
          #     for j in figure_files[i]:
          #         if os.path.isfile(figure_files[i][j]):
          #             os.remove(figure_files[i][j])
+
+
+
+
+    #### legacy code
 
 
         
