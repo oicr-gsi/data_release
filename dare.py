@@ -2729,8 +2729,15 @@ def makepdf(html, outputfile):
     - outputfile (str): Name of the output PDF file
     """
     
+    #htmldoc = HTML(string=html, base_url=__file__)
+    #htmldoc.write_pdf(outputfile, stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
+
+    css_file = os.path.join(os.path.dirname(__file__), './static/css/style.css')
     htmldoc = HTML(string=html, base_url=__file__)
-    htmldoc.write_pdf(outputfile, stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
+    htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
+
+
+
 
 
 def write_html(html, outputfile):
