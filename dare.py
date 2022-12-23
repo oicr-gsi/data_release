@@ -19,8 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-#from weasyprint import HTML
-#from weasyprint import CSS
+from weasyprint import HTML
+from weasyprint import CSS
 
 
 
@@ -2030,11 +2030,6 @@ def extract_rnaseqqc_data(rnaseqqc_db):
 
 
 
-
-
-
-
-
 def get_file_prefix(file):
     '''
     (str) -> str
@@ -2877,12 +2872,12 @@ def write_batch_report(args):
 
     # write report
     # get the report template
-    environment = Environment(loader=FileSystemLoader("./templates/"))
-    template = environment.get_template("batch_report_template.html")
+    #environment = Environment(loader=FileSystemLoader("./templates/"))
+    #template = environment.get_template("batch_report_template.html")
     
-    # template_dir = os.path.join(os.path.dirname(__file__), './templates')
-    # environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
-    # template = environment.get_template("batch_report_template.html")
+    template_dir = os.path.join(os.path.dirname(__file__), './templates')
+    environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
+    template = environment.get_template("batch_report_template.html")
     
     # make a dict with project information
     projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
@@ -3058,8 +3053,83 @@ def extract_merged_rnaseqqc_data(merged_rnaseqqc_db):
            
     return D
     
+##### add merged qc to files
 
-        
+
+
+
+
+def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
+    '''
+    (dict, dict) -> None
+    
+    Update the information obtained from File Provenance Report in place with QC information
+    collected from cfmedipqc for a given file determined by file_swid if library source is CM
+    
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+    - file_swid (str): Unique file identifier
+    - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedip QC db
+    '''
+    
+    qc_found = False
+    run_alias = FPR_info[file_swid]['run_id'][0]
+    limskey = FPR_info[file_swid]['limskey'][0]
+    barcode = FPR_info[file_swid]['barcode'][0]
+    lane = FPR_info[file_swid]['lane'][0]
+    library_source = FPR_info[file_swid]['library_source'][0]
+    
+    # check that run in recorded in rnaseqqc_db
+    if library_source == 'WT' and run_alias in rnaseqqc_info:
+        if limskey in rnaseqqc_info[run_alias]:
+            for d in rnaseqqc_info[run_alias][limskey]:
+                if d['Pinery Lims ID'] == limskey:
+                    assert int(d['Lane Number']) == int(lane)
+                    assert d['Barcodes'] == barcode
+                    assert d['Run Alias'] == run_alias
+                    qc_found = True
+                    FPR_info[file_swid]["5'-3' bias"] = d['MEDIAN_5PRIME_TO_3PRIME_BIAS']
+                    FPR_info[file_swid]['rRNA contamination'] = round((d['rrna contamination properly paired'] / d['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
+                    FPR_info[file_swid]['Coding (%)'] = d['PCT_CODING_BASES']
+                    FPR_info[file_swid]['Correct strand reads (%)'] = d['PCT_CORRECT_STRAND_READS']
+    if library_source == 'WT' and qc_found == False:
+        FPR_info[file_swid]["5'-3' bias"] = 'NA'
+        FPR_info[file_swid]['rRNA contamination'] = 'NA'
+        FPR_info[file_swid]['Coding (%)'] = 'NA'
+        FPR_info[file_swid]['Correct strand reads (%)'] = 'NA'
+
+ 
+
+def map_merged_QC_metrics_to_fpr(FPR_info, merged_bamqc_info, merged_rnaseqqc_info):
+    '''
+    (dict, dict, dict) -> None
+    
+    Update the information obtained from File Provenance Report in place with information
+    collected from the appropriate library source-specific merged QC db
+    
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+    - merged_bamqc_info (dict): QC information for each sample with merged libraries from bamqc
+    - merged_rnaseqqc_info (dict): QC information for sample with merged libraries from rnaseqqc 
+    '''
+    
+    for file_swid in FPR_info:
+        # check library source
+        library_source = FPR_info[file_swid]['library_source'][0]
+        if library_source == 'WT':
+            add_rnaseqqc_metrics(FPR_info, file_swid, merged_rnaseqqc_info)
+        else:
+            add_bamqc_metrics(FPR_info, file_swid, merged_bamqc_info)
+
+
+
+
+
+
+####################
+       
 def write_cumulative_report(args):
     '''
     (str, str, str, str, str, str, str, list, str | None)
