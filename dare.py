@@ -1783,6 +1783,8 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
     lane = FPR_info[file_swid]['lane'][0]
     library_source = FPR_info[file_swid]['library_source'][0]
     instrument = FPR_info[file_swid]['platform'].replace('_', ' ')
+    library = FPR_info[file_swid]['library'][0]
+    groupid = FPR_info[file_swid]['groupid'][0]
     
     # check that run in recorded in bamqc
     if library_source not in ['CM', 'WT'] and run_alias in bamqc_info:
@@ -1790,15 +1792,13 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
             # map file info with bamqc info
             for d in bamqc_info[run_alias][limskey]:
                 if d['Pinery Lims ID'] == limskey:
-                    if sample_id != d['sample']:
-                        groupid = FPR_info[file_swid]['groupid'][0]
-                        assert groupid == 'NA'
-                        assert '_'.join(sample_id.split('_')[:-1]) == d['sample']
+                    assert '_'.join(sample_id.split('_')[:2]) == '_'.join(d['sample'].split('_')[:2])
+                    if groupid == 'NA':
+                        assert ('_'.join(sample_id.split('_')[:-1]) == d['sample'] or library == d['sample'])
                     assert int(lane) == int(d['Lane Number'])
-                    #assert sample_id == d['sample']
                     assert barcode == d['Barcodes']
                     assert instrument  == d['instrument']
-                    assert FPR_info[file_swid]['library'][0] == d['library']    
+                    assert library == d['library']    
                     qc_found = True
                     FPR_info[file_swid]['coverage'] = round(d['coverage'], 2)
                     FPR_info[file_swid]['coverage_dedup'] = round(d['coverage deduplicated'], 2)
@@ -1898,7 +1898,7 @@ def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
 
 def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
     '''
-    (dict, dict) -> None
+    (dict, dict, dict, dict) -> None
     
     Update the information obtained from File Provenance Report in place with information
     collected from the appropriate library source-specific QC db
@@ -1908,6 +1908,7 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
     - FPR_info (dict): Information for each released fastq collected from File Provenance Report
     - bamqc_info (dict): QC information for each paired fastq from the bamqc db
     - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedipqc db
+    -rnaseqqc_info (dict) QC information for each paired fastqs from the rnaseqqc db
     '''
     
     for file_swid in FPR_info:
@@ -2757,7 +2758,37 @@ def write_html(html, outputfile):
         print(f"... wrote {outputfile}")
 
 
-
+def merge_bamqc_dnaseqc(bamqc_info, dnaseqqc_info):
+    '''
+    (dict, dict) -> None
+    
+    Merge the QC information extracted from the bamqc and dnaseqqc databases.
+    Note that records in dnseqqc have precedence over reords in bamqc in case of duplicates
+        
+    Parameters
+    ----------
+    - bamqc_info (dict): QC information for each paired fastq from the bamqc db
+    - dnaseqqc_info (dict): QC information for each paired fastq from the dnaseqqc db
+    '''
+    
+    D = {}
+    
+    # dnaseq qc has precedence over bam qc in case of duplicate records
+    
+    for run in bamqc_info:
+        if run not in D:
+            D[run] = {}
+        for sample in bamqc_info[run]:
+            D[run][sample] = bamqc_info[run][sample]
+    
+    for run in dnaseqqc_info:
+        if run not in D:
+            D[run] = {}
+        for sample in dnaseqqc_info[run]:
+            D[run][sample] = dnaseqqc_info[run][sample]
+            
+    return D        
+    
 
 def write_batch_report(args):
     '''
@@ -2816,7 +2847,12 @@ def write_batch_report(args):
     all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
     
     # collect information from bamqc table
-    bamqc_info = extract_bamqc_data(args.bamqc_db)
+    bamqc = extract_bamqc_data(args.bamqc_db)
+    # collect information from dnaseqqc table
+    dnaseqqc = extract_bamqc_data(args.dnaseqqc_db)
+    # merge bamqc and dnaseqc
+    bamqc_info = merge_bamqc_dnaseqc(bamqc, dnaseqqc)    
+    
     # collect information from cfmedip table
     cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
     # collect information from rnaseq table
@@ -3696,6 +3732,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     r_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     r_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
+    r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
     r_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
     r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
     r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
