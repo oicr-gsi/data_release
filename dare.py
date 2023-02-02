@@ -3597,7 +3597,7 @@ def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
     # check response code
     if response.status_code == 201:
         # record created
-        print('Sucessfully updated {0} status to {1}'.format(file_swid, qc_status))
+        print('Successfully updated {0} status to {1}'.format(file_swid, qc_status))
     else:
         print('Could not update {0} status. Nabu response code: {1}'.format(file_swid, response.status_code))
 
