@@ -2469,12 +2469,14 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
     '''
     (dict, str, dict | None, bool| None) -> dict 
     
-    Returns the header 
+    Group sample identifiers or metrics 
     
-    
-    
-    
-    
+    Parameters
+    ----------
+    - files (dict): Information about fastqs extracted from File Provenance Report
+    - table (str): Table of interest in the report
+    - metrics (dict or None): Dictionary with metrics to report or None
+    - add_time_points (bool or None): Add time points to table if True
     '''
     
     
@@ -2496,6 +2498,8 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             library = i[0]['library'][0]
             prefix = i[0]['prefix']
             groupid = i[0]['groupid'][0]
+            group_description = i[0]['groupdesc'][0]
+            
             # reformat prefix to fit the table column
             if len(prefix) >= 40:
                 prefix = fit_into_column(prefix, library_source)
@@ -2503,14 +2507,17 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
                 library = fit_into_column(library, library_source)
             if len(sample) >= 40:
                 sample = fit_into_column(sample, library_source)
-                
+            if len(group_description) >= 40:
+                group_description = fit_into_column(group_description, library_source)
+                        
+            
             library_name = '{0} ({1})'.format(i[0]['library'][0], i[0]['time_point'])  
             tissue_origin = i[0]['tissue_origin'][0]
             tissue_type = i[0]['tissue_type'][0]
             sequencing_run = '{0} lane_{1}_{2}'.format(i[0]['run_id'][0], i[0]['lane'][0], i[0]['barcode'][0])
                         
             if table == 'sample_identifiers':
-                L = [library, case, external_name, groupid, library_source, tissue_origin, tissue_type]
+                L = [library, case, external_name, groupid, group_description, library_source, tissue_origin, tissue_type]
                 # add time point if selected
                 if add_time_points:
                     L[3] = library_name
@@ -2632,6 +2639,7 @@ def get_identifiers_appendix(files):
          'Case Id: OICR-generated case identifier',
          'Donor Id: user supplied donor identifier',
          'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+         'Sample Description: a description of the Sample Id',
          'Library Type (LT): {0}'.format(D['Library Type']),
          'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
          'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
@@ -2926,7 +2934,7 @@ def write_batch_report(args):
     projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
 
     # group metrics by pairs of files
-    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']
+    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
     if args.timepoints:
         header_identifiers[0] = 'Library Id (time point)'
@@ -3589,7 +3597,7 @@ def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
     # check response code
     if response.status_code == 201:
         # record created
-        print('Sucessfully updated {0} status to {1}'.format(file_swid, qc_status))
+        print('Successfully updated {0} status to {1}'.format(file_swid, qc_status))
     else:
         print('Could not update {0} status. Nabu response code: {1}'.format(file_swid, response.status_code))
 
