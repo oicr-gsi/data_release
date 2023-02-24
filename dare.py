@@ -2598,7 +2598,9 @@ def get_library_tissue_types(files):
     library_design = {'WT': 'Whole Transcriptome', 'WG': 'Whole Genome', 'TS': 'Targeted Sequencing',
                       'TR': 'Total RNA', 'SW': 'Shallow Whole Genome', 'SM': 'smRNA', 'SC': 'Single Cell',
                       'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
-                      'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq'}
+                      'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq',
+                      'PG': 'Plasma Whole Genome', 'MC': 'Methylation Detection (C to T) ctDNA',
+                      'MG': 'Methylation Detection (C to T) Whole Genome'}
     
     for file_swid in files:
         D['Library Type'].extend(files[file_swid]['library_source'])
@@ -2887,7 +2889,7 @@ def write_batch_report(args):
         elif library_source == 'WT':
             metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
             Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
-        elif library_source == 'WG':
+        elif library_source in ['WG', 'PG']:
             metrics[library_source] = ['read_count', 'coverage_dedup']
             Y_axis[library_source] = ['Read pairs', 'Coverage']
         elif library_source in ['TS', 'EX']:
