@@ -2717,7 +2717,7 @@ def get_metrics_appendix(library_sources):
             qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG frequency']]
         elif library_type in ['EX', 'TS']:
             qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Coverage', 'On target']]
-        elif library_type == 'WG':
+        elif library_type in ['WG', 'PG']:
             qc_appendix['metrics'][library_type] = columns + ['{0}: {1}'.format('Coverage', definitions['Coverage'])]
         elif library_type == 'WT':
             qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']]
