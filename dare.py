@@ -2817,6 +2817,7 @@ def write_batch_report(args):
     - level (str): Simgle release or cumulative project level report. Values: single or cumulative 
     - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
                            Prefix is added to the relative path in FPR to determine the full file path.
+    - keep_html (bool): Writes html report to file if True
     '''
     
     if args.runs and args.libraries:
@@ -2977,15 +2978,23 @@ def write_batch_report(args):
     # render template html 
     content = template.render(context)
 
+    # save html file to disk
+    if args.keep_html:
+        html_file = os.path.join(working_dir, '{0}_run_level_data_release_report.{1}.html'.format(args.project, current_time))
+        newfile = open(html_file, 'w')
+        newfile.write(content)
+        newfile.close()
+
     # convert html to PDF
     report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
     makepdf(content, report_file)
 
-    # remove figure files from disk
-    for i in figure_files:
-        for j in figure_files[i]:
-            if os.path.isfile(figure_files[i][j]):
-                os.remove(figure_files[i][j])
+    # remove figure files from disk    
+    if args.keep_html == False:
+        for i in figure_files:
+            for j in figure_files[i]:
+                if os.path.isfile(figure_files[i][j]):
+                    os.remove(figure_files[i][j])
 
 
 
@@ -3747,6 +3756,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
     r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
     r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
+    r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
     r_parser.set_defaults(func=write_batch_report)
     
     
