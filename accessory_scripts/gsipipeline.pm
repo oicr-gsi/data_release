@@ -135,7 +135,7 @@ sub no_release{
 
 
 
-sub get_checks { return %checks;  }
+
 
 
 ############################################
