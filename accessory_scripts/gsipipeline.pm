@@ -2,12 +2,13 @@ package gsipipeline;
 use strict;
 use warnings;
 use Exporter;
+use JSON::PP;
 
 
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 $VERSION	=	1.00;
 @ISA		=	qw/ Exporter /;
-@EXPORT		=	qw/ check_file_release get_checks /;
+@EXPORT		=	qw/ check_file_release get_checks loadFPR pipeline_blocks/;
 
 
 
@@ -233,4 +234,245 @@ sub check_file_release{
 	}
 	
 	return ($status,$revised_fn);
+}
+
+
+
+
+############################################
+### these functions are for pipeline review
+############################
+
+sub loadFPR{
+	my %opts=@_;
+	my $fpr     =$opts{fpr};
+	my $project =$opts{project};
+	my $case    =$opts{case};
+	my $pipeline = $opts{pipeline};
+
+	(open my $JSON,"<",$opts{config}) || die "could not load the pipeline configuration file $opts{config}";
+	my $json_text=<$JSON>;chomp $json_text;
+	close $JSON;
+	my $PIPELINES=decode_json($json_text);
+
+	##################
+	#### open and parse the FPR
+	########################
+	my %WORKFLOWS;my %FILES;  ### these will be returned as sections of a larger hash structure
+	(open my $FPR,"gunzip -c $fpr |") || die "unable to open $fpr";
+	while(my $rec=<$FPR>){
+		my @f=split /\t/,$rec;unshift(@f,"");### add a filed to the begnning to shift indices to 1 based
+		my $wf=$f[31];
+		#print "$id $wf\n";
+	
+		#### should this be restricted?? or take all workflow and restrict when they are reported on?
+		next unless($$PIPELINES{$pipeline}{Workflows}{$wf});
+		my $platform=$f[23];
+		my $platformid=$platform=~/NovaSeq/ ? "NovaSeq" :
+			$platform=~/NextSeq/ ? "NextSeq" :
+			$platform=~/HiSeq/   ? "HiSeq"   :
+			$platform=~/MiSeq/   ? "MiSeq" : "Unknown"; 
+				   
+		#RESTRICT TO NovaSeq
+		next unless($platformid eq "NovaSeq");			   
+	
+		next unless($f[2] eq $project);
+		next unless($f[8] eq $case);
+		
+		my $wfv=$f[32];
+		my $wfrun=$f[37];
+		my $inputs=$f[39];     $inputs=~s|vidarr:.*?/file/||g;
+		$WORKFLOWS{$wfrun}{wf}=$wf;
+		$WORKFLOWS{$wfrun}{wfv}=$wfv;
+		$WORKFLOWS{$wfrun}{inputs}=$inputs;
+		$WORKFLOWS{$wfrun}{date}=$f[1];
+	
+	
+		my $fid=$f[45];  $fid=~s|vidarr:.*?/file/||g;
+		my $file=$f[47];       
+		my $md5sum=$f[48];
+		$FILES{$fid}={fpath=>$file,md5sum=>$md5sum,wfrun=>$wfrun};
+	
+		my %info;
+		map{
+			my($key,$val)=split /=/,$_;
+			$info{$key}=$val;
+		}split /;/,$f[18];
+		my $sid=$case . "_" . $info{geo_tissue_origin} . "_" . $info{geo_tissue_type} . "_" . $info{geo_library_source_template_type};
+		if(my $groupid=$info{geo_group_id}){
+			$sid.="_${groupid}"
+		}
+		$WORKFLOWS{$wfrun}{sids}{$sid}={
+			tissue_origin=>$info{geo_tissue_origin},
+			tissue_type=>$info{geo_tissue_type},
+			library_type_=>$info{geo_library_source_template_type},
+			group_id=>$info{geo_group_id} || "",
+		};
+		$WORKFLOWS{$wfrun}{sids}{$sid}{libraries}{$f[14]}++;
+		$WORKFLOWS{$wfrun}{sids}{$sid}{limskeys}{$f[57]}++;
+		$WORKFLOWS{$wfrun}{limskeys}{$f[57]}++;
+	}
+	close $FPR;
+
+	#print Dumper(%WORKFLOWS);<STDIN>;
+	#print Dumper(%FILES);<STDIN>;
+
+    ########################
+	######## identify parent child relationshisp
+	###########################
+	for my $wfrun(sort keys %WORKFLOWS){
+		###########
+		####identify workflows with inputs
+		#### if there is an input, then use this to define parent child relatioships in with the workflow run information
+		#### also use the parent->child info to define an analysis block
+		#### all workflow runs that are somehow connected between parents and children should end up in the same block
+		if($WORKFLOWS{$wfrun}{inputs}){
+			my @inputs=split /,/,$WORKFLOWS{$wfrun}{inputs};  ### adjusted separator from ; to ,
+	
+			##############
+			###### the inputs are file identifiers, which can be used to identify the workflow run that produced the files, ie. the parent workflow
+			###########
+			for my $fid(@inputs){
+				### this is a check for missing parent files
+				if(! $FILES{$fid}){
+					############# an input exists, but the file was never pulled from file provenance
+					$WORKFLOWS{$wfrun}{parents_missing}{$fid}++;
+				}else{
+					##########. get the parent workflow run
+					##########. set as a parent of the current workflow
+					##########. set thie curren workflow as a child for the parent workflow
+					my $parent_wfrun=$FILES{$fid}{wfrun}; 
+					$WORKFLOWS{$wfrun}{parents}{$parent_wfrun}  =$WORKFLOWS{$parent_wfrun}{wf} || "unknown";
+	        		$WORKFLOWS{$parent_wfrun}{children}{$wfrun} =$WORKFLOWS{$wfrun}{wf}        || "unknown";
+				}
+			}
+		}
+	}
+	my %FPR=(WORKFLOWS=>\%WORKFLOWS,FILES=>\%FILES);
+	return %FPR;
+}
+
+	
+sub pipeline_blocks{
+	my ($pipeline,$WORKFLOWS,$PIPELINES)=@_;
+	
+	#print Dumper(keys %WORKFLOWS);
+	
+	my %WFBLOCKS;
+	my $blockN=0;
+	#######################
+	## pass through the set of workflows extracted from FPR
+	############	
+	for my $A(sort keys %$WORKFLOWS){
+		###########
+		####.use child and parent relationships to define blocks
+		#### all workflow runs that are somehow connected between parents and children should end up in the same block
+		
+		### limit to ONLY WG Workflows
+		my $wf=$$WORKFLOWS{$A}{wf};
+		next unless($$PIPELINES{$pipeline}{Workflows}{$wf});
+
+		#print "$wf $wfrun\n";<STDIN>;
+		#print Dumper($$WORKFLOWS{$A});<STDIN>;
+		
+		my @p_wfruns=keys %{$$WORKFLOWS{$A}{parents}};
+		my @c_wfruns=keys %{$$WORKFLOWS{$A}{children}};
+		my @connected_wfruns=(@p_wfruns,@c_wfruns);
+		#print Dumper(@connected_wfruns);<STDIN>;
+		#print "parents\n";
+		#print Dumper(@p_wfruns);<STDIN>;
+		
+		
+		if(! scalar @connected_wfruns){
+			### the workflow had no connections
+			### logic : if not in a block already (becasue it was an input to another workflow), then it should be added to a block
+			$blockN++;
+			$WFBLOCKS{$A}=$blockN;
+		}
+		
+		
+		for my $B(@connected_wfruns){
+			#print "A:$A B:$B\n";
+			my $wf=$$WORKFLOWS{$B}{wf};
+			next unless($$PIPELINES{$pipeline}{Workflows}{$wf});
+			
+			
+			#####################
+			### BLOCK ASSIGNMENT
+			### the logic here is expected to produce distinct blocks with all connected workflows
+			### the block assigments will change as new workflows are brought in, new blocks are created, or blocks are merged to a new block
+			### blocks are incremental values
+			### the block structure is WorkflowRun -> BlockNumber
+
+					
+			#####
+			# logic : if A is in a block, but B not, add B to the A block
+			if($WFBLOCKS{$A} && !$WFBLOCKS{$B}){
+				$WFBLOCKS{$B}=$WFBLOCKS{$A};
+			}
+			# logic : if the B is in a block, but A is not, add A to the B block
+			elsif(!$WFBLOCKS{$A} && $WFBLOCKS{$B}){
+				$WFBLOCKS{$A}=$WFBLOCKS{$B};
+			}
+			# logic : neither A nor B are in a block, create a new block and add both to this
+			elsif(!$WFBLOCKS{$A} && !$WFBLOCKS{$B}){
+				## add both to a new group
+				$blockN++;
+				$WFBLOCKS{$A}=$blockN;
+				$WFBLOCKS{$B}=$blockN;
+			}
+			# logic : both A and B are in a block, but not the same block
+			#		  create a new block, and move all from the earlier blocks to the new block
+			elsif($WFBLOCKS{$A} && $WFBLOCKS{$B} && ($WFBLOCKS{$A} != $WFBLOCKS{$B})){
+				my $ABlock=$WFBLOCKS{$A};
+				my $BBlock=$WFBLOCKS{$B};
+				$blockN++;  ## the new block
+				#print Dumper(%WFBLOCKS) . "\n";
+				map{
+					#print "MERGING A:$ABlock B:$BBlock CHECK:$WFBLOCKS{$_}\n";
+					$WFBLOCKS{$_}=$blockN if( ($WFBLOCKS{$_}==$ABlock) || ($WFBLOCKS{$_}==$BBlock));
+			  	}keys %WFBLOCKS;
+			}
+			# logic : if not the other conditions, they should be in the same group, but lets add a check on this
+			else{
+				if($WFBLOCKS{$A} && $WFBLOCKS{$B} && ($WFBLOCKS{$A} == $WFBLOCKS{$B}) ){
+					## expect, these are alredy in the same block okay
+				}else{
+					my $ABlock=$WFBLOCKS{$A} || "NOBLOCK";
+					my $BBlock=$WFBLOCKS{$B} || "NOBLOCK";
+					print STDERR "WARNING : $A and $B BLOCK assignment issue.  ABLOCK=$ABlock, BBLOCK=$BBlock\n";
+				}
+			}
+		}
+		
+		#print Dumper(%WFBLOCKS);<STDIN>;
+		
+		
+	}
+
+	#print Dumper(%WFBLOCKS);<STDIN>;
+    #print Dumper(values %WFBLOCKS);<STDIN>;
+	## rename the blocks
+	my @blocks = do { my %seen; grep { !$seen{$_}++ } values %WFBLOCKS };
+	my $n=0;
+	my %newblocks;
+	map{
+		$n++;
+		$newblocks{$_}="${pipeline}.$n";
+	}sort @blocks;
+	#print Dumper(%newblocks);<STDIN>;
+	################
+	### convert the WFBLOCKS int BLOCKS
+	### WFBLOCKS : workflow run -> block
+	### BLOCKS : block -> list of workflow runs
+	### get distinct groups and all workflows
+	my %BLOCKS;
+	map{
+		my $block=$WFBLOCKS{$_};
+		my $newblock=$newblocks{$block};
+		$BLOCKS{$newblock}{$_}=$$WORKFLOWS{$_}{wf};
+	}sort keys %WFBLOCKS;
+	
+	#print Dumper(%BLOCKS);<STDIN>;
+	return %BLOCKS;
 }
