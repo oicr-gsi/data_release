@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use Exporter;
 use JSON::PP;
+use Data::Dumper;
 
 
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
@@ -247,13 +248,11 @@ sub loadFPR{
 	my %opts=@_;
 	my $fpr     =$opts{fpr};
 	my $project =$opts{project};
-	my $case    =$opts{case};
+	#my $case    =$opts{case};
+	my %caselist = map{$_=>1} @{$opts{caselist}};  ### plase list of cases into a hash, for easy checking
+	#print Dumper(%caselist);exit;
 	my $pipeline = $opts{pipeline};
-
-	(open my $JSON,"<",$opts{config}) || die "could not load the pipeline configuration file $opts{config}";
-	my $json_text=<$JSON>;chomp $json_text;
-	close $JSON;
-	my $PIPELINES=decode_json($json_text);
+	my $PIPELINES= $opts{pipelines};
 
 	##################
 	#### open and parse the FPR
@@ -277,21 +276,22 @@ sub loadFPR{
 		next unless($platformid eq "NovaSeq");			   
 	
 		next unless($f[2] eq $project);
-		next unless($f[8] eq $case);
+		my $case=$f[8];
+		next unless($caselist{$case});
 		
 		my $wfv=$f[32];
 		my $wfrun=$f[37];
 		my $inputs=$f[39];     $inputs=~s|vidarr:.*?/file/||g;
-		$WORKFLOWS{$wfrun}{wf}=$wf;
-		$WORKFLOWS{$wfrun}{wfv}=$wfv;
-		$WORKFLOWS{$wfrun}{inputs}=$inputs;
-		$WORKFLOWS{$wfrun}{date}=$f[1];
+		$WORKFLOWS{$case}{$wfrun}{wf}=$wf;
+		$WORKFLOWS{$case}{$wfrun}{wfv}=$wfv;
+		$WORKFLOWS{$case}{$wfrun}{inputs}=$inputs;
+		$WORKFLOWS{$case}{$wfrun}{date}=$f[1];
 	
 	
 		my $fid=$f[45];  $fid=~s|vidarr:.*?/file/||g;
 		my $file=$f[47];       
 		my $md5sum=$f[48];
-		$FILES{$fid}={fpath=>$file,md5sum=>$md5sum,wfrun=>$wfrun};
+		$FILES{$case}{$fid}={fpath=>$file,md5sum=>$md5sum,wfrun=>$wfrun};
 	
 		my %info;
 		map{
@@ -302,15 +302,15 @@ sub loadFPR{
 		if(my $groupid=$info{geo_group_id}){
 			$sid.="_${groupid}"
 		}
-		$WORKFLOWS{$wfrun}{sids}{$sid}={
+		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}={
 			tissue_origin=>$info{geo_tissue_origin},
 			tissue_type=>$info{geo_tissue_type},
 			library_type_=>$info{geo_library_source_template_type},
 			group_id=>$info{geo_group_id} || "",
 		};
-		$WORKFLOWS{$wfrun}{sids}{$sid}{libraries}{$f[14]}++;
-		$WORKFLOWS{$wfrun}{sids}{$sid}{limskeys}{$f[57]}++;
-		$WORKFLOWS{$wfrun}{limskeys}{$f[57]}++;
+		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}{libraries}{$f[14]}++;
+		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}{limskeys}{$f[57]}++;
+		$WORKFLOWS{$case}{$wfrun}{limskeys}{$f[57]}++;
 	}
 	close $FPR;
 
@@ -320,30 +320,31 @@ sub loadFPR{
     ########################
 	######## identify parent child relationshisp
 	###########################
-	for my $wfrun(sort keys %WORKFLOWS){
-		###########
-		####identify workflows with inputs
-		#### if there is an input, then use this to define parent child relatioships in with the workflow run information
-		#### also use the parent->child info to define an analysis block
-		#### all workflow runs that are somehow connected between parents and children should end up in the same block
-		if($WORKFLOWS{$wfrun}{inputs}){
-			my @inputs=split /,/,$WORKFLOWS{$wfrun}{inputs};  ### adjusted separator from ; to ,
-	
-			##############
-			###### the inputs are file identifiers, which can be used to identify the workflow run that produced the files, ie. the parent workflow
+	for my $case(sort keys %WORKFLOWS){
+		for my $wfrun(sort keys %{$WORKFLOWS{$case}}){
+			if($wfrun eq "14522cc0c2f5fa873af81cbe2dc8afea1c1ba6f7dc2c1955b73abc46dd9fabf2"){
+			}
 			###########
-			for my $fid(@inputs){
-				### this is a check for missing parent files
-				if(! $FILES{$fid}){
-					############# an input exists, but the file was never pulled from file provenance
-					$WORKFLOWS{$wfrun}{parents_missing}{$fid}++;
-				}else{
-					##########. get the parent workflow run
-					##########. set as a parent of the current workflow
-					##########. set thie curren workflow as a child for the parent workflow
-					my $parent_wfrun=$FILES{$fid}{wfrun}; 
-					$WORKFLOWS{$wfrun}{parents}{$parent_wfrun}  =$WORKFLOWS{$parent_wfrun}{wf} || "unknown";
-	        		$WORKFLOWS{$parent_wfrun}{children}{$wfrun} =$WORKFLOWS{$wfrun}{wf}        || "unknown";
+			####identify workflows with inputs
+			#### if there is an input, then use this to define parent child relatioships in with the workflow run information
+			if($WORKFLOWS{$case}{$wfrun}{inputs}){
+				my @inputs=split /,/,$WORKFLOWS{$case}{$wfrun}{inputs};  ### adjusted separator from ; to ,
+				##############
+				###### the inputs are file identifiers, which can be used to identify the workflow run that produced the files, ie. the parent workflow
+				###########
+				for my $fid(@inputs){
+					### this is a check for missing parent files
+					if(! $FILES{$case}{$fid}){
+						############# an input exists, but the file was never pulled from file provenance
+						$WORKFLOWS{$case}{$wfrun}{parents_missing}{$fid}++;
+					}else{
+						##########. get the parent workflow run
+						##########. set as a parent of the current workflow
+						##########. set thie curren workflow as a child for the parent workflow
+						my $parent_wfrun=$FILES{$case}{$fid}{wfrun}; 
+						$WORKFLOWS{$case}{$wfrun}{parents}{$parent_wfrun}  =$WORKFLOWS{$case}{$parent_wfrun}{wf} || "unknown";
+	        			$WORKFLOWS{$case}{$parent_wfrun}{children}{$wfrun} =$WORKFLOWS{$case}{$wfrun}{wf}        || "unknown";
+					}
 				}
 			}
 		}
@@ -355,9 +356,6 @@ sub loadFPR{
 	
 sub pipeline_blocks{
 	my ($pipeline,$WORKFLOWS,$PIPELINES)=@_;
-	
-	#print Dumper(keys %WORKFLOWS);
-	
 	my %WFBLOCKS;
 	my $blockN=0;
 	#######################
@@ -373,7 +371,7 @@ sub pipeline_blocks{
 		next unless($$PIPELINES{$pipeline}{Workflows}{$wf});
 
 		#print "$wf $wfrun\n";<STDIN>;
-		#print Dumper($$WORKFLOWS{$A});<STDIN>;
+		
 		
 		my @p_wfruns=keys %{$$WORKFLOWS{$A}{parents}};
 		my @c_wfruns=keys %{$$WORKFLOWS{$A}{children}};
@@ -386,6 +384,8 @@ sub pipeline_blocks{
 		if(! scalar @connected_wfruns){
 			### the workflow had no connections
 			### logic : if not in a block already (becasue it was an input to another workflow), then it should be added to a block
+			print STDERR "registering unconnected run\n";
+			print "run=$A\n" . Dumper($$WORKFLOWS{$A});<STDIN>;
 			$blockN++;
 			$WFBLOCKS{$A}=$blockN;
 		}

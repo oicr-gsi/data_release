@@ -225,8 +225,8 @@ sub validate_options{
 
 sub usage{
 	
-	print "\nMOH_linkout.pl : linkout MOH files into a standardized directory structure suitable for MOH release\n";
-	print "\nperl MOH_linkout.pl [options]\n";
+	print "\npipeline_release.pl : extracts files and locations from file provenance for a set of workflow runs based the pipeline output\n";
+	print "\npipeline_release.pl [options]\n";
 	print "Options are as follows:\n";
 	print "\t--project.  The name of the project [required]\n";
 	#print "\t--cases.  A comma separated list of cases, with no whitespace.  [optional]\n";
