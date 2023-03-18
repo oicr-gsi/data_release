@@ -60,7 +60,11 @@ if(! $$PIPELINES{$pipeline}){
 ####. LOAD FPR DATA from this projects
 print STDERR "loading data from provenance for project $opts{project}, cases $opts{cases} for $opts{pipeline} pipeline\n";
 my %DATA=loadFPR(%opts);
-#print Dumper(%DATA);exit;
+
+#(open my $TMP,">","dump.txt");
+#print $TMP Dumper($DATA{WORKFLOWS});
+#close $TMP;
+
 
 
 
@@ -105,58 +109,59 @@ for my $case(@{$opts{caselist}}){
 	for my $PIPE(qw/WG WT/){
 		my $blockcount=scalar keys %{$BLOCKS{$PIPE}};
 		print STDERR "$blockcount BLOCKS for $PIPE pipeline\n";
-		
+
 		for my $block(sort keys %{$BLOCKS{$PIPE}}){
 			#print "block=$block\n";
 			my %BLOCK=%{$BLOCKS{$PIPE}{$block}};
-			#print "BLOCK\n", Dumper(%BLOCK) , "\n";
-			print $RPT "#BLOCK $block\n";
-			print $RPT "wf_run_id\tn_lanes\tdate\tworkflow\tsamples\tlimskeys\n";
-			for my $wfrun(sort{ 
-					#$BLOCK{$a} cmp $BLOCK{$b} 
-					$WORKFLOWS{$a}{date} cmp $WORKFLOWS{$b}{date}
-				} keys %BLOCK){
-				#print Dumper($DATA{WORKFLOWS}{$wfrun});<STDIN>;
-				my $wf=$WORKFLOWS{$wfrun}{wf} || "noworkflow";
-			
-				my $pad=" " x (50-length($wf));
-				my $paddedwf = $wf . $pad;
-			
+			print $RPT "#BLOCK $block ==============================================================================================\n\n";
+
+
+			#print STDERR "BLOCK\n", Dumper(%BLOCK) , "\n";<STDIN>;
+			################################
+			######## organized the block members by sid sets
+			#################################
+			my %BLOCKSETS;
+			for my $wfrun(keys %BLOCK){
 				my @sids=sort keys %{$WORKFLOWS{$wfrun}{sids}};
+				my $sidcount=scalar @sids;
 				my $sids=join(" | ",@sids);
-		
-				my @limskeys=sort keys %{$WORKFLOWS{$wfrun}{limskeys}};
-				my $limskeys=join("|",@limskeys);
-				my $lanes=scalar @limskeys;
-		
-				my $date=$WORKFLOWS{$wfrun}{date} || "nodate";
-				$date=substr($date,0,10);
-		
-				print $RPT "$wfrun\t$lanes\t$date\t$paddedwf\t$sids\t$limskeys\n";
+				 
+				$BLOCKSETS{$sidcount}{$sids}{$wfrun}=$BLOCK{$wfrun};   ### blocksets are organized by size (number of samples), and setof samples
+			}
+			#print STDERR "BLOCKSET\n", Dumper(%BLOCKSETS) . "\n";<STDIN>;
 
-            	#### add to the dot file
-	    		for my $p_wfrun(keys %{$WORKFLOWS{$wfrun}{parents}}){
-					## skip if not in the block
-					next unless($BLOCK{$p_wfrun});
-
-	    			my $p_wf=$WORKFLOWS{$p_wfrun}{wf} || "noworkflow";
-					my $pid=$p_wf . "_" . substr($p_wfrun,0,5);
 			
-					my $cid=$wf . "_" . substr($wfrun,0,5);
-					my $pc="$pid -> $cid";
-					$dot{$PIPE}{$block}{$pc}++;
-	    		}
-	    		for my $c_wfrun(keys %{$WORKFLOWS{$wfrun}{children}}){
-					## skip if not in the block
-					next unless($BLOCK{$c_wfrun});
-
-	    			my $c_wf=$WORKFLOWS{$c_wfrun}{wf} || "noworkflow";
-					my $cid=$c_wf . "_" . substr($c_wfrun,0,5);
 			
-					my $pid=$wf . "_" . substr($wfrun,0,5);
-					my $pc="$pid -> $cid";
-					$dot{$PIPE}{$block}{$pc}++;
-	    		}
+			for my $samplecount(sort {$a<=>$b} keys %BLOCKSETS){
+				for my $samples(sort keys %{$BLOCKSETS{$samplecount}}){
+					print $RPT "#SAMPLES : $samples\n";
+					print $RPT "#wf_run_id\tn_lanes\tdate\tworkflow\tlimskeys\n";
+					
+					my %SET=%{$BLOCKSETS{$samplecount}{$samples}};
+					
+					## now order by workflow run data
+					for my $wfrun(sort{ 
+						$WORKFLOWS{$a}{date} cmp $WORKFLOWS{$b}{date}
+					} keys %SET){
+						## get the workflow name, and pad it for readabilyty	
+						my $wf=$WORKFLOWS{$wfrun}{wf} || "noworkflow";
+						my $pad=" " x (50-length($wf));
+						my $paddedwf = $wf . $pad;
+						### get the limskeys, and use this to determine number of lanes of sequencing
+						my @limskeys=sort keys %{$WORKFLOWS{$wfrun}{limskeys}};
+						my $limskeys=join("|",@limskeys);
+						my $lanes=scalar @limskeys;
+						### get the run datetime and reduce to just the date
+						my $date=$WORKFLOWS{$wfrun}{date} || "nodate";
+						$date=substr($date,0,10);
+						print $RPT "$wfrun\t$lanes\t$date\t$paddedwf\t$limskeys\n";
+
+            			#### add to the dot file, this code is removed, will later replace with a function
+					}
+					### a blank line after the set
+					print $RPT "\n";
+				}
+			
 			}
 			print $RPT "\n";
 			#print "dot\n" . Dumper($dot{$block});<STDIN>;
@@ -165,6 +170,33 @@ for my $case(@{$opts{caselist}}){
 	close $RPT;
 }
 
+
+sub add_to_dot{
+		
+	#for my $p_wfrun(keys %{$WORKFLOWS{$wfrun}{parents}}){
+	#	## skip if not in the block
+	#	next unless($BLOCK{$p_wfrun});
+
+	#	my $p_wf=$WORKFLOWS{$p_wfrun}{wf} || "noworkflow";
+	#	my $pid=$p_wf . "_" . substr($p_wfrun,0,5);
+	#
+	#	my $cid=$wf . "_" . substr($wfrun,0,5);
+	#	my $pc="$pid -> $cid";
+	#	$dot{$PIPE}{$block}{$pc}++;
+	#}
+	#for my $c_wfrun(keys %{$WORKFLOWS{$wfrun}{children}}){
+	#	## skip if not in the block
+	#	next unless($BLOCK{$c_wfrun});
+
+	#	my $c_wf=$WORKFLOWS{$c_wfrun}{wf} || "noworkflow";
+	#	my $cid=$c_wf . "_" . substr($c_wfrun,0,5);
+
+	#	my $pid=$wf . "_" . substr($wfrun,0,5);
+	#	my $pc="$pid -> $cid";
+	#	$dot{$PIPE}{$block}{$pc}++;
+	#}
+	
+}
 
 
 

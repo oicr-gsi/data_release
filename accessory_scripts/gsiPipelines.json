@@ -20,7 +20,8 @@
 			"mutect2_matched_by_tumor_group": "SomaticMutations",
 			"sequenza": "SomaticCNA",
 			"sequenza_by_tumor_group": "SomaticCNA",
-			"bamMergePreprocessing_by_sample": "AlignmentCallReadyWG"
+			"bamMergePreprocessing_by_sample": "AlignmentCallReadyWG",
+			"delly": "SomaticStructuralvariants"
 		},
 		"Title": "Whole Genome and Transcriptome Pipeline"
 	},
@@ -52,7 +53,8 @@
 			"sequenza": "SomaticCNA",
 			"mutect2_matched": "SomaticMutations",
 			"sequenza_by_tumor_group": "calls.copynumber",
-			"bamMergePreprocessing_by_sample": "AlignmentCallReadyWG"
+			"bamMergePreprocessing_by_sample": "AlignmentCallReadyWG",
+			"delly": "SomaticStructuralvariants"
 		}
 	}
 }

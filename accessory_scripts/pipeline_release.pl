@@ -32,19 +32,19 @@ my %checks=get_checks();
 ### will move to getting this from an external file where new workflows can be registered
 ################
 my %registered_workflow_sets=(
-	delly_1           =>[qw/delly_matched_by_tumor_group_2.3.1/],
+	delly_1           =>[qw/delly_matched_by_tumor_group_2.3.1 delly_matched_2.3.0/],
 	fastq_1           =>[qw/bcl2fastq_3.1.3/],
 	mavis_1           =>[qw/mavis_3.0.3/],
-	mutect2_1         =>[qw/mutect2_matched_by_tumor_group_1.0.4/],
+	mutect2_1         =>[qw/mutect2_matched_by_tumor_group_1.0.4 mutect2_matched_1.0.4/],
 	rsem_1            =>[qw/rsem_1.0.0/],
-	sequenza_1        =>[qw/sequenza_by_tumor_group_1.0.0/],
+	sequenza_1        =>[qw/sequenza_by_tumor_group_1.0.0 sequenza_1.0.0/],
 	starfusion_1      =>[qw/starfusion_2.0.1/],
 	WG_align_1        =>[qw/bwaMem_1.0.0/],
-	WG_callready_1    =>[qw/bamMergePreprocessing_by_tumor_group_2.0.3/],
+	WG_callready_1    =>[qw/bamMergePreprocessing_by_tumor_group_2.0.3 bamMergePreprocessing_by_sample_2.0.5/],
 	WT_align_1        =>[qw/star_lane_level_2.0.4/],
 	WT_callready_1    =>[qw/star_call_ready_2.0.4/],
-	vep_1             =>[qw/variantEffectPredictor_matched_by_tumor_group_2.1.7 variantEffectPredictor_matched_by_tumor_group_2.1.8/],
-	varscan_1         =>[qw/varscan_by_tumor_group_2.2.4/],					
+	vep_1             =>[qw/variantEffectPredictor_matched_by_tumor_group_2.1.7 variantEffectPredictor_matched_by_tumor_group_2.1.8 variantEffectPredictor_matched_2.1.5 variantEffectPredictor_matched_2.1.51/],
+	varscan_1         =>[qw/varscan_by_tumor_group_2.2.4 varscan_2.2.4/],					
 );
 my %registered_workflows;
 for my $set(keys %registered_workflow_sets){
@@ -54,28 +54,15 @@ for my $set(keys %registered_workflow_sets){
 }
 my %pipeline_sets=(
 
-	WGTS=>qw/fastq_1 WG_align_1 mutect2_1 varscan_1 delly_1 vep_1 sequenza_1 mavis_1 rsem_1 starfusion_1/,   ## WGTS release excludes lane level alignments
+	WGTS=>[qw/fastq_1 WG_align_1 mutect2_1 varscan_1 delly_1 vep_1 sequenza_1 mavis_1 rsem_1 starfusion_1/],   ## WGTS release excludes lane level alignments
 );
 
 
-#print Dumper(%registered_workflows);
-#exit;
 
+###########################################
+#### LOAD the list of wfrun ids
+###########################################
 
-
-
-
-
-
-#print Dumper(%wfruns);	
-
-
-
-
-
-#######################
-####. MAIN
-#######################
 my %wfruns;
 print STDERR "reading workflow runs from $opts{runfile}\n";
 (open my $RUNS,"<","$opts{runfile}") || die "could notopen $opts{runfile}";
@@ -88,8 +75,10 @@ while(<$RUNS>){
 ##########################################
 ###### COLLECTING FILES FROM FPR
 ##########################################
+
 my %dataset;
 my $wfruncount=scalar keys %wfruns;
+my %filecount=(released=>0,unreleased=>0);
 print STDERR "retrieving data for project $opts{project} from $wfruncount workflow runs\n";
 print STDERR "parsing fpr $opts{fpr}\n";
 (open my $FPR,"gunzip -c $opts{fpr} |") || die "unable to open fpr at $opts{fpr}";
@@ -125,7 +114,7 @@ while(my $rec=<$FPR>){
 	
 	my $sid=$case . "_" . $info{geo_tissue_origin} . "_" . $info{geo_tissue_type} . "_" . $info{geo_library_source_template_type};
 	$sid.="_$info{geo_group_id}" if($info{geo_group_id});
-	print "$sid\n";
+	#print "$sid\n";
 	
 	
 	
@@ -137,10 +126,12 @@ while(my $rec=<$FPR>){
 	if($regwf){
 		my($status,$release_fn)=$checks{$regwf}->($fn,$sid);
 		if($status eq "RELEASE"){
-			$dataset{RELEASED}{$fpath}{fn}=$release_fn;
-			$dataset{RELEASED}{$fpath}{rpt}="$project\t$case\t$regwf\t$workflow\t$wfrun\t$fn\t$fid\t$release_fn\t$md5sum\t$fpath";
+			$dataset{RELEASED}{$case}{$fpath}{fn}=$release_fn;
+			$dataset{RELEASED}{$case}{$fpath}{rpt}="$project\t$case\t$regwf\t$workflow\t$wfrun\t$fn\t$fid\t$release_fn\t$md5sum\t$fpath";
+			$filecount{released}++;
 		}else{
 			$dataset{UNRELEASED}{$fpath}{rpt}="$project\t$case\t$regwf\t$workflow\t$wfrun\t$fn\t$fid\t$release_fn\t$md5sum\t$fpath";
+			$filecount{unreleased}++;
 		}
 		
 	}else{
@@ -150,6 +141,15 @@ while(my $rec=<$FPR>){
 	#$wfruns{$wfrun}{$fswid}{path}=$f[47];
 	#$wfruns{$wfrun}{$fswid}{fn}=basename($f[47]);
 	#$wfruns{$wfrun}{$fswid}{md5sum}=$f[48];
+}
+
+print STDERR "Ready to link out $filecount{released} files for release\n";
+print STDERR "  $filecount{unreleased} files from these workflow runs will not be released\n";
+print "continue? (y) > ";
+my $key=<STDIN>;chomp $key;
+
+if($key ne "y"){
+	exit;
 }
 
 
@@ -162,24 +162,29 @@ my $released_file=$opts{out} . "/" . $opts{project} . "_release_report.txt";
 (open my $RPT,">",$released_file) || die "unable to open $released_file";
 print $RPT "Project\tCase\tpipestep\tworkflow\twfrun\tfn\tfid\trelease_fn\tmd5sum\tpath\n";
 
-for my $fpath(sort keys %{$dataset{RELEASED}}){
-	my $fn=$dataset{RELEASED}{$fpath}{fn};
-	my $line=$dataset{RELEASED}{$fpath}{rpt};
-	
-	
-	my $ln=$opts{out} . "/" . $fn;
-	if(-e $ln){
-		print STDERR "ERROR file already linked out $ln";<STDIN>;
-	}else{
-		symlink($fpath,$ln) || die "coulnd not link file to $ln from $fpath";
+
+
+for my $case(sort keys %{$dataset{RELEASED}}){
+	my $case_dir="$project_dir/$case";
+	mkdir($case_dir) unless(-d $case_dir);
+
+	my %FILES=%{$dataset{RELEASED}{$case}};
+	for my $fpath(sort keys %FILES){
+		my $fn=$FILES{$fpath}{fn};
+		my $line=$FILES{$fpath}{rpt};
+		my $ln="$case_dir/$fn";
+		if(-e $ln){
+			print STDERR "ERROR file already linked out $ln";<STDIN>;
+		}else{
+			symlink($fpath,$ln) || die "could not link file to $ln from $fpath";
+		}
+		print $RPT "$line\n";
 	}
-	
-	print $RPT "$line\n";
 }
 close $RPT;
 
 print STDERR "opening report file for Unreleased files\n";
-my $unreleased_file=$opts{out} . "/" . $opts{project} . "_UNRELEASED_report.txt";
+my $unreleased_file=$opts{out} . "/" . $opts{project} . "_unreleased_report.txt";
 (open my $UNRELEASED,">",$unreleased_file) || die "unable to open $unreleased_file";
 print $UNRELEASED "Project\tCase\tpipestep\tworkflow\twfrun\tfn\tfid\trelease_fn\tmd5sum\tpath\n";
 for my $fpath(sort keys %{$dataset{UNRELEASED}}){
