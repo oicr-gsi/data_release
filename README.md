@@ -249,7 +249,7 @@ sample_id
 
 Create a table file referencing internal IDs with external IDs privided by stakeholders.
 
-usage: ```python dare.py map -l LIBRARIES -w WORKFLOW -n PROJECT_NAME -p PROJECTS_DIR -pr PROJECT -r RUNS --exclude_miseq -rn RUN_NAME -e EXCLUDE -s SUFFIX -f FILES```
+usage: ```dare map -l LIBRARIES -w WORKFLOW -n PROJECT_NAME -p PROJECTS_DIR -pr PROJECT -r RUNS --exclude_miseq -rn RUN_NAME -e EXCLUDE -s SUFFIX -f FILES```
 
 Parameters are the same as described above
 
@@ -289,32 +289,53 @@ Path to the sample provenance
 
 Tag released files in Nabu.
 
-usage: ```python dare.py mark -u USER -rl pass -d DIRECTORY -c COMMENT```
+example usage: ```dare mark -u USER -st pass -rn DIRECTORY -c COMMENT -pr PROJECT```
 
 Parameters
 
 | argument | purpose | required/optional                                    |
 | ------- | ------- | ------------------------------------------ |
 | -u | Name of user handling the data release   | required              |
-| -rl | Mark files fail or pass | required              |
-| -d | Directory with file links | required              |
-| -c | Comment used to tag the file | optional              |
+| -st | Mark files fail or pass | required              |
+| -pr | Project name | required              |
+| -rn | Directory with file links | optional              |
+| -c | Jira ticket | optional              |
+| -r | List of space-separated run Ids | optional              |
+| -l | File with libraries tagged for release | optional              |
+| -w | Workflow used to generate the output files | optional              |
+| -px | Prefix to file paths if FPR contains relative paths | optional              |
+| --exclude_miseq | Exclude miseq runs | optional              |
+| -a | Nabu api | default              |
+| -fpr | Path to FPR | default              |
+
+
+## Generating a batch release report with dare.py ##
+
+example usage: ```dare report -u USER -rn DIRECTORIES -t TICKET -pr PROJECT -fn PROJECT_FULL_NAME```
 
 Parameters
 
-- user `-u/ --user`:
-Required parameter. Workflow name.
-Name of the analyst handling the data release.
-
-- directory `-d/ --directory`:
-Required parameter.  Directory with symlinks
-
-- file tag `-rl/ --release`: 
-Required parameter. Accepted values `pass` or `fail`.
-Marks files released files with `pass` and withheld files with `fail`
-
-- comment `-c/ --comment`: 
-Optional parameter. Tag released file with the Jira ticket.
+| argument | purpose | required/optional                                    |
+| ------- | ------- | ------------------------------------------ |
+| -pr | Project acronym | required              |
+| -fn | Project full name | required              |
+| -u | Name of user handling the data release   | required              |
+| -st | Mark files fail or pass | required              |
+| -rn | List of space-sparated directories with file links | optional              |
+| -t | Jira ticket | optional              |
+| -r | List of space-separated run Ids | optional              |
+| -l | File with libraries tagged for release | optional              |
+| -w | Workflow used to generate the output files | optional              |
+| -px | Prefix to file paths if FPR contains relative paths | optional              |
+| --exclude_miseq | Exclude miseq runs | optional              |
+| --time_points | Include time points | optional              |
+| -a | Nabu api | default              |
+| -spr | Sample provenance | default              |
+| -fpr | Path to FPR | default              |
+| -bq | BamQC cache | default              |
+| -dq | DNASeqQC cache | default              |
+| -cq | CfMedipQC cache | default              |
+| -rq | RNASeqQC cache | default              |
 
 
 ## Transferring files through ociwire ##
