@@ -9,7 +9,7 @@ use Data::Dumper;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 $VERSION	=	1.00;
 @ISA		=	qw/ Exporter /;
-@EXPORT		=	qw/ check_file_release get_checks loadFPR pipeline_blocks/;
+@EXPORT		=	qw/ check_file_release get_checks loadFPR pipeline_blocks call_nabu/;
 
 
 
@@ -177,12 +177,42 @@ sub loadFPR{
 	##################
 	#### open and parse the FPR
 	########################
-	my %WORKFLOWS;my %FILES;  ### these will be returned as sections of a larger hash structure
+	my %WORKFLOWS;my %FILES;my %LIMSKEYS;  ### these will be returned as sections of a larger hash structure
 	(open my $FPR,"gunzip -c $fpr |") || die "unable to open $fpr";
 	while(my $rec=<$FPR>){
 		my @f=split /\t/,$rec;unshift(@f,"");### add a filed to the begnning to shift indices to 1 based
 		my $wf=$f[31];
+		my $limskey=$f[57];
+		my $fid=$f[45];
 		#print "$id $wf\n";
+		my $case=$f[8];
+		
+		my %info;
+		map{
+			my($key,$val)=split /=/,$_;
+			$info{$key}=$val;
+		}split /;/,$f[18];
+		my $gto=$info{geo_tissue_origin} || "na";
+		my $gtt=$info{geo_tissue_type} || "na";
+		my $ltt=$info{geo_library_source_template_type} || "na";
+		
+		my $sid="${case}_${gto}_${gtt}_${ltt}";
+		if(my $groupid=$info{geo_group_id}){
+			$sid.="_${groupid}"
+		}
+		
+		
+		### for RELEASE, we need to identify any fastq generating workflow 
+		my %FASTQWORKFLOWS=map{$_,1}qw/bcl2fastq/;
+		if($FASTQWORKFLOWS{$wf}){
+			$LIMSKEYS{sequencing}{$limskey}{files}{$fid}=$wf;
+			$LIMSKEYS{sequencing}{$limskey}{run}    =$f[19] || "";
+			$LIMSKEYS{sequencing}{$limskey}{lane}   =$f[25] || "";
+			$LIMSKEYS{sequencing}{$limskey}{barcode}=$f[28] || "";
+			$LIMSKEYS{sequencing}{$limskey}{sid}    =$sid || "";
+			
+		}
+		
 	
 		#### should this be restricted?? or take all workflow and restrict when they are reported on?
 		next unless($$PIPELINES{$pipeline}{Workflows}{$wf});
@@ -197,7 +227,7 @@ sub loadFPR{
 		#next if($platformid eq "MiSeq");
 		
 		next unless($f[2] eq $project);
-		my $case=$f[8];
+		
 		next unless($caselist{$case});
 		
 		my $wfv=$f[32];
@@ -209,29 +239,39 @@ sub loadFPR{
 		$WORKFLOWS{$case}{$wfrun}{date}=$f[1];
 	
 	
-		my $fid=$f[45];  $fid=~s|vidarr:.*?/file/||g;
+		#my $fid=$f[45];  
+		$fid=~s|vidarr:.*?/file/||g;
+		
 		my $file=$f[47];       
 		my $md5sum=$f[48];
 		$FILES{$case}{$fid}={fpath=>$file,md5sum=>$md5sum,wfrun=>$wfrun};
 	
-		my %info;
-		map{
-			my($key,$val)=split /=/,$_;
-			$info{$key}=$val;
-		}split /;/,$f[18];
-		my $sid=$case . "_" . $info{geo_tissue_origin} . "_" . $info{geo_tissue_type} . "_" . $info{geo_library_source_template_type};
-		if(my $groupid=$info{geo_group_id}){
-			$sid.="_${groupid}"
-		}
+		#my %info;
+		#map{
+		#	my($key,$val)=split /=/,$_;
+		#	$info{$key}=$val;
+		#}split /;/,$f[18];
+		#my $sid=$case . "_" . $info{geo_tissue_origin} . "_" . $info{geo_tissue_type} . "_" . $info{geo_library_source_template_type};
+		#if(my $groupid=$info{geo_group_id}){
+		#	$sid.="_${groupid}"
+		#}
+		
 		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}={
 			tissue_origin=>$info{geo_tissue_origin},
 			tissue_type=>$info{geo_tissue_type},
 			library_type_=>$info{geo_library_source_template_type},
 			group_id=>$info{geo_group_id} || "",
 		};
-		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}{libraries}{$f[14]}++;
-		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}{limskeys}{$f[57]}++;
-		$WORKFLOWS{$case}{$wfrun}{limskeys}{$f[57]}++;
+		
+		my $library=$f[14];
+		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}{libraries}{$library}++;
+		$WORKFLOWS{$case}{$wfrun}{sids}{$sid}{limskeys}{$limskey}++;
+		$WORKFLOWS{$case}{$wfrun}{limskeys}{$limskey}++;
+		
+		
+		$LIMSKEYS{analysis}{$limskey}{$fid}=$wf;
+		
+		
 	}
 	close $FPR;
 
@@ -270,7 +310,20 @@ sub loadFPR{
 			}
 		}
 	}
-	my %FPR=(WORKFLOWS=>\%WORKFLOWS,FILES=>\%FILES);
+	
+	
+	
+	## for the collected limskeys, assess release of the data
+	my %RELEASE=check_release($project,\%LIMSKEYS);
+	my %FPR=(WORKFLOWS=>\%WORKFLOWS,FILES=>\%FILES,RELEASE=>\%RELEASE);
+	
+	
+	
+	
+	
+	
+	
+	
 	return %FPR;
 }
 
@@ -396,4 +449,66 @@ sub pipeline_blocks{
 	
 	#print Dumper(%BLOCKS);<STDIN>;
 	return %BLOCKS;
+}
+
+
+
+sub check_release{
+	my ($project,$DATA)=@_;
+	
+	
+	#print Dumper(%{$$DATA{analysis}});<STDIN>;
+	my %NABU=call_nabu($project,"https://nabu-prod.gsi.oicr.on.ca/get-fileqcs");
+	#print Dumper(%NABU);<STDIN>;
+	
+	my %RELEASE;
+	for my $limskey(sort keys %{$$DATA{analysis}}){
+		#print "$limskey\n";
+		#print Dumper($$DATA{sequencing}{$limskey});<STDIN>;
+	
+		if($$DATA{sequencing}{$limskey}){
+			my @fids=sort keys %{$$DATA{sequencing}{$limskey}{files}};
+			#print Dumper(@fids);<STDIN>;
+			my %keystatus;
+			map{
+				my $status=$NABU{$_}{qcstatus} || "notInNabu";
+				$RELEASE{$limskey}{statuslist}{$status}{$_}++;
+			}@fids;
+			my $statuslist=join(",",keys %{$RELEASE{$limskey}{statuslist}});
+			#print "statuslist=$statuslist";<STDIN>;
+			$RELEASE{$limskey}{status}=$statuslist;
+			
+			
+			$RELEASE{$limskey}{run}=$$DATA{sequencing}{$limskey}{run} . "_" . $$DATA{sequencing}{$limskey}{lane};
+			$RELEASE{$limskey}{sid}=$$DATA{sequencing}{$limskey}{sid};
+			$RELEASE{$limskey}{fileids}=join(",",keys %{$$DATA{sequencing}{$limskey}{files}});
+			
+		}else{
+			$RELEASE{$limskey}{status}="noSequencingFound";
+		}
+	}
+	return %RELEASE;
+	
+	#print Dumper(%RELEASE);<STDIN>;
+
+
+	
+}
+
+sub call_nabu{
+    my ($project,$api)=@_;
+    my %nabu;
+	my $curl="curl -X 'POST' 'https://nabu-prod.gsi.oicr.on.ca/get-fileqcs' " .
+	         "-H 'accept: application/json' -H 'Content-Type: application/json' " .
+			 "-d '{\"project\": \"$project\",\"workflow\": \"bcl2fastq\"}'";
+	my $json=`$curl`;chomp $json;
+	my $results=decode_json($json);
+	my @recs=@{$$results{fileqcs}};
+	for my $rec(@recs){
+		my $fileid=$$rec{fileid};
+		delete($$rec{fileid});
+		$nabu{$fileid}=$rec;		
+	}
+	return %nabu;
+
 }

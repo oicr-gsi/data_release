@@ -64,7 +64,10 @@ my %DATA=loadFPR(%opts);
 #(open my $TMP,">","dump.txt");
 #print $TMP Dumper($DATA{WORKFLOWS});
 #close $TMP;
+#print Dumper($DATA{RELEASE});exit;
 
+
+#$DATA{RELEASE}{"6331_1_LDI91776"}{status}="PENDING";  ### temp
 
 
 
@@ -113,7 +116,8 @@ for my $case(@{$opts{caselist}}){
 		for my $block(sort keys %{$BLOCKS{$PIPE}}){
 			#print "block=$block\n";
 			my %BLOCK=%{$BLOCKS{$PIPE}{$block}};
-			print $RPT "#BLOCK $block ==============================================================================================\n\n";
+			my $pad="=" x (190-length($block));
+			print $RPT "#   BLOCK $block $pad\n\n";
 
 
 			#print STDERR "BLOCK\n", Dumper(%BLOCK) , "\n";<STDIN>;
@@ -133,9 +137,12 @@ for my $case(@{$opts{caselist}}){
 			
 			
 			for my $samplecount(sort {$a<=>$b} keys %BLOCKSETS){
+				
 				for my $samples(sort keys %{$BLOCKSETS{$samplecount}}){
-					print $RPT "#SAMPLES : $samples\n";
-					print $RPT "#wf_run_id\tn_lanes\tdate\tworkflow\tlimskeys\n";
+					my %unreleased;
+					my $pad="-" x (186-length($samples));
+					print $RPT "#   SAMPLES : $samples $pad\n";
+					print $RPT "#wf_run_id\tn_lanes\tdate\tworkflow\tlimskeys\tsequencing_release\n";
 					
 					my %SET=%{$BLOCKSETS{$samplecount}{$samples}};
 					
@@ -149,20 +156,53 @@ for my $case(@{$opts{caselist}}){
 						my $paddedwf = $wf . $pad;
 						### get the limskeys, and use this to determine number of lanes of sequencing
 						my @limskeys=sort keys %{$WORKFLOWS{$wfrun}{limskeys}};
+						
+						### check on the data release
+						my $releasestatus="ALL_SEQUENCING_RELEASED";
+						map{
+							
+							my $status=$DATA{RELEASE}{$_}{status};
+							if($status ne "PASS"){
+								$releasestatus="CHECK_RELEASE";
+								$unreleased{$_}=$status;
+								
+								
+								
+							}
+							
+						}@limskeys;
+						
+						
 						my $limskeys=join("|",@limskeys);
 						my $lanes=scalar @limskeys;
 						### get the run datetime and reduce to just the date
 						my $date=$WORKFLOWS{$wfrun}{date} || "nodate";
 						$date=substr($date,0,10);
-						print $RPT "$wfrun\t$lanes\t$date\t$paddedwf\t$limskeys\n";
+						print $RPT "$wfrun\t$lanes\t$date\t$paddedwf\t$limskeys\t$releasestatus\n";
 
             			#### add to the dot file, this code is removed, will later replace with a function
 					}
 					### a blank line after the set
 					print $RPT "\n";
+					### not enay unrelased data
+					for my $limskey(sort keys %unreleased){
+						
+						#print Dumper($DATA{RELEASE}{$limskey});<STDIN>;
+						my $status=$unreleased{$limskey} || "";
+						my $sid=$DATA{RELEASE}{$limskey}{sid} || "nd";
+						my $run=$DATA{RELEASE}{$limskey}{run} || "nd";
+						my $files=$DATA{RELEASE}{$limskey}{fileids} || "nd";
+						
+						print $RPT "CHECK RELEASE : $limskey\t$status\t$sid\t$run\n\t$files\n";
+					}
+					print $RPT "\n";
+					
 				}
+				
 			
 			}
+			#my $pad="=" x 208;
+			#print $RPT "$pad\n";
 			print $RPT "\n";
 			#print "dot\n" . Dumper($dot{$block});<STDIN>;
 		}
