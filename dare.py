@@ -1644,7 +1644,7 @@ def get_tissue_types():
          'C': 'Cell line derived from a tumour',
          'B': 'Benign tumour',
          'A': 'Cells taken from Ascites fluid'}
-
+    
     return D
 
 def get_tissue_origin():
@@ -1655,38 +1655,33 @@ def get_tissue_origin():
     Pre-condition: These definitions are obtained from the Configuration tab in MISO
     '''
     
-    D = {'Ab': 'Abdomen', 'Ad': 'Adipose', 'Ae': 'Adnexa', 'Ag': 'Adrenal',
-         'An': 'Anus', 'Ao': 'Anorectal', 'Ap': 'Appendix', 'As': 'Ascites',
-         'At': 'Astrocytoma', 'Av': 'Ampulla', 'Ax': 'Axillary', 'Ba': 'Back',
-         'Bd': 'Bile', 'Bi': 'Biliary', 'Bl': 'Bladder', 'Bm': 'Bone', 'Bn': 'Brain',
-         'Bo': 'Bone', 'Br': 'Breast', 'Bu': 'Buccal', 'Bw': 'Bowel', 'Cb': 'Cord',
-         'Cc': 'Cecum', 'Ce': 'Cervix', 'Cf': 'Cell-Free', 'Ch': 'Chest', 'Cj': 'Conjunctiva',
-         'Ck': 'Cheek', 'Cn': 'Central', 'Co': 'Colon', 'Cr': 'Colorectal', 'Cs': 'Cul-de-sac',
-         'Ct': 'Circulating', 'Di': 'Diaphragm', 'Du': 'Duodenum', 'En': 'Endometrial',
-         'Ep': 'Epidural', 'Es': 'Esophagus', 'Ey': 'Eye', 'Fa': 'Fallopian',
-         'Fb': 'Fibroid', 'Fs': 'Foreskin', 'Ft': 'Foot', 'Ga': 'Gastric',
-         'Gb': 'Gallbladder', 'Ge': 'Gastroesophageal', 'Gi': 'Gastrointestinal',
-         'Gj': 'Gastrojejunal', 'Gn': 'Gingiva', 'Gt': 'Genital', 'Hp': 'Hypopharynx',
-         'Hr': 'Heart', 'Ic': 'ileocecum', 'Il': 'Ileum', 'Ki': 'Kidney', 'La': 'Lacrimal',
-         'Lb': 'Limb', 'Le': 'Leukocyte', 'Lg': 'Leg', 'Li': 'Large', 'Ln': 'Lymph',
-         'Lp': 'Lymphoblast', 'Lu': 'Lung', 'Lv': 'Liver', 'Lx': 'Larynx',
-         'Ly': 'Lymphocyte', 'Md': 'Mediastinum', 'Me': 'Mesenchyme', 'Mn': 'Mandible',
-         'Mo': 'Mouth', 'Ms': 'Mesentary', 'Mu': 'Muscle', 'Mx': 'Maxilla',
-         'Nk': 'Neck', 'nn': 'Unknown', 'No': 'Nose', 'Np': 'Nasopharynx',
-         'Oc': 'Oral', 'Om': 'Omentum', 'Or': 'Orbit', 'Ov': 'Ovary',
-         'Pa': 'Pancreas', 'Pb': 'Peripheral', 'Pc': 'Pancreatobiliary',
-         'Pd': 'Parathyroid', 'Pe': 'Pelvic', 'Pg': 'Parotid', 'Ph': 'Paratracheal',
-         'Pi': 'Penis', 'Pl': 'Plasma', 'Pm': 'Peritoneum', 'Pn': 'Peripheral',
-         'Po': 'Peri-aorta', 'Pr': 'Prostate', 'Pt': 'Palate', 'Pu': 'Pleura',
-         'Py': 'periampullary', 'Ra': 'Right', 'Rc': 'Rectosigmoid', 'Re': 'Rectum',
-         'Ri': 'Rib', 'Rp': 'Retroperitoneum', 'Sa': 'Saliva', 'Sb': 'Small',
-         'Sc': 'Scalp', 'Se': 'Serum', 'Sg': 'Salivary', 'Si': 'Small', 'Sk': 'Skin',
-         'Sm': 'Skeletal', 'Sn': 'Spine', 'So': 'Soft', 'Sp': 'Spleen', 'Sr': 'Serosa',
-         'Ss': 'Sinus', 'St': 'Stomach', 'Su': 'Sternum', 'Ta': 'Tail', 'Te': 'Testes',
-         'Tg': 'Thymic', 'Th': 'Thymus', 'Tn': 'Tonsil', 'To': 'Throat', 'Tr': 'Trachea',
-         'Tu': 'Tongue', 'Ty': 'Thyroid', 'Uc': 'Urachus', 'Ue': 'Ureter', 'Um': 'Umbilical',
-         'Up': 'Urine', 'Ur': 'Urethra', 'Us': 'Urine', 'Ut': 'Uterus', 'Uw': 'Urine',
-         'Vg': 'Vagina', 'Vu': 'Vulva', 'Wm': 'Worm'}
+    D = {'Ab': 'Abdomen', 'Ad': 'Adipose', 'Ae': 'Adnexa', 'Ag': 'Adrenal', 'An': 'Anus',
+         'Ao': 'Anorectal', 'Ap': 'Appendix', 'As': 'Ascites', 'At': 'Astrocytoma', 'Av': 'Ampulla',
+         'Ax': 'Axillary', 'Ba': 'Back', 'Bd': 'Bile', 'Bi': 'Biliary', 'Bl': 'Bladder',
+         'Bm': 'Bone', 'Bn': 'Brain', 'Bo': 'Bone', 'Br': 'Breast', 'Bu': 'Buccal',
+         'Bw': 'Bowel', 'Cb': 'Cord', 'Cc': 'Cecum', 'Ce': 'Cervix', 'Cf': 'Cell-Free', 'Ch': 'Chest',
+         'Cj': 'Conjunctiva', 'Ck': 'Cheek', 'Cn': 'Central', 'Co': 'Colon', 'Cr': 'Colorectal',
+         'Cs': 'Cul-de-sac', 'Ct': 'Circulating', 'Di': 'Diaphragm', 'Du': 'Duodenum',
+         'En': 'Endometrial', 'Ep': 'Epidural', 'Es': 'Esophagus', 'Ey': 'Eye', 'Fa': 'Fallopian',
+         'Fb': 'Fibroid', 'Fs': 'Foreskin', 'Ft': 'Foot', 'Ga': 'Gastric', 'Gb': 'Gallbladder',
+         'Ge': 'Gastroesophageal', 'Gi': 'Gastrointestinal', 'Gj': 'Gastrojejunal', 'Gn': 'Gingiva',
+         'Gt': 'Genital', 'Hp': 'Hypopharynx', 'Hr': 'Heart', 'Ic': 'ileocecum', 'Il': 'Ileum',
+         'Ki': 'Kidney', 'La': 'Lacrimal', 'Lb': 'Limb', 'Le': 'Leukocyte', 'Lg': 'Leg',
+         'Li': 'Large', 'Ln': 'Lymph', 'Lp': 'Lymphoblast', 'Lu': 'Lung', 'Lv': 'Liver', 
+         'Lx': 'Larynx', 'Ly': 'Lymphocyte', 'Md': 'Mediastinum', 'Me': 'Mesenchyme', 'Mn': 'Mandible',
+         'Mo': 'Mouth', 'Ms': 'Mesentary', 'Mu': 'Muscle', 'Mx': 'Maxilla', 'Nk': 'Neck',
+         'nn': 'Unknown', 'No': 'Nose', 'Np': 'Nasopharynx', 'Oc': 'Oral', 'Om': 'Omentum',
+         'Or': 'Orbit', 'Ov': 'Ovary', 'Pa': 'Pancreas', 'Pb': 'Peripheral', 'Pc': 'Pancreatobiliary',
+         'Pd': 'Parathyroid', 'Pe': 'Pelvic', 'Pg': 'Parotid', 'Ph': 'Paratracheal', 'Pi': 'Penis',
+         'Pl': 'Plasma', 'Pm': 'Peritoneum', 'Pn': 'Peripheral', 'Po': 'Peri-aorta', 'Pr': 'Prostate',
+         'Pt': 'Palate', 'Pu': 'Pleura', 'Py': 'periampullary', 'Ra': 'Right', 'Rc': 'Rectosigmoid',
+         'Re': 'Rectum', 'Ri': 'Rib', 'Rp': 'Retroperitoneum', 'Sa': 'Saliva', 'Sb': 'Small',
+         'Sc': 'Scalp', 'Se': 'Serum', 'Sg': 'Salivary', 'Si': 'Small', 'Sk': 'Skin', 'Sm': 'Skeletal',
+         'Sn': 'Spine', 'So': 'Soft', 'Sp': 'Spleen', 'Sr': 'Serosa', 'Ss': 'Sinus', 'St': 'Stomach',
+         'Su': 'Sternum', 'Ta': 'Tail', 'Te': 'Testes', 'Tg': 'Thymic', 'Th': 'Thymus',
+         'Tn': 'Tonsil', 'To': 'Throat', 'Tr': 'Trachea', 'Tu': 'Tongue', 'Ty': 'Thyroid',
+         'Uc': 'Urachus', 'Ue': 'Ureter', 'Um': 'Umbilical', 'Up': 'Urine', 'Ur': 'Urethra',
+         'Us': 'Urine', 'Ut': 'Uterus', 'Uw': 'Urine', 'Vg': 'Vagina', 'Vu': 'Vulva', 'Wm': 'Worm'}
 
     return D
 
@@ -1702,8 +1697,10 @@ def get_library_design():
     D = {'WT': 'Whole Transcriptome', 'WG': 'Whole Genome', 'TS': 'Targeted Sequencing',
          'TR': 'Total RNA', 'SW': 'Shallow Whole Genome', 'SM': 'smRNA', 'SC': 'Single Cell',
          'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
-         'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq'}
-    
+         'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq',
+         'PG': 'Plasma Whole Genome', 'MC': 'Methylation Detection (C to T) ctDNA',
+         'MG': 'Methylation Detection (C to T) Whole Genome'}
+       
     return D
 
 
@@ -1918,9 +1915,9 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
             add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info)
         elif library_source == 'WT':
             add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info)
-        else:
+        elif library_source in ['WG', 'EX', 'TS', 'PG']:
             add_bamqc_metrics(FPR_info, file_swid, bamqc_info)
-        
+                
 
 def extract_cfmedipqc_data(cfmedipqc_db):
     '''
@@ -2562,45 +2559,9 @@ def get_library_tissue_types(files):
     D = {'Library Type': [], 'Tissue Type': [], 'Tissue Origin': []}
 
     # definitions are from the Configuration tab in MISO
-    tissue_types = {'X': 'Xenograft derived from some tumour. Note: may not necessarily be a mouse xenograft',
-                    'U': 'Unspecified', 'T': 'Unclassifed tumour', 'S': 'Serum from blood where clotting proteins have been removed',
-                    'R': 'Reference or non-tumour, non-diseased tissue sample. Typically used as a donor-specific comparison to a diseased tissue, usually a cancer',
-                    'P': 'Primary tumour', 'O': 'Organoid', 'n': 'Unknown', 'M': 'Metastatic tumour',
-                    'F': 'Fibroblast cells', 'E': 'Endothelial cells', 'C': 'Cell line derived from a tumour',
-                    'B': 'Benign tumour', 'A': 'Cells taken from Ascites fluid'}
-    tissue_origin = {'Ab': 'Abdomen', 'Ad': 'Adipose', 'Ae': 'Adnexa', 'Ag': 'Adrenal', 'An': 'Anus',
-                     'Ao': 'Anorectal', 'Ap': 'Appendix', 'As': 'Ascites', 'At': 'Astrocytoma', 'Av': 'Ampulla',
-                     'Ax': 'Axillary', 'Ba': 'Back', 'Bd': 'Bile', 'Bi': 'Biliary', 'Bl': 'Bladder',
-                     'Bm': 'Bone', 'Bn': 'Brain', 'Bo': 'Bone', 'Br': 'Breast', 'Bu': 'Buccal',
-                     'Bw': 'Bowel', 'Cb': 'Cord', 'Cc': 'Cecum', 'Ce': 'Cervix', 'Cf': 'Cell-Free', 'Ch': 'Chest',
-                     'Cj': 'Conjunctiva', 'Ck': 'Cheek', 'Cn': 'Central', 'Co': 'Colon', 'Cr': 'Colorectal',
-                     'Cs': 'Cul-de-sac', 'Ct': 'Circulating', 'Di': 'Diaphragm', 'Du': 'Duodenum',
-                     'En': 'Endometrial', 'Ep': 'Epidural', 'Es': 'Esophagus', 'Ey': 'Eye', 'Fa': 'Fallopian',
-                     'Fb': 'Fibroid', 'Fs': 'Foreskin', 'Ft': 'Foot', 'Ga': 'Gastric', 'Gb': 'Gallbladder',
-                     'Ge': 'Gastroesophageal', 'Gi': 'Gastrointestinal', 'Gj': 'Gastrojejunal', 'Gn': 'Gingiva',
-                     'Gt': 'Genital', 'Hp': 'Hypopharynx', 'Hr': 'Heart', 'Ic': 'ileocecum', 'Il': 'Ileum',
-                     'Ki': 'Kidney', 'La': 'Lacrimal', 'Lb': 'Limb', 'Le': 'Leukocyte', 'Lg': 'Leg',
-                     'Li': 'Large', 'Ln': 'Lymph', 'Lp': 'Lymphoblast', 'Lu': 'Lung', 'Lv': 'Liver', 
-                     'Lx': 'Larynx', 'Ly': 'Lymphocyte', 'Md': 'Mediastinum', 'Me': 'Mesenchyme', 'Mn': 'Mandible',
-                     'Mo': 'Mouth', 'Ms': 'Mesentary', 'Mu': 'Muscle', 'Mx': 'Maxilla', 'Nk': 'Neck',
-                     'nn': 'Unknown', 'No': 'Nose', 'Np': 'Nasopharynx', 'Oc': 'Oral', 'Om': 'Omentum',
-                     'Or': 'Orbit', 'Ov': 'Ovary', 'Pa': 'Pancreas', 'Pb': 'Peripheral', 'Pc': 'Pancreatobiliary',
-                     'Pd': 'Parathyroid', 'Pe': 'Pelvic', 'Pg': 'Parotid', 'Ph': 'Paratracheal', 'Pi': 'Penis',
-                     'Pl': 'Plasma', 'Pm': 'Peritoneum', 'Pn': 'Peripheral', 'Po': 'Peri-aorta', 'Pr': 'Prostate',
-                     'Pt': 'Palate', 'Pu': 'Pleura', 'Py': 'periampullary', 'Ra': 'Right', 'Rc': 'Rectosigmoid',
-                     'Re': 'Rectum', 'Ri': 'Rib', 'Rp': 'Retroperitoneum', 'Sa': 'Saliva', 'Sb': 'Small',
-                     'Sc': 'Scalp', 'Se': 'Serum', 'Sg': 'Salivary', 'Si': 'Small', 'Sk': 'Skin', 'Sm': 'Skeletal',
-                     'Sn': 'Spine', 'So': 'Soft', 'Sp': 'Spleen', 'Sr': 'Serosa', 'Ss': 'Sinus', 'St': 'Stomach',
-                     'Su': 'Sternum', 'Ta': 'Tail', 'Te': 'Testes', 'Tg': 'Thymic', 'Th': 'Thymus',
-                     'Tn': 'Tonsil', 'To': 'Throat', 'Tr': 'Trachea', 'Tu': 'Tongue', 'Ty': 'Thyroid',
-                     'Uc': 'Urachus', 'Ue': 'Ureter', 'Um': 'Umbilical', 'Up': 'Urine', 'Ur': 'Urethra',
-                     'Us': 'Urine', 'Ut': 'Uterus', 'Uw': 'Urine', 'Vg': 'Vagina', 'Vu': 'Vulva', 'Wm': 'Worm'}
-    library_design = {'WT': 'Whole Transcriptome', 'WG': 'Whole Genome', 'TS': 'Targeted Sequencing',
-                      'TR': 'Total RNA', 'SW': 'Shallow Whole Genome', 'SM': 'smRNA', 'SC': 'Single Cell',
-                      'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
-                      'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq',
-                      'PG': 'Plasma Whole Genome', 'MC': 'Methylation Detection (C to T) ctDNA',
-                      'MG': 'Methylation Detection (C to T) Whole Genome'}
+    tissue_types = get_tissue_types()
+    tissue_origin = get_tissue_origin()
+    library_design = get_library_design()
     
     for file_swid in files:
         D['Library Type'].extend(files[file_swid]['library_source'])
