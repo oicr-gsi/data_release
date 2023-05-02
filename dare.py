@@ -2396,17 +2396,42 @@ def generate_figures(files, project, library_source, platform, metrics, Y_axis, 
 
 
 
-def count_samples_with_missing_values(files, metrics):
+def get_library_metrics(library_type):
     '''
-    (dict, str, list) -> dict
+    (str) -> list
+    
+    Returns a list of metrics of interest for library_type if library_type is assigned specific metrics
+    and returns a list with read count only otherwise
+    
+    Parameters
+    ----------
+    - library_type (str): The Library code defined in MISO
+    '''
+    
+    metrics = {'CM': ['read_count', 'methylation_beta', 'CpG_enrichment'],
+               'WT': ['read_count', 'rRNA contamination', 'Coding (%)'],
+               'WG': ['read_count', 'coverage_dedup'],
+               'PG': ['read_count', 'coverage_dedup'],
+               'TS': ['read_count', 'coverage_dedup', 'on_target'],
+               'EX': ['read_count', 'coverage_dedup', 'on_target']}
+               
+    if library_type in metrics:
+        return metrics[library_type]
+    else:
+        return ['read_count']
+    
+
+
+def count_samples_with_missing_values(files):
+    '''
+    (dict) -> dict
     
     Returns a dictionary with the number of samples with missing metric values for
     each library type and instrument
     
-    Paraneters
+    Parameters
     ----------
     - files (dict): Dictionary with file info extracted from FPR and QC metrics extracted from qc-etl
-    - metrics (list): List of metrics of interest
     '''
     
     # count the number of samples with missing values for each instrument and library type
@@ -2415,6 +2440,8 @@ def count_samples_with_missing_values(files, metrics):
         platform = files[file_swid]['platform']
         sample = files[file_swid]['external_name']
         library_source = files[file_swid]['library_source'][0]
+        metrics = get_library_metrics(library_source)
+                       
         for i in metrics:
             if i in files[file_swid]:
                 if files[file_swid][i] == 'NA':
@@ -2845,20 +2872,16 @@ def write_batch_report(args):
     figure_files = {}
     metrics, Y_axis = {}, {}
     for library_source in libraries:
+        metrics[library_source] = get_library_metrics(library_source)
         if library_source == 'CM':
-            metrics[library_source] = ['read_count', 'methylation_beta', 'CpG_enrichment']
             Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
         elif library_source == 'WT':
-            metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
             Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
         elif library_source in ['WG', 'PG']:
-            metrics[library_source] = ['read_count', 'coverage_dedup']
             Y_axis[library_source] = ['Read pairs', 'Coverage']
         elif library_source in ['TS', 'EX']:
-            metrics[library_source] = ['read_count', 'coverage_dedup', 'on_target']
             Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
         else:
-            metrics[library_source] = ['read_count']
             Y_axis[library_source] = ['Read pairs']
         colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
         for platform in libraries[library_source]:
@@ -2868,7 +2891,7 @@ def write_batch_report(args):
             figure_files[library_source][platform] = figure
              
     # count the number of samples with missing metric values
-    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage_dedup', 'on_target'])
+    samples_missing_metrics = count_samples_with_missing_values(files)
     
     # issue warning if samples with missing QC metrics
     if samples_missing_metrics:
