@@ -19,8 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-#from weasyprint import HTML
-#from weasyprint import CSS
+from weasyprint import HTML
+from weasyprint import CSS
 
 
 
@@ -392,6 +392,7 @@ def create_working_dir(project, project_dir, project_name=None):
         name = project
 
     working_dir = os.path.join(project_dir, name)
+    
     os.makedirs(working_dir, exist_ok=True)
     return working_dir
     
@@ -918,7 +919,6 @@ def map_external_ids(args):
     sample_info = group_sample_info_mapping(files, args.timepoints, args.add_panel)        
     
     # write sample maps
-    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
     newfile = open(outputfile, 'w')
@@ -1926,13 +1926,13 @@ def add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info):
                     assert d['Barcodes'] == barcode
                     assert d['Run Alias'] == run_alias
                     qc_found = True
-                    FPR_info[file_swid]['Lambda methylation'] = d['Lambda']
-                    FPR_info[file_swid]['pUC19 methylation'] = d['pUC19']
+                    FPR_info[file_swid]['Lambda_methylation'] = d['Lambda']
+                    FPR_info[file_swid]['pUC19_methylation'] = d['pUC19']
                     FPR_info[file_swid]['percent_duplication'] = d['mark duplicates_PERCENT_DUPLICATION']
                     
     if library_source in ['MC', 'MG'] and qc_found == False:
-        FPR_info[file_swid]['Lambda methylation'] = 'NA'
-        FPR_info[file_swid]['pUC19 methylation'] = 'NA'
+        FPR_info[file_swid]['Lambda_methylation'] = 'NA'
+        FPR_info[file_swid]['pUC19_methylation'] = 'NA'
         FPR_info[file_swid]['percent_duplication'] = 'NA'
     
 
@@ -1962,7 +1962,7 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, e
         elif library_source in ['WG', 'EX', 'TS', 'PG']:
             add_bamqc_metrics(FPR_info, file_swid, bamqc_info)
         elif library_source in ['MC', 'MG']:
-            add_emseqqc_metrics(FPR_info, file_swid, emseqc_info)              
+            add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info)              
 
 def extract_cfmedipqc_data(cfmedipqc_db):
     '''
@@ -2528,7 +2528,9 @@ def get_library_metrics(library_type):
                'WG': ['read_count', 'coverage_dedup'],
                'PG': ['read_count', 'coverage_dedup'],
                'TS': ['read_count', 'coverage_dedup', 'on_target'],
-               'EX': ['read_count', 'coverage_dedup', 'on_target']}
+               'EX': ['read_count', 'coverage_dedup', 'on_target'],
+               'MC': ['read_count', 'Lambda_methylation', 'pUC19_methylation', 'percent_duplication'],
+               'MG': ['read_count', 'Lambda_methylation', 'pUC19_methylation', 'percent_duplication']}
                
     if library_type in metrics:
         return metrics[library_type]
@@ -2998,6 +3000,8 @@ def write_batch_report(args):
             Y_axis[library_source] = ['Read pairs', 'Coverage']
         elif library_source in ['TS', 'EX']:
             Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
+        elif library_source in ['MC', 'MG']:
+            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate'],
         else:
             Y_axis[library_source] = ['Read pairs']
         colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
