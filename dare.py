@@ -1811,7 +1811,7 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
 
 def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
     '''
-    (dict, dict) -> None
+    (dict, str, dict) -> None
     
     Update the information obtained from File Provenance Report in place with QC information
     collected from cfmedipqc for a given file determined by file_swid if library source is CM
@@ -1854,7 +1854,7 @@ def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
 
 def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
     '''
-    (dict, dict) -> None
+    (dict, str, dict) -> None
     
     Update the information obtained from File Provenance Report in place with QC information
     collected from cfmedipqc for a given file determined by file_swid if library source is CM
@@ -1891,11 +1891,54 @@ def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
         FPR_info[file_swid]['rRNA contamination'] = 'NA'
         FPR_info[file_swid]['Coding (%)'] = 'NA'
         FPR_info[file_swid]['Correct strand reads (%)'] = 'NA'
- 
 
-def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
+    
+
+
+
+def add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info):
     '''
-    (dict, dict, dict, dict) -> None
+    (dict, str, dict) -> None
+      
+    Update the information obtained from File Provenance Report in place with QC information
+    collected from emseqqc for a given file determined by file_swid if library source is MC or MG
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+    - file_swid (str): Unique file identifier
+    - emseqqc_info (dict): QC information for each paired fastq from the emseq QC db
+    '''
+        
+    qc_found = False
+    run_alias = FPR_info[file_swid]['run_id'][0]
+    limskey = FPR_info[file_swid]['limskey'][0]
+    barcode = FPR_info[file_swid]['barcode'][0]
+    lane = FPR_info[file_swid]['lane'][0]
+    library_source = FPR_info[file_swid]['library_source'][0]
+
+    # check that run in recorded in emseqc_db
+    if library_source in ['MC', 'MG'] and run_alias in emseqqc_info:
+        if limskey in emseqqc_info[run_alias]:
+            for d in emseqqc_info[run_alias][limskey]:
+                if d['Pinery Lims ID'] == limskey:
+                    assert int(d['Lane Number']) == int(lane)
+                    assert d['Barcodes'] == barcode
+                    assert d['Run Alias'] == run_alias
+                    qc_found = True
+                    FPR_info[file_swid]['Lambda methylation'] = d['Lambda']
+                    FPR_info[file_swid]['pUC19 methylation'] = d['pUC19']
+                    FPR_info[file_swid]['percent_duplication'] = d['mark duplicates_PERCENT_DUPLICATION']
+                    
+    if library_source in ['MC', 'MG'] and qc_found == False:
+        FPR_info[file_swid]['Lambda methylation'] = 'NA'
+        FPR_info[file_swid]['pUC19 methylation'] = 'NA'
+        FPR_info[file_swid]['percent_duplication'] = 'NA'
+    
+
+def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info):
+    '''
+    (dict, dict, dict, dict, dict) -> None
     
     Update the information obtained from File Provenance Report in place with information
     collected from the appropriate library source-specific QC db
@@ -1906,6 +1949,7 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
     - bamqc_info (dict): QC information for each paired fastq from the bamqc db
     - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedipqc db
     -rnaseqqc_info (dict) QC information for each paired fastqs from the rnaseqqc db
+    -emseqqc_info (dict) QC information for each paired fastqs from the emseqqc db
     '''
     
     for file_swid in FPR_info:
@@ -1917,7 +1961,8 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
             add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info)
         elif library_source in ['WG', 'EX', 'TS', 'PG']:
             add_bamqc_metrics(FPR_info, file_swid, bamqc_info)
-                
+        elif library_source in ['MC', 'MG']:
+            add_emseqqc_metrics(FPR_info, file_swid, emseqc_info)              
 
 def extract_cfmedipqc_data(cfmedipqc_db):
     '''
@@ -2926,9 +2971,11 @@ def write_batch_report(args):
     cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
     # collect information from rnaseq table
     rnaseqqc_info = extract_rnaseqqc_data(args.rnaseqqc_db)
+    # collect information from emseq cache
+    emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
 
     # update FPR info with QC metrics
-    map_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info)    
+    map_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
     
     # make a list of library types
     library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
