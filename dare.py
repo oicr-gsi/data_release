@@ -2648,6 +2648,8 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
                 library = fit_into_column(library, library_source)
             if len(sample) >= 40:
                 sample = fit_into_column(sample, library_source)
+            if len(groupid) >= 40:
+                groupid = fit_into_column(groupid, library_source)
             if len(group_description) >= 40:
                 group_description = fit_into_column(group_description, library_source)
                         
