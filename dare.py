@@ -2830,6 +2830,8 @@ def get_metrics_appendix(library_sources):
             qc_appendix['metrics'][library_type] = columns + ['{0}: {1}'.format('Coverage', definitions['Coverage'])]
         elif library_type == 'WT':
             qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']]
+        elif library_type in ['MC', 'MG']:
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']]
         else:
             qc_appendix['metrics'][library_type] = columns
         counter += 1
@@ -2979,12 +2981,13 @@ def write_batch_report(args):
     rnaseqqc_info = extract_rnaseqqc_data(args.rnaseqqc_db)
     # collect information from emseq cache
     emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
-
+    
     # update FPR info with QC metrics
     map_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
     
     # make a list of library types
     library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
+    
     # list all platforms for each library source
     libraries = {}
     for library_source in library_sources:
@@ -3005,7 +3008,7 @@ def write_batch_report(args):
         elif library_source in ['TS', 'EX']:
             Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
         elif library_source in ['MC', 'MG']:
-            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate'],
+            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
         else:
             Y_axis[library_source] = ['Read pairs']
         colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
