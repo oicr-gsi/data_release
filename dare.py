@@ -2793,7 +2793,11 @@ def metrics_definitions():
                    'rRNA contamination': 'Percentage of reads aligning to ribosomal sequences.',
                    'Library Id': 'OICR generated library identifier.',
                    'File prefix': 'The common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
-                   'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.'}
+                   'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.',
+                   '{0} methylation'.format(chr(955)): 'Ratio of methylated CpG over total CpG in the negative control',
+                   'pUC19 methylation': 'Ratio of methylated CpG over total CpG in the positive control',
+                   'Duplication rate': 'Percent duplication of Picard marked duplicates'}
+    
     return definitions
 
 
