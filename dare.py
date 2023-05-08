@@ -392,6 +392,7 @@ def create_working_dir(project, project_dir, project_name=None):
         name = project
 
     working_dir = os.path.join(project_dir, name)
+    
     os.makedirs(working_dir, exist_ok=True)
     return working_dir
     
@@ -918,7 +919,6 @@ def map_external_ids(args):
     sample_info = group_sample_info_mapping(files, args.timepoints, args.add_panel)        
     
     # write sample maps
-    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
     newfile = open(outputfile, 'w')
@@ -1811,7 +1811,7 @@ def add_bamqc_metrics(FPR_info, file_swid, bamqc_info):
 
 def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
     '''
-    (dict, dict) -> None
+    (dict, str, dict) -> None
     
     Update the information obtained from File Provenance Report in place with QC information
     collected from cfmedipqc for a given file determined by file_swid if library source is CM
@@ -1854,7 +1854,7 @@ def add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info):
 
 def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
     '''
-    (dict, dict) -> None
+    (dict, str, dict) -> None
     
     Update the information obtained from File Provenance Report in place with QC information
     collected from cfmedipqc for a given file determined by file_swid if library source is CM
@@ -1891,11 +1891,54 @@ def add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info):
         FPR_info[file_swid]['rRNA contamination'] = 'NA'
         FPR_info[file_swid]['Coding (%)'] = 'NA'
         FPR_info[file_swid]['Correct strand reads (%)'] = 'NA'
- 
 
-def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
+    
+
+
+
+def add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info):
     '''
-    (dict, dict, dict, dict) -> None
+    (dict, str, dict) -> None
+      
+    Update the information obtained from File Provenance Report in place with QC information
+    collected from emseqqc for a given file determined by file_swid if library source is MC or MG
+        
+    Parameters
+    ----------
+    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+    - file_swid (str): Unique file identifier
+    - emseqqc_info (dict): QC information for each paired fastq from the emseq QC db
+    '''
+        
+    qc_found = False
+    run_alias = FPR_info[file_swid]['run_id'][0]
+    limskey = FPR_info[file_swid]['limskey'][0]
+    barcode = FPR_info[file_swid]['barcode'][0]
+    lane = FPR_info[file_swid]['lane'][0]
+    library_source = FPR_info[file_swid]['library_source'][0]
+
+    # check that run in recorded in emseqc_db
+    if library_source in ['MC', 'MG'] and run_alias in emseqqc_info:
+        if limskey in emseqqc_info[run_alias]:
+            for d in emseqqc_info[run_alias][limskey]:
+                if d['Pinery Lims ID'] == limskey:
+                    assert int(d['Lane Number']) == int(lane)
+                    assert d['Barcodes'] == barcode
+                    assert d['Run Alias'] == run_alias
+                    qc_found = True
+                    FPR_info[file_swid]['Lambda_methylation'] = d['Lambda']
+                    FPR_info[file_swid]['pUC19_methylation'] = d['pUC19']
+                    FPR_info[file_swid]['percent_duplication'] = d['mark duplicates_PERCENT_DUPLICATION']
+                    
+    if library_source in ['MC', 'MG'] and qc_found == False:
+        FPR_info[file_swid]['Lambda_methylation'] = 'NA'
+        FPR_info[file_swid]['pUC19_methylation'] = 'NA'
+        FPR_info[file_swid]['percent_duplication'] = 'NA'
+    
+
+def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info):
+    '''
+    (dict, dict, dict, dict, dict) -> None
     
     Update the information obtained from File Provenance Report in place with information
     collected from the appropriate library source-specific QC db
@@ -1906,6 +1949,7 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
     - bamqc_info (dict): QC information for each paired fastq from the bamqc db
     - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedipqc db
     -rnaseqqc_info (dict) QC information for each paired fastqs from the rnaseqqc db
+    -emseqqc_info (dict) QC information for each paired fastqs from the emseqqc db
     '''
     
     for file_swid in FPR_info:
@@ -1917,7 +1961,8 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info):
             add_rnaseqqc_metrics(FPR_info, file_swid, rnaseqqc_info)
         elif library_source in ['WG', 'EX', 'TS', 'PG']:
             add_bamqc_metrics(FPR_info, file_swid, bamqc_info)
-                
+        elif library_source in ['MC', 'MG']:
+            add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info)              
 
 def extract_cfmedipqc_data(cfmedipqc_db):
     '''
@@ -2026,6 +2071,76 @@ def extract_rnaseqqc_data(rnaseqqc_db):
            
     return D
 
+
+def extract_emseqqc_data(emseqqc_db):
+    '''
+    (str) -> dict
+    
+    Returns a dictionary with project-level relevant information from the rnaseqqc table of qc-etl
+        
+    Parameters
+    ----------
+    - rnaseqqc_db (str): Path to the rnaseq SQLIte database generated by qc-etl
+    '''
+    
+    #conn = sqlite3.connect('prov_report_test.db')
+    conn = sqlite3.connect(emseqqc_db)
+    conn.row_factory = sqlite3.Row
+    # get all methylation data
+    data = conn.execute('select * from emseqqc_methylation_2').fetchall()
+    conn.close()
+    
+    # get clumns of interest
+    columns = ['Barcodes',
+               'Lane Number',
+               'Pinery Lims ID',
+               'Run Alias',
+               'Lambda',
+               'pUC19']
+               
+    D = {}
+
+    for i in data:
+        i = dict(i)
+        run = i['Run Alias']
+        if run not in D:
+            D[run] = {}
+        sample = i['Pinery Lims ID']
+        if sample not in D[run]:
+            D[run][sample] = []
+        d = {}
+        for j in columns:
+            try:
+                float(i[j])
+            except:
+                d[j] = i[j]
+            else:
+                d[j] = round(float(i[j]), 3)
+        D[run][sample].append(d)
+           
+    # add duplication rate 
+    conn = sqlite3.connect(emseqqc_db)
+    conn.row_factory = sqlite3.Row
+    data2 = conn.execute('select * from emseqqc_bamqc_2').fetchall()
+    conn.close()
+    
+    for i in data2:
+        i = dict(i)
+        run = i['Run Alias']
+        sample = i['Pinery Lims ID']
+        barcodes = i['Barcodes']
+        lane = i['Lane Number']
+        duplicate = i['mark duplicates_PERCENT_DUPLICATION']
+        
+        # find dict in D
+        assert run in D
+        assert sample in D[run]
+        for j in range(len(D[run][sample])):
+            if D[run][sample][j]['Barcodes'] == barcodes and D[run][sample][j]['Lane Number'] == lane and \
+                D[run][sample][j]['Pinery Lims ID'] == sample and D[run][sample][j]['Run Alias'] == run:
+                D[run][sample][j]['mark duplicates_PERCENT_DUPLICATION'] = duplicate    
+
+    return D
 
 
 def get_file_prefix(file):
@@ -2396,17 +2511,44 @@ def generate_figures(files, project, library_source, platform, metrics, Y_axis, 
 
 
 
-def count_samples_with_missing_values(files, metrics):
+def get_library_metrics(library_type):
     '''
-    (dict, str, list) -> dict
+    (str) -> list
+    
+    Returns a list of metrics of interest for library_type if library_type is assigned specific metrics
+    and returns a list with read count only otherwise
+    
+    Parameters
+    ----------
+    - library_type (str): The Library code defined in MISO
+    '''
+    
+    metrics = {'CM': ['read_count', 'methylation_beta', 'CpG_enrichment'],
+               'WT': ['read_count', 'rRNA contamination', 'Coding (%)'],
+               'WG': ['read_count', 'coverage_dedup'],
+               'PG': ['read_count', 'coverage_dedup'],
+               'TS': ['read_count', 'coverage_dedup', 'on_target'],
+               'EX': ['read_count', 'coverage_dedup', 'on_target'],
+               'MC': ['read_count', 'Lambda_methylation', 'pUC19_methylation', 'percent_duplication'],
+               'MG': ['read_count', 'Lambda_methylation', 'pUC19_methylation', 'percent_duplication']}
+               
+    if library_type in metrics:
+        return metrics[library_type]
+    else:
+        return ['read_count']
+    
+
+
+def count_samples_with_missing_values(files):
+    '''
+    (dict) -> dict
     
     Returns a dictionary with the number of samples with missing metric values for
     each library type and instrument
     
-    Paraneters
+    Parameters
     ----------
     - files (dict): Dictionary with file info extracted from FPR and QC metrics extracted from qc-etl
-    - metrics (list): List of metrics of interest
     '''
     
     # count the number of samples with missing values for each instrument and library type
@@ -2415,6 +2557,8 @@ def count_samples_with_missing_values(files, metrics):
         platform = files[file_swid]['platform']
         sample = files[file_swid]['external_name']
         library_source = files[file_swid]['library_source'][0]
+        metrics = get_library_metrics(library_source)
+                       
         for i in metrics:
             if i in files[file_swid]:
                 if files[file_swid][i] == 'NA':
@@ -2504,6 +2648,8 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
                 library = fit_into_column(library, library_source)
             if len(sample) >= 40:
                 sample = fit_into_column(sample, library_source)
+            if len(groupid) >= 40:
+                groupid = fit_into_column(groupid, library_source)
             if len(group_description) >= 40:
                 group_description = fit_into_column(group_description, library_source)
                         
@@ -2649,7 +2795,11 @@ def metrics_definitions():
                    'rRNA contamination': 'Percentage of reads aligning to ribosomal sequences.',
                    'Library Id': 'OICR generated library identifier.',
                    'File prefix': 'The common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
-                   'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.'}
+                   'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.',
+                   '{0} methylation'.format(chr(955)): 'Ratio of methylated CpG over total CpG in the negative control',
+                   'pUC19 methylation': 'Ratio of methylated CpG over total CpG in the positive control',
+                   'Duplication rate': 'Percent duplication of Picard marked duplicates'}
+    
     return definitions
 
 
@@ -2682,6 +2832,8 @@ def get_metrics_appendix(library_sources):
             qc_appendix['metrics'][library_type] = columns + ['{0}: {1}'.format('Coverage', definitions['Coverage'])]
         elif library_type == 'WT':
             qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']]
+        elif library_type in ['MC', 'MG']:
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']]
         else:
             qc_appendix['metrics'][library_type] = columns
         counter += 1
@@ -2829,12 +2981,15 @@ def write_batch_report(args):
     cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
     # collect information from rnaseq table
     rnaseqqc_info = extract_rnaseqqc_data(args.rnaseqqc_db)
-
+    # collect information from emseq cache
+    emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
+    
     # update FPR info with QC metrics
-    map_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info)    
+    map_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
     
     # make a list of library types
     library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
+    
     # list all platforms for each library source
     libraries = {}
     for library_source in library_sources:
@@ -2845,20 +3000,18 @@ def write_batch_report(args):
     figure_files = {}
     metrics, Y_axis = {}, {}
     for library_source in libraries:
+        metrics[library_source] = get_library_metrics(library_source)
         if library_source == 'CM':
-            metrics[library_source] = ['read_count', 'methylation_beta', 'CpG_enrichment']
             Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
         elif library_source == 'WT':
-            metrics[library_source] = ['read_count', 'rRNA contamination', 'Coding (%)']
             Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
         elif library_source in ['WG', 'PG']:
-            metrics[library_source] = ['read_count', 'coverage_dedup']
             Y_axis[library_source] = ['Read pairs', 'Coverage']
         elif library_source in ['TS', 'EX']:
-            metrics[library_source] = ['read_count', 'coverage_dedup', 'on_target']
             Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
+        elif library_source in ['MC', 'MG']:
+            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
         else:
-            metrics[library_source] = ['read_count']
             Y_axis[library_source] = ['Read pairs']
         colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
         for platform in libraries[library_source]:
@@ -2868,7 +3021,7 @@ def write_batch_report(args):
             figure_files[library_source][platform] = figure
              
     # count the number of samples with missing metric values
-    samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage_dedup', 'on_target'])
+    samples_missing_metrics = count_samples_with_missing_values(files)
     
     # issue warning if samples with missing QC metrics
     if samples_missing_metrics:
@@ -3715,6 +3868,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
     r_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
     r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
+    r_parser.add_argument('-eq', '--emseqqc', dest='emseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest', help='Path to the emseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest')
     r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
     r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
