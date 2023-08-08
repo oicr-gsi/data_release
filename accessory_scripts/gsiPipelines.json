@@ -1,4 +1,11 @@
 {
+	"umiCollapse": {
+		"Description" : "Sequence aligned through the UMI Collapse workflow",
+		"Workflows": {
+			"umiCollapse_CM": " DupRemovedAlignment"
+		},
+		"Title" : "UMI CollapseAlignments" 
+	},
 	"WGTS": {
 		"Description": "CallReady Aligned Whole Genome + Somatic Callers (Mutations, CopyNumber, StructuralVariants)\nAligned Whole Transcriptome, Gene Expression and Fusions",
 		"Workflows": {
