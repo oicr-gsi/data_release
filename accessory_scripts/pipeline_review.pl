@@ -61,6 +61,8 @@ if(! $$PIPELINES{$pipeline}){
 print STDERR "loading data from provenance for project $opts{project}, cases $opts{cases} for $opts{pipeline} pipeline\n";
 my %DATA=loadFPR(%opts);
 
+
+
 #(open my $TMP,">","dump.txt");
 #print $TMP Dumper($DATA{WORKFLOWS});
 #close $TMP;
@@ -86,20 +88,22 @@ for my $case(@{$opts{caselist}}){
 	my %BLOCKS;
 	#print "BLOCKS=". Dumper(%BLOCKS);<STDIN>;
 
+    my @pipes;
 	if($opts{pipeline} eq "WGTS"){
 		### to do, merge to a single set of blocks
 		%{$BLOCKS{WG}}=pipeline_blocks("WG",\%WORKFLOWS,$PIPELINES);
+		push(@pipes,"WG");
+
 		%{$BLOCKS{WT}}=pipeline_blocks("WT",\%WORKFLOWS,$PIPELINES);
+		push(@pipes,"WT");
+				
+	}else{
+		my $pipe=$opts{pipeline};
+		push(@pipes,$pipe);
+		%{$BLOCKS{$pipe}}=pipeline_blocks($pipe,\%WORKFLOWS,$PIPELINES);
 	}
-
-	if($opts{pipeline}eq "WG"){
-		%{$BLOCKS{WG}}=pipeline_blocks("WG",\%WORKFLOWS,$PIPELINES);
-	}
-
-	if($opts{pipeline}eq "WT"){
-		%{$BLOCKS{WT}}=pipeline_blocks("WT",\%WORKFLOWS,$PIPELINES);
-	}
-
+	print Dumper(%BLOCKS);
+	
 	print STDERR "generating report\n";
 	my $report_file=$opts{outdir} . "/" . $case . "_" . $opts{pipeline} . "_PIPELINE_REPORT.txt";
 	(open my $RPT,">",$report_file);
@@ -109,7 +113,7 @@ for my $case(@{$opts{caselist}}){
 	print $RPT "Case=$case\n";
 
 	my %dot;
-	for my $PIPE(qw/WG WT/){
+	for my $PIPE(@pipes){
 		my $blockcount=scalar keys %{$BLOCKS{$PIPE}};
 		print STDERR "$blockcount BLOCKS for $PIPE pipeline\n";
 
