@@ -3977,8 +3977,8 @@ def write_cumulative_report(args):
     
     # get the identifiers of all released files
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
-    
-    # group metrics by pairs of files
+    appendix_identifiers = get_identifiers_appendix(files)
+    # define identifier table header
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
     
@@ -4005,6 +4005,7 @@ def write_cumulative_report(args):
                'fastq_counts': fastq_counts,
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
+               'appendix_identifiers': appendix_identifiers,
                'ticket': os.path.basename(args.ticket),
                }
     
@@ -4017,7 +4018,7 @@ def write_cumulative_report(args):
     #            'samples_missing_metrics': samples_missing_metrics,
     #            'header_identifiers': header_identifiers,
     #            'sample_identifiers': sample_identifiers,
-    #            'appendix_identifiers': appendix_identifiers,
+    #            ,
     #            'header_metrics': header_metrics,
     #            'qc_metrics': qc_metrics,
     #            'qc_subtables': qc_subtables,
