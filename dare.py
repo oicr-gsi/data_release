@@ -3207,7 +3207,7 @@ def write_batch_report(args):
     template = environment.get_template("batch_report_template.html")
     
     # make a dict with project information
-    projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
+    projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
 
     # group metrics by pairs of files
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
@@ -3981,12 +3981,25 @@ def write_cumulative_report(args):
     # define identifier table header
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
-    
-    
-    
     # make a dict with project information
     projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
 
+    
+    # collect information from merged bamqc table
+    bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
+    # collect information from rnaseq table
+    rnaseqqc_info = extract_merged_rnaseqqc_data(args.merged_rnaseqqc_db)
+    # collect information from cfmedip table
+    cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
+    # collect information from emseq cache
+    emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
+    
+    # group identifiers, metrics by sample pair for emseqqc and cfmedipqc 
+    # or by merged libraries for bamqc and rnaseqc
+
+    
+    
+    
     
     
     
@@ -4049,17 +4062,6 @@ def write_cumulative_report(args):
     
     
     
-    # collect information from merged bamqc table
-    bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
-    # collect information from rnaseq table
-    rnaseqqc_info = extract_merged_rnaseqqc_data(args.merged_rnaseqqc_db)
-    # collect information from cfmedip table
-    cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
-    # collect information from emseq cache
-    emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
-    
-    print('extracted QC from qc-etl')
-    print('bamqc', len(bamqc_info))
     
     # update FPR info with QC metrics
     map_merged_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
@@ -4238,26 +4240,7 @@ def write_cumulative_report(args):
          #             print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
          #     print('========')        
          
-         # # write md5sums to separate file
-    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
-         # md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
-         # write_md5sum(files, md5sum_file)
-
-    # write report
-    # get the report template
-    environment = Environment(loader=FileSystemLoader("./templates/"))
-    template = environment.get_template("cumulative_report_template.html")
-         
-         # # template_dir = os.path.join(os.path.dirname(__file__), './templates')
-         # # environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
-         # # template = environment.get_template("batch_report_template.html")
-         
-    # make a dict with project information
-    projects = [{'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}]
-
-         # # group metrics by pairs of files
-         # header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']
-         
+       
        
          # sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
          # appendix_identifiers = get_identifiers_appendix(files)
