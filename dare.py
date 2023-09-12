@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-# from jinja2 import Environment, FileSystemLoader
-# from weasyprint import HTML
-# from weasyprint import CSS
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+from weasyprint import CSS
 
 
 
@@ -2789,6 +2789,7 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
     # find pairs of fastqs
     for platform in instruments:
         pairs = find_fastq_pairs(files, platform)
+        add_file_prefix(pairs)
         for i in pairs:
             # add comma to reads for readability
             case = i[0]['sample_name']
@@ -3938,6 +3939,10 @@ def write_cumulative_report(args):
     - keep_html (bool): Writes html report to file if True
     '''
     
+    
+    # get current time
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+        
     # get the project directory with release run folders
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     
@@ -3959,6 +3964,9 @@ def write_cumulative_report(args):
     for file_swid in to_remove:
         del files[file_swid]
     
+    # add time points
+    add_time_points(args.sample_provenance, files)
+        
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_library_type_instrument(files)
     all_released_files = 0 
@@ -3968,7 +3976,13 @@ def write_cumulative_report(args):
                 all_released_files += fastq_counts[i][j][k]
     
     # get the identifiers of all released files
-    sample_identifiers = group_sample_metrics(files, 'sample_identifiers', None, None)
+    sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
+    
+    # group metrics by pairs of files
+    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+    
+    
+    
     
     # make a dict with project information
     projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
@@ -3991,8 +4005,6 @@ def write_cumulative_report(args):
                'fastq_counts': fastq_counts,
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
-               'appendix_identifiers': appendix_identifiers,
-               'header_metrics': header_metrics,
                'ticket': os.path.basename(args.ticket),
                }
     
@@ -4019,15 +4031,8 @@ def write_cumulative_report(args):
     # render template html 
     content = template.render(context)
 
-    # save html file to disk
-    if args.keep_html:
-        html_file = os.path.join(working_dir, '{0}_run_level_data_release_report.{1}.html'.format(args.project, current_time))
-        newfile = open(html_file, 'w')
-        newfile.write(content)
-        newfile.close()
-
     # convert html to PDF
-    report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
+    report_file = os.path.join(working_dir,  '{0}_cumulative_data_release_report.{1}.pdf'.format(args.project, current_time))
     makepdf(content, report_file)
 
 
@@ -4176,7 +4181,6 @@ def write_cumulative_report(args):
         print('========')        
     
     # write md5sums to separate file
-    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
     write_md5sum(files, md5sum_file)
 
@@ -4706,9 +4710,11 @@ if __name__ == '__main__':
     c_parser.add_argument('-rq', '--rnaseqqc', dest='merged_rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2merged/latest', help='Path to the merged rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2merged/latest')
     c_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
     c_parser.add_argument('-eq', '--emseqqc', dest='emseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest', help='Path to the emseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest')
+    c_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
+    c_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
+    c_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
         
     
-    # r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     # r_parser.add_argument('-rn', '--rundirs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
     # r_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
     # r_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
@@ -4716,10 +4722,8 @@ if __name__ == '__main__':
     # r_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
     # r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     # r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
-    # r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     # r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
     # r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
-    # r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     # r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
     
     
