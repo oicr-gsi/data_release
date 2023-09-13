@@ -3761,8 +3761,273 @@ def get_merged_rnaseqqc_metrics(project, files, merged_rnaseqqc_info, library_so
     return metric_data
 
 
+def group_fastq_pairs(files):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with lists of fastq pairs for each instrument and library type
+    Pre-condition: fastqs are paired with R1 and R2
+    
+    Parameters
+    ----------
+    - files (dict): Dictionary with fastq information extracted from FPR
+    '''
+  
+    # find pairs of files for each library type and instrument
+    pairs = {}
+    instruments = list(set([files[file_swid]['platform'] for file_swid in files]))
+    for platform in instruments:
+        P = find_fastq_pairs(files, platform)
+        library_sources = list(set([i[0]['library_source'][0] for i in P]))
+        pairs[platform] = {}
+        for j in library_sources:
+            L = [i for i in P if i[0]['library_source'][0] == j]
+            add_file_prefix(L)
+            pairs[platform][j] = L
+    return pairs
 
-def get_metrics_cumulative_report(files, project, bamqc, rnaseqqc, cfmedipqc, emseqqc):
+
+def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
+    '''
+    (dict, dict, dict, str, str) -> None
+    
+    Update dictionary D with QC metrics from bamqc for fastq pairs sorted by instrument and library type
+    
+    Parameters
+    ----------
+    - D (dict): Dictionary with QC metrics and identifiers for each sequencing platform and library type
+    - pairs (dict): Dictionary of lists of fastq pairs for each sequencing platform and library type
+    - bamqc (dict): Dictionary with QC metrics from the merged bamqc cache 
+    - platform (str): Sequencing platform
+    - library_source (str): 2-letters code of library type
+    '''
+    
+    for i in bamqc:
+        merged_limskeys = sorted(bamqc[i]['Merged Pinery Lims ID'])            
+        # collect limkskeys from FPR records
+        L = []
+        readcount = []
+        prefix = []
+        
+        # collect read count for all fastqs
+        # track limskeys and file prefix for fastqs
+        for j in pairs[platform][library_source]:
+            for k in j:
+                limskey = k['limskey'][0]
+                if library_source == bamqc[i]['Library Design'] \
+                and platform == '_'.join(bamqc[i]['instrument'].split()) \
+                and limskey in merged_limskeys \
+                and k['groupid'] == bamqc[i]['Group ID']:
+                    assert k['sample_id'] == bamqc[i]['sample']
+                    readcount.append(k['read_count'])
+                    L.append(limskey)
+                    prefix.append(k['prefix'])
+        # check that all limskeys have been recorded
+        if sorted(list(set(L))) == sorted(merged_limskeys):
+            readcount = sum(readcount)
+            prefix = list(set(prefix))
+            libraries = bamqc[i]['library']
+            donor = bamqc[i]
+            coverage = round(bamqc[i]['coverage'], 2)
+            coverage_dedup = round(bamqc[i]['coverage deduplicated'], 2)
+            on_target = round(bamqc[i]['on_target'], 2)
+            percent_duplicate = round(bamqc[i]['mark duplicates_PERCENT_DUPLICATION'], 2)
+
+            d = {'readcount': readcount,
+                 'prefix': prefix,
+                 'libraries': libraries,
+                 'donor': donor,
+                 'coverage': coverage,
+                 'coverage_dedup': coverage_dedup,
+                 'on_target': on_target,
+                 'percent_duplicate': percent_duplicate}
+                                   
+            if platform not in D:
+                D[platform] = {}
+            if library_source not in D[platform]:
+                D[platform][library_source] = {}
+            assert i not in D[platform][library_source]
+            D[platform][library_source][i] = d
+    
+
+def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
+    '''
+    (dict, dict, dict, str, str) -> None
+    
+    Update dictionary D with QC metrics from rnaseqc for fastq pairs sorted by instrument and library type
+    
+    Parameters
+    ----------
+    - D (dict): Dictionary with QC metrics and identifiers for each sequencing platform and library type
+    - pairs (dict): Dictionary of lists of fastq pairs for each sequencing platform and library type
+    - rnaseqqc (dict): Dictionary with QC metrics from the merged rnaseqqc cache 
+    - platform (str): Sequencing platform
+    - library_source (str): 2-letters code of library type
+    '''
+    
+    for i in rnaseqqc:
+        merged_limskeys = sorted(rnaseqqc[i]['Merged Pinery Lims ID'])            
+        # collect limkskeys from FPR records
+        L = []
+        readcount = []
+        prefix = []
+        
+        # collect read count for all fastqs
+        # track limskeys and file prefix for fastqs
+        for j in pairs[platform][library_source]:
+            for k in j:
+                limskey = k['limskey'][0]
+                if library_source == rnaseqqc[i]['Library Design'] \
+                and platform == '_'.join(rnaseqqc[i]['instrument'].split()) \
+                and limskey in merged_limskeys \
+                and k['groupid'] == rnaseqqc[i]['Group ID']:
+                    assert k['sample_id'] == rnaseqqc[i]['sample']
+                    readcount.append(k['read_count'])
+                    L.append(limskey)
+                    prefix.append(k['prefix'])
+        # check that all limskeys have been recorded
+        if sorted(list(set(L))) == sorted(merged_limskeys):
+            readcount = sum(readcount)
+            prefix = list(set(prefix))
+            libraries = rnaseqqc[i]['library']
+            donor = rnaseqqc[i]
+            bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
+            contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
+            coding = rnaseqqc[i]['PCT_CODING_BASES']
+            strand = rnaseqqc[i]['PCT_CORRECT_STRAND_READS']
+
+            d = {'readcount': readcount,
+                 'prefix': prefix,
+                 'libraries': libraries,
+                 'donor': donor,
+                 "5'-3' bias": bias,
+                 'rRNA contamination': contamination,
+                 'Coding (%)': coding,
+                 'Correct strand reads (%)': strand}
+                     
+            if platform not in D:
+                D[platform] = {}
+            if library_source not in D[platform]:
+                D[platform][library_source] = {}
+            assert i not in D[platform][library_source]
+            D[platform][library_source][i] = d
+
+
+def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
+    '''
+    (dict, dict, dict, str, str) -> None
+    
+    Update dictionary D with QC metrics from cfmedipqc for fastq pairs sorted by instrument and library type
+    
+    Parameters
+    ----------
+    - D (dict): Dictionary with QC metrics and identifiers for each sequencing platform and library type
+    - pairs (dict): Dictionary of lists of fastq pairs for each sequencing platform and library type
+    - cfmedipqc (dict): Dictionary with QC metrics from the cfmedipqc cache 
+    - platform (str): Sequencing platform
+    - library_source (str): 2-letters code of library type
+    '''
+    
+    for i in pairs[platform][library_source]:
+        for j in i:
+            limskey = j['limskey'][0]
+            run = j['run_id'][0]
+            prefix = j['prefix']
+            readcount.append(j['read_count'])
+            barcode = j['barcode'][0]
+            lane = j['lane'][0]
+            library = j['library'][0]
+            donor = j['sample_name']
+            readcount = j['read_count']
+            if run in cfmedipqc and limskey in cfmedipqc[run]:
+                assert len(cfmedipqc[run][limskey]) == 1
+                d = cfmedipqc[run][limskey][0]
+                assert d['Pinery Lims ID'] == limskey
+                assert d['Run Alias'] == run
+                assert int(d['Lane Number']) == int(lane)
+                assert d['Barcodes'] == barcode
+                AT_dropout = d['AT Dropout']
+                methylation_beta = d['Methylation beta']
+                duplication = d['Percent Duplication']
+                CpG_enrichment = d['Relative CpG Frequency in Regions']
+                    
+                if platform not in D:
+                    D[platform] = {}
+                if library_source not in D[platform]:
+                    D[platform][library_source] = {}
+                if limskey in D[platform][library_source]:
+                    assert D[platform][library_source][limskey]['prefix'] == prefix
+                    D[platform][library_source][limskey]['readcount'] += readcount
+                else:
+                    D[platform][library_source][limskey] = {
+                        'readcount': readcount,
+                        'prefix': prefix,
+                        'libraries': library,
+                        'donor': donor,
+                        'AT_dropout': AT_dropout,
+                        'methylation_beta': methylation_beta,
+                        'duplication': duplication,
+                        'CpG_enrichment': CpG_enrichment
+                        }
+                        
+
+def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
+    '''
+    (dict, dict, dict, str, str) -> None
+    
+    Update dictionary D with QC metrics from emseqqc for fastq pairs sorted by instrument and library type
+    
+    Parameters
+    ----------
+    - D (dict): Dictionary with QC metrics and identifiers for each sequencing platform and library type
+    - pairs (dict): Dictionary of lists of fastq pairs for each sequencing platform and library type
+    - emseqqc (dict): Dictionary with QC metrics from the emseqqc cache 
+    - platform (str): Sequencing platform
+    - library_source (str): 2-letters code of library type
+    '''
+    
+    
+    for i in pairs[platform][library_source]:
+        for j in i:
+            limskey = j['limskey'][0]
+            run = j['run_id'][0]
+            prefix = j['prefix']
+            readcount.append(j['read_count'])
+            barcode = j['barcode'][0]
+            lane = j['lane'][0]
+            library = j['library'][0]
+            donor = j['sample_name']
+            readcount = j['read_count']
+            if run in emseqqc and limskey in emseqqc[run]:
+                assert len(emseqqc[run][limskey]) == 1
+                d = emseqqc[run][limskey][0]
+                assert d['Pinery Lims ID'] == limskey
+                assert d['Run Alias'] == run
+                assert int(d['Lane Number']) == int(lane)
+                assert d['Barcodes'] == barcode
+                Lambda_methylation = d['Lambda']
+                pUC19_methylation = d['pUC19']
+                percent_duplication = d['mark duplicates_PERCENT_DUPLICATION']
+
+                if platform not in D:
+                    D[platform] = {}
+                if library_source not in D[platform]:
+                    D[platform][library_source] = {}
+                if limskey in D[platform][library_source]:
+                    assert D[platform][library_source][limskey]['prefix'] == prefix
+                    D[platform][library_source][limskey]['readcount'] += readcount
+                else:
+                    D[platform][library_source][limskey] = {
+                        'readcount': readcount,
+                        'prefix': prefix,
+                        'libraries': library,
+                        'donor': donor,
+                        'Lambda_methylation': Lambda_methylation,
+                        'pUC19_methylation': pUC19_methylation,
+                        'percent_duplication': percent_duplication
+                        }
+    
+def get_metrics_cumulative_report(files, bamqc, rnaseqqc, cfmedipqc, emseqqc):
     '''
     
     
@@ -3770,154 +4035,28 @@ def get_metrics_cumulative_report(files, project, bamqc, rnaseqqc, cfmedipqc, em
     
     # organize metrics for cumulative report
     
-    data = {}
-    
-    #  get the identifiers from the bamqc  
-    for i in bamqc:
-        merged_limskeys = sorted(merged_bamqc_info[i]['Merged Pinery Lims ID'])
-        if merged_bamqc_info[i]['Project'] == project:
-            library_source = bamqc[i]['Library Design']
-            instrument = '_'.join(merged_bamqc_info[i]['instrument'].split())
-            # collect all limskeys from FPR data
-            L = []
-            read_count = []
-            for file_swid in files:
-                if files[file_swid]['limskey'][0] in merged_limskeys:
-                    L.append(files[file_swid]['limskey'][0])
-        
-                # check that all limskeys have been recorded
-                if sorted(list(set(L))) == sorted(merged_limskeys):
-                    pass
-   
-    
-    # {'library': ['CPCGMOH_0339_02_LB01-01',
-    #   'CPCGMOH_0339_02_LB02-01',
-    #   'CPCGMOH_0339_02_LB03-01'],
-    #  'Library Design': 'WG',
-    #  'Donor': 'CPCGMOH_0339',
-    #  'Project': 'CPCGMOH',
-    #  'Tissue Origin': 'Pr',
-    #  'Tissue Type': 'P',
-    #  'Group ID': '',
-    #  'sample': 'CPCGMOH_0339_Pr_P_WG',
-    #  'Merged Pinery Lims ID': ['6076_1_LDI86370',
-    #   '6076_1_LDI86371',
-    #   '6076_1_LDI86372',
-    #   '6076_2_LDI86370',
-    #   '6076_2_LDI86371',
-    #   '6076_2_LDI86372'],
-    #  'instrument': 'INJECT_Illumina',
-    #  'bases mapped': 220874148421,
-    #  'coverage': 67.8133505077365,
-    #  'coverage deduplicated': 61.02319972139684,
-    #  'mapped reads': 2220503731,
-    #  'mark duplicates_PERCENT_DUPLICATION': 0.10013,
-    #  'total bases on target': 9947914,
-    #  'total reads': 2220503731,
-    #  'on_target': 0.0}
-    
-    
-    
-    
-    
-    
-    
-def get_the_merged_lims_from_released_files(files, bamqc, rnaseqqc, cfmedipqc, emseqqc):
-    '''
-    
-    
-    
-    
-
-    Parameters
-    ----------
-    files : TYPE
-        DESCRIPTION.
-    bamqc : TYPE
-        DESCRIPTION.
-    rnaseqqc : TYPE
-        DESCRIPTION.
-    cfmedipqc : TYPE
-        DESCRIPTION.
-    emseqqc : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    None.
-
-    '''    
-
-    # get the limskeys for each library source
     D = {}
-    for fileswid in files:
-        if files:
-            pass
-
-
-
-
-
-
-
-# {'workflow': 'bcl2fastq',
-#  'file_path': '/.mounts/labs/prod/vidarr/output-research/55b1/e144/efa6/55b1e144efa6dce2e456ac583e24cdb3e7d7e8edcc3d28a2b759b7b46a7c55ac/HCCCFD_0028_Ly_R_PE_492_WG_221007_M00753_0490_000000000-DHC9M_1_TACGCTAC-ATCACACG_R1.fastq.gz',
-#  'file_name': 'HCCCFD_0028_Ly_R_PE_492_WG_221007_M00753_0490_000000000-DHC9M_1_TACGCTAC-ATCACACG_R1.fastq.gz',
-#  'sample_name': 'HCCCFD_0028',
-#  'creation_date': 1665225413,
-#  'platform': 'Illumina_MiSeq',
-#  'md5': '84dff43bb0d65764e6d1741d84726b53',
-#  'workflow_run_id': '55b1e144efa6dce2e456ac583e24cdb3e7d7e8edcc3d28a2b759b7b46a7c55ac',
-#  'workflow_version': '3.1.3',
-#  'file_swid': 'vidarr:research/file/56b62b94a580e9c53caa3d155c2ba962fc493747ee1236755cb49bbd3c5ca868',
-#  'external_name': 'HCC-B-028,HCC-ctDNA-028',
-#  'panel': 'NA',
-#  'library_source': ['WG'],
-#  'parent_sample': ['HCCCFD_0028_Ly_R_PE_492_WG'],
-#  'run_id': ['221007_M00753_0490_000000000-DHC9M'],
-#  'run': ['221007_M00753_0490_000000000-DHC9M_lane_1'],
-#  'limskey': ['6155_1_LDI89679'],
-#  'aliquot': ['LDI89679'],
-#  'library': ['HCCCFD_0028_Ly_R_PE_492_WG'],
-#  'barcode': ['TACGCTAC-ATCACACG'],
-#  'tissue_type': ['R'],
-#  'tissue_origin': ['Ly'],
-#  'groupdesc': ['HCC-B-028-T0-R'],
-#  'groupid': ['HCC-B-028-T0-R'],
-#  'read_count': 21753,
-#  'sample_id': ['HCCCFD_0028_Ly_R_WG_HCC-B-028-T0-R'],
-#  'lane': ['1'],
-#  'coverage': 'NA',
-#  'coverage_dedup': 'NA',
-#  'on_target': 'NA',
-#  'percent_duplicate': 'NA'}
-
-
-#  {'library': ['CPCGMOH_0339_02_LB01-01',
-#    'CPCGMOH_0339_02_LB02-01',
-#    'CPCGMOH_0339_02_LB03-01'],
-#   'Library Design': 'WG',
-#   'Donor': 'CPCGMOH_0339',
-#   'Project': 'CPCGMOH',
-#   'Tissue Origin': 'Pr',
-#   'Tissue Type': 'P',
-#   'Group ID': '',
-#   'sample': 'CPCGMOH_0339_Pr_P_WG',
-#   'Merged Pinery Lims ID': ['6076_1_LDI86370',
-#    '6076_1_LDI86371',
-#    '6076_1_LDI86372',
-#    '6076_2_LDI86370',
-#    '6076_2_LDI86371',
-#    '6076_2_LDI86372'],
-#   'instrument': 'INJECT_Illumina',
-#   'bases mapped': 220874148421,
-#   'coverage': 67.8133505077365,
-#   'coverage deduplicated': 61.02319972139684,
-#   'mapped reads': 2220503731,
-#   'mark duplicates_PERCENT_DUPLICATION': 0.10013,
-#   'total bases on target': 9947914,
-#   'total reads': 2220503731,
-#   'on_target': 0.0}
+    
+    # find pairs of files for each library type and instrument
+    pairs = group_fastq_pairs(files)
+        
+    # Group metrics by platform and library type
+    for platform in pairs:
+        for library_source in pairs[platform]:
+            if library_source not in ['CM', 'WT', 'MC', 'MG']:
+                # use the bamqc merged cache
+                collect_bamqc_metrics(D, pairs, bamqc, platform, library_source)
+            elif library_source == 'WT':
+                # use the rnaseqc merged cache
+                collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source)
+            elif library_source in ['MC', 'MG']:
+                # use the lane level emseqqc cache
+                collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source)
+            elif library_source == 'CM':
+                # use the lane level cfmedip cache
+                collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source)
+    
+    return D                
 
 
 def write_cumulative_report(args):
@@ -3994,16 +4133,10 @@ def write_cumulative_report(args):
     # collect information from emseq cache
     emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
     
-    # group identifiers, metrics by sample pair for emseqqc and cfmedipqc 
-    # or by merged libraries for bamqc and rnaseqc
-
+    # group identifiers, metrics by instrument and library type
+    metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
     
-    
-    
-    
-    
-    
-    
+      
     # write report
     # get the report template
     template_dir = os.path.join(os.path.dirname(__file__), './templates')
