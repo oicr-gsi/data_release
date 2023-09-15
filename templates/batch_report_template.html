@@ -23,12 +23,11 @@
      <th>Project Name</th>
      <th>Date</th>     
    </tr>   
-   {% for i in projects %}   
-     <tr>       
-       <td> {{ i['acronym'] }} </td>
-       <td> {{ i['name'] }} </td>        
-       <td> {{ i['date'] }} </td>
-     </tr>
+   <tr>       
+    <td> {{ projects['acronym'] }} </td>
+    <td> {{ projects['name'] }} </td>        
+    <td> {{ projects['date'] }} </td>
+   </tr>
    {% endfor %}   
    </table>
     
