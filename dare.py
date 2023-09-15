@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-# from jinja2 import Environment, FileSystemLoader
-# from weasyprint import HTML
-# from weasyprint import CSS
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+from weasyprint import CSS
 
 
 
@@ -2194,10 +2194,15 @@ def extract_rnaseqqc_data(rnaseqqc_db):
     
     #conn = sqlite3.connect('prov_report_test.db')
     conn = sqlite3.connect(rnaseqqc_db)
-    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
     
-    # get all data
-    data = conn.execute('select * from rnaseqqc2_rnaseqqc2_2').fetchall()
+    # get table name
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    table_name = [i[0] for i in cur][0]
+    
+    # get all data from table
+    conn.row_factory = sqlite3.Row
+    data = conn.execute('select * from {0}'.format(table_name)).fetchall()
     conn.close()
     
     # get clumns of interest
