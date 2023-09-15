@@ -104,5 +104,37 @@
     {% endfor %}
   </ul>
 
+  <p style="page-break-after: always;"></p>
+
+  <h2>3. QC metrics</h2>
+  <p>Provides QC metrics about the raw sequences of each sample.</p>
+   
+  {% for library_source in library_sources %}
+
+  <h3>{{qc_subtables[library_source]}}</h3>   
+
+  <table id="info_table", style="font-size: 12px;">
+   <tr>
+     {% for i in header_metrics[library_source] %}
+         <th>{{i}}</th>
+     {% endfor %}
+   </tr>   
+   <tr>   
+   {% for instrument in qc_metrics %}
+   </tr>
+       {% for i in qc_metrics[instrument][library_source] %}
+         <tr>
+           {% for j in i %}          
+             <td> {{j}} </td>
+           {% endfor %}
+         </tr>        
+       {% endfor %}               
+  {% endfor %}
+</table>
+
+
+  {% endfor %}
+
+
 </body>
 </html>

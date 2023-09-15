@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+# from jinja2 import Environment, FileSystemLoader
+# from weasyprint import HTML
+# from weasyprint import CSS
 
 
 
@@ -2000,131 +2000,131 @@ def map_QC_metrics_to_fpr(FPR_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, e
 
 
 
-def add_merged_rnaseqqc_metrics(FPR_info, file_swid, merged_rnaseqqc_info):
-    '''
-    (dict, str, dict) -> None
+# def add_merged_rnaseqqc_metrics(FPR_info, file_swid, merged_rnaseqqc_info):
+#     '''
+#     (dict, str, dict) -> None
     
-    Update the information obtained from File Provenance Report in place with QC information
-    collected from merged rnaseqqc cache for a given file determined by file_swid if library source is WT
+#     Update the information obtained from File Provenance Report in place with QC information
+#     collected from merged rnaseqqc cache for a given file determined by file_swid if library source is WT
     
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - file_swid (str): Unique file identifier
-    - merged_rnaseqqc_info (dict): QC information for each paired fastq from the merged rnaseq QC db
-    '''
+#     Parameters
+#     ----------
+#     - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+#     - file_swid (str): Unique file identifier
+#     - merged_rnaseqqc_info (dict): QC information for each paired fastq from the merged rnaseq QC db
+#     '''
     
-    run_alias = FPR_info[file_swid]['run_id'][0]
-    limskey = FPR_info[file_swid]['limskey'][0]
-    barcode = FPR_info[file_swid]['barcode'][0]
-    lane = FPR_info[file_swid]['lane'][0]
-    library_source = FPR_info[file_swid]['library_source'][0]
-    groupid = FPR_info[file_swid]['groupid'][0]
-    # get all the merged limskeys containing the fastq limskey
-    merged_limskeys = [i for i in merged_rnaseqqc_info.keys() if limskey in i]
+#     run_alias = FPR_info[file_swid]['run_id'][0]
+#     limskey = FPR_info[file_swid]['limskey'][0]
+#     barcode = FPR_info[file_swid]['barcode'][0]
+#     lane = FPR_info[file_swid]['lane'][0]
+#     library_source = FPR_info[file_swid]['library_source'][0]
+#     groupid = FPR_info[file_swid]['groupid'][0]
+#     # get all the merged limskeys containing the fastq limskey
+#     merged_limskeys = [i for i in merged_rnaseqqc_info.keys() if limskey in i]
     
-    qc_found = 0
+#     qc_found = 0
     
-    # check that run in recorded in rnaseqqc_db
-    if library_source == 'WT':
-        for i in merged_limskeys:
-            if groupid == merged_rnaseqqc_info[i]['Group ID']:
-                qc_found +=1
-                assert qc_found == 1
-                assert FPR_info[file_swid]['tissue_type'][0] == merged_rnaseqqc_info[i]['Tissue Type']
-                assert FPR_info[file_swid]['tissue_origin'][0] == merged_rnaseqqc_info[i]['Tissue Origin']
-                FPR_info[file_swid]["5'-3' bias"] = merged_rnaseqqc_info[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
-                FPR_info[file_swid]['rRNA contamination'] = round((merged_rnaseqqc_info[i]['rrna contamination properly paired'] / merged_rnaseqqc_info[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
-                FPR_info[file_swid]['Coding (%)'] = merged_rnaseqqc_info[i]['PCT_CODING_BASES']
-                FPR_info[file_swid]['Correct strand reads (%)'] = merged_rnaseqqc_info[i]['PCT_CORRECT_STRAND_READS']
+#     # check that run in recorded in rnaseqqc_db
+#     if library_source == 'WT':
+#         for i in merged_limskeys:
+#             if groupid == merged_rnaseqqc_info[i]['Group ID']:
+#                 qc_found +=1
+#                 assert qc_found == 1
+#                 assert FPR_info[file_swid]['tissue_type'][0] == merged_rnaseqqc_info[i]['Tissue Type']
+#                 assert FPR_info[file_swid]['tissue_origin'][0] == merged_rnaseqqc_info[i]['Tissue Origin']
+#                 FPR_info[file_swid]["5'-3' bias"] = merged_rnaseqqc_info[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
+#                 FPR_info[file_swid]['rRNA contamination'] = round((merged_rnaseqqc_info[i]['rrna contamination properly paired'] / merged_rnaseqqc_info[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
+#                 FPR_info[file_swid]['Coding (%)'] = merged_rnaseqqc_info[i]['PCT_CODING_BASES']
+#                 FPR_info[file_swid]['Correct strand reads (%)'] = merged_rnaseqqc_info[i]['PCT_CORRECT_STRAND_READS']
 
-    if library_source == 'WT' and qc_found == 0:
-        FPR_info[file_swid]["5'-3' bias"] = 'NA'
-        FPR_info[file_swid]['rRNA contamination'] = 'NA'
-        FPR_info[file_swid]['Coding (%)'] = 'NA'
-        FPR_info[file_swid]['Correct strand reads (%)'] = 'NA'
+#     if library_source == 'WT' and qc_found == 0:
+#         FPR_info[file_swid]["5'-3' bias"] = 'NA'
+#         FPR_info[file_swid]['rRNA contamination'] = 'NA'
+#         FPR_info[file_swid]['Coding (%)'] = 'NA'
+#         FPR_info[file_swid]['Correct strand reads (%)'] = 'NA'
 
 
 
-def add_merged_bamqc_metrics(FPR_info, file_swid, merged_bamqc_info):
-    '''
-    (dict, str, dict) -> None
+# def add_merged_bamqc_metrics(FPR_info, file_swid, merged_bamqc_info):
+#     '''
+#     (dict, str, dict) -> None
     
-    Update the information obtained from File Provenance Report in place with QC information
-    collected from bamqc for a given file determined by file_swid if appropriate library 
+#     Update the information obtained from File Provenance Report in place with QC information
+#     collected from bamqc for a given file determined by file_swid if appropriate library 
        
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - file_swid (str): Unique file identifier
-    - merged_bamqc_info (dict): QC information from the merged bamqc table
-    '''
+#     Parameters
+#     ----------
+#     - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+#     - file_swid (str): Unique file identifier
+#     - merged_bamqc_info (dict): QC information from the merged bamqc table
+#     '''
     
-    limskey = FPR_info[file_swid]['limskey'][0]
-    run_alias = FPR_info[file_swid]['run_id'][0]
-    sample_id = FPR_info[file_swid]['sample_id'][0]
-    barcode = FPR_info[file_swid]['barcode'][0]
-    lane = FPR_info[file_swid]['lane'][0]
-    library_source = FPR_info[file_swid]['library_source'][0]
-    instrument = FPR_info[file_swid]['platform'].replace('_', ' ')
-    library = FPR_info[file_swid]['library'][0]
-    groupid = FPR_info[file_swid]['groupid'][0]
-    # get all the merged limskeys containing the fastq limskey
-    merged_limskeys = [i for i in merged_bamqc_info.keys() if limskey in i]
+#     limskey = FPR_info[file_swid]['limskey'][0]
+#     run_alias = FPR_info[file_swid]['run_id'][0]
+#     sample_id = FPR_info[file_swid]['sample_id'][0]
+#     barcode = FPR_info[file_swid]['barcode'][0]
+#     lane = FPR_info[file_swid]['lane'][0]
+#     library_source = FPR_info[file_swid]['library_source'][0]
+#     instrument = FPR_info[file_swid]['platform'].replace('_', ' ')
+#     library = FPR_info[file_swid]['library'][0]
+#     groupid = FPR_info[file_swid]['groupid'][0]
+#     # get all the merged limskeys containing the fastq limskey
+#     merged_limskeys = [i for i in merged_bamqc_info.keys() if limskey in i]
   
-    qc_found = 0
+#     qc_found = 0
   
-    excluded_libraries = ['CM', 'WT', 'MC', 'MG']
+#     excluded_libraries = ['CM', 'WT', 'MC', 'MG']
       
-    # check that run in recorded in rnaseqqc_db
-    if library_source not in excluded_libraries:
-        for i in merged_limskeys:
-            if groupid == merged_bamqc_info[i]['Group ID']:
-                assert sample_id == merged_bamqc_info[i]['sample']
-                qc_found +=1
-                assert qc_found == 1
-                assert FPR_info[file_swid]['tissue_type'][0] == merged_bamqc_info[i]['Tissue Type']
-                assert FPR_info[file_swid]['tissue_origin'][0] == merged_bamqc_info[i]['Tissue Origin']
-                assert instrument  == merged_bamqc_info[i]['instrument']
-                FPR_info[file_swid]['coverage'] = round(merged_bamqc_info[i]['coverage'], 2)
-                FPR_info[file_swid]['coverage_dedup'] = round(merged_bamqc_info[i]['coverage deduplicated'], 2)
-                FPR_info[file_swid]['on_target'] = round(merged_bamqc_info[i]['on_target'], 2)                
-                FPR_info[file_swid]['percent_duplicate'] = round(merged_bamqc_info[i]['mark duplicates_PERCENT_DUPLICATION'], 2)
+#     # check that run in recorded in rnaseqqc_db
+#     if library_source not in excluded_libraries:
+#         for i in merged_limskeys:
+#             if groupid == merged_bamqc_info[i]['Group ID']:
+#                 assert sample_id == merged_bamqc_info[i]['sample']
+#                 qc_found +=1
+#                 assert qc_found == 1
+#                 assert FPR_info[file_swid]['tissue_type'][0] == merged_bamqc_info[i]['Tissue Type']
+#                 assert FPR_info[file_swid]['tissue_origin'][0] == merged_bamqc_info[i]['Tissue Origin']
+#                 assert instrument  == merged_bamqc_info[i]['instrument']
+#                 FPR_info[file_swid]['coverage'] = round(merged_bamqc_info[i]['coverage'], 2)
+#                 FPR_info[file_swid]['coverage_dedup'] = round(merged_bamqc_info[i]['coverage deduplicated'], 2)
+#                 FPR_info[file_swid]['on_target'] = round(merged_bamqc_info[i]['on_target'], 2)                
+#                 FPR_info[file_swid]['percent_duplicate'] = round(merged_bamqc_info[i]['mark duplicates_PERCENT_DUPLICATION'], 2)
                     
-    if library_source not in excluded_libraries and qc_found == 0:
-        FPR_info[file_swid]['coverage'] = 'NA'
-        FPR_info[file_swid]['coverage_dedup'] = 'NA'
-        FPR_info[file_swid]['on_target'] = 'NA'                
-        FPR_info[file_swid]['percent_duplicate'] = 'NA'
+#     if library_source not in excluded_libraries and qc_found == 0:
+#         FPR_info[file_swid]['coverage'] = 'NA'
+#         FPR_info[file_swid]['coverage_dedup'] = 'NA'
+#         FPR_info[file_swid]['on_target'] = 'NA'                
+#         FPR_info[file_swid]['percent_duplicate'] = 'NA'
 
 
-def map_merged_QC_metrics_to_fpr(FPR_info, merged_bamqc_info, cfmedipqc_info, merged_rnaseqqc_info, emseqqc_info):
-    '''
-    (dict, dict, dict, dict, dict) -> None
+# def map_merged_QC_metrics_to_fpr(FPR_info, merged_bamqc_info, cfmedipqc_info, merged_rnaseqqc_info, emseqqc_info):
+#     '''
+#     (dict, dict, dict, dict, dict) -> None
     
-    Update the information obtained from File Provenance Report in place with information
-    collected from the appropriate library source-specific QC db
+#     Update the information obtained from File Provenance Report in place with information
+#     collected from the appropriate library source-specific QC db
     
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - merged_bamqc_info (dict): QC information for each paired fastq from the merged bamqc db
-    - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedipqc db
-    - merged_rnaseqqc_info (dict): QC information for each paired fastqs from the merged rnaseqqc db
-    - emseqqc_info (dict): QC information for each paired fastqs from the emseqqc db
-    '''
+#     Parameters
+#     ----------
+#     - FPR_info (dict): Information for each released fastq collected from File Provenance Report
+#     - merged_bamqc_info (dict): QC information for each paired fastq from the merged bamqc db
+#     - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedipqc db
+#     - merged_rnaseqqc_info (dict): QC information for each paired fastqs from the merged rnaseqqc db
+#     - emseqqc_info (dict): QC information for each paired fastqs from the emseqqc db
+#     '''
     
-    for file_swid in FPR_info:
-        # check library source
-        library_source = FPR_info[file_swid]['library_source'][0]
-        if library_source == 'CM':
-            add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info)
-        elif library_source in ['MC', 'MG']:
-            add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info)              
-        elif library_source == 'WT':
-            add_merged_rnaseqqc_metrics(FPR_info, file_swid, merged_rnaseqqc_info)
-        elif library_source in ['WG', 'EX', 'TS', 'PG']:
-            add_merged_bamqc_metrics(FPR_info, file_swid, merged_bamqc_info)
+#     for file_swid in FPR_info:
+#         # check library source
+#         library_source = FPR_info[file_swid]['library_source'][0]
+#         if library_source == 'CM':
+#             add_cfmedipqc_metrics(FPR_info, file_swid, cfmedipqc_info)
+#         elif library_source in ['MC', 'MG']:
+#             add_emseqqc_metrics(FPR_info, file_swid, emseqqc_info)              
+#         elif library_source == 'WT':
+#             add_merged_rnaseqqc_metrics(FPR_info, file_swid, merged_rnaseqqc_info)
+#         elif library_source in ['WG', 'EX', 'TS', 'PG']:
+#             add_merged_bamqc_metrics(FPR_info, file_swid, merged_bamqc_info)
         
 
 def extract_cfmedipqc_data(cfmedipqc_db):
@@ -2917,7 +2917,7 @@ def get_identifiers_appendix(files):
 
 
 
-def get_mqc_metrics_table_names(library_sources):
+def get_qc_metrics_table_names(library_sources):
     '''
     (list) -> dict
     
@@ -3225,7 +3225,7 @@ def write_batch_report(args):
     
     
     # get the qc metrics subtables
-    qc_subtables = get_mqc_metrics_table_names(library_sources)
+    qc_subtables = get_qc_metrics_table_names(library_sources)
     # get the metrics appendix
     qc_appendices = get_metrics_appendix(library_sources)
     
@@ -3817,8 +3817,8 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
                 if library_source == bamqc[i]['Library Design'] \
                 and platform == '_'.join(bamqc[i]['instrument'].split()) \
                 and limskey in merged_limskeys \
-                and k['groupid'] == bamqc[i]['Group ID']:
-                    assert k['sample_id'] == bamqc[i]['sample']
+                and k['groupid'][0] == bamqc[i]['Group ID']:
+                    assert k['sample_id'][0] == bamqc[i]['sample']
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
@@ -3827,13 +3827,13 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
             readcount = sum(readcount)
             prefix = list(set(prefix))
             libraries = bamqc[i]['library']
-            donor = bamqc[i]
+            donor = bamqc[i]['Donor']
             coverage = round(bamqc[i]['coverage'], 2)
             coverage_dedup = round(bamqc[i]['coverage deduplicated'], 2)
             on_target = round(bamqc[i]['on_target'], 2)
             percent_duplicate = round(bamqc[i]['mark duplicates_PERCENT_DUPLICATION'], 2)
 
-            d = {'readcount': readcount,
+            d = {'read_count': readcount,
                  'prefix': prefix,
                  'libraries': libraries,
                  'donor': donor,
@@ -3878,10 +3878,8 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
             for k in j:
                 limskey = k['limskey'][0]
                 if library_source == rnaseqqc[i]['Library Design'] \
-                and platform == '_'.join(rnaseqqc[i]['instrument'].split()) \
                 and limskey in merged_limskeys \
-                and k['groupid'] == rnaseqqc[i]['Group ID']:
-                    assert k['sample_id'] == rnaseqqc[i]['sample']
+                and k['groupid'][0] == rnaseqqc[i]['Group ID']:
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
@@ -3890,13 +3888,13 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
             readcount = sum(readcount)
             prefix = list(set(prefix))
             libraries = rnaseqqc[i]['library']
-            donor = rnaseqqc[i]
+            donor = rnaseqqc[i]['Donor']
             bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
             contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
             coding = rnaseqqc[i]['PCT_CODING_BASES']
             strand = rnaseqqc[i]['PCT_CORRECT_STRAND_READS']
 
-            d = {'readcount': readcount,
+            d = {'read_count': readcount,
                  'prefix': prefix,
                  'libraries': libraries,
                  'donor': donor,
@@ -3933,7 +3931,6 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
             limskey = j['limskey'][0]
             run = j['run_id'][0]
             prefix = j['prefix']
-            readcount.append(j['read_count'])
             barcode = j['barcode'][0]
             lane = j['lane'][0]
             library = j['library'][0]
@@ -3957,10 +3954,10 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                     D[platform][library_source] = {}
                 if limskey in D[platform][library_source]:
                     assert D[platform][library_source][limskey]['prefix'] == prefix
-                    D[platform][library_source][limskey]['readcount'] += readcount
+                    D[platform][library_source][limskey]['read_count'] += readcount
                 else:
                     D[platform][library_source][limskey] = {
-                        'readcount': readcount,
+                        'read_count': readcount,
                         'prefix': prefix,
                         'libraries': library,
                         'donor': donor,
@@ -3992,7 +3989,6 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
             limskey = j['limskey'][0]
             run = j['run_id'][0]
             prefix = j['prefix']
-            readcount.append(j['read_count'])
             barcode = j['barcode'][0]
             lane = j['lane'][0]
             library = j['library'][0]
@@ -4015,10 +4011,10 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                     D[platform][library_source] = {}
                 if limskey in D[platform][library_source]:
                     assert D[platform][library_source][limskey]['prefix'] == prefix
-                    D[platform][library_source][limskey]['readcount'] += readcount
+                    D[platform][library_source][limskey]['read_count'] += readcount
                 else:
                     D[platform][library_source][limskey] = {
-                        'readcount': readcount,
+                        'read_count': readcount,
                         'prefix': prefix,
                         'libraries': library,
                         'donor': donor,
@@ -4029,8 +4025,17 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
     
 def get_metrics_cumulative_report(files, bamqc, rnaseqqc, cfmedipqc, emseqqc):
     '''
+    (dict, dict, dict, dict, dict) -> dict
     
+    Returns a dictionary with identifiers and QC metrics extracted from the QC-etl caches
     
+    Parameters
+    ----------
+    - files (dict): Fastq information extracted from FPR
+    - bamqc (dict): Dictionary with bamqc QC metrics
+    - rnaseqqc (dict): Dictionary with rnaseqqc QC metrics
+    - cfmedipqc (dict): Dictionary with cfmedipqc QC metrics
+    - emseqqc (dict): Dictionary with emseqqc QC metrics
     '''
     
     # organize metrics for cumulative report
@@ -4057,6 +4062,39 @@ def get_metrics_cumulative_report(files, bamqc, rnaseqqc, cfmedipqc, emseqqc):
                 collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source)
     
     return D                
+
+def format_qc_metrics(qc_metrics):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with relevant QC metrics and identifiers
+    for each instrument and library source
+    
+    Parameters
+    ----------
+    - qc_metrics (dict): Dictionary with QC metrics collected from the QC-etl caches
+    '''
+    
+    D = {}
+    for instrument in qc_metrics:
+        for library_source in qc_metrics[instrument]:
+            metrics = get_library_metrics(library_source)
+            if instrument not in D:
+                D[instrument] = {}
+            if library_source not in D[instrument]:
+                D[instrument][library_source] = []
+            # collect relevant information
+            for limskey in qc_metrics[instrument][library_source]:
+                L = [qc_metrics[instrument][library_source][limskey]['donor'],
+                     ';'.join(list(qc_metrics[instrument][library_source][limskey]['libraries'])),
+                     ';'.join(list(qc_metrics[instrument][library_source][limskey]['prefix']))]
+                for i in metrics:
+                    L.append(qc_metrics[instrument][library_source][limskey][i])
+                D[instrument][library_source].append(L)         
+                # sort according to donor
+                D[instrument][library_source].sort(key=lambda x: x[0])
+
+    return D
 
 
 def write_cumulative_report(args):
@@ -4091,6 +4129,9 @@ def write_cumulative_report(args):
     #records = get_FPR_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
     
+    # make a dict with project information
+    projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
+
     # get information about the released fastqs
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
@@ -4102,27 +4143,24 @@ def write_cumulative_report(args):
     to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
     for file_swid in to_remove:
         del files[file_swid]
-    
     # add time points
     add_time_points(args.sample_provenance, files)
-        
+    
+    
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_library_type_instrument(files)
     all_released_files = 0 
     for i in fastq_counts:
-        for j in fastq_counts[i]:
-            for k in fastq_counts[i][j]:
-                all_released_files += fastq_counts[i][j][k]
+        all_released_files += sum([sum(list(j.values())) for j in fastq_counts[i].values()])
     
+        
     # get the identifiers of all released files
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
     appendix_identifiers = get_identifiers_appendix(files)
     # define identifier table header
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
-    # make a dict with project information
-    projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
-
+    
     
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
@@ -4134,9 +4172,54 @@ def write_cumulative_report(args):
     emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
     
     # group identifiers, metrics by instrument and library type
-    metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
+    qc_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
+    print('grouped metrics by instrument and library source')
+    # format qc metrics for template
+    qc_metrics = format_qc_metrics(qc_metrics)
+        
+    # make a list of library types
+    library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
     
-      
+    # get the qc metrics subtables
+    qc_subtables = get_qc_metrics_table_names(library_sources)
+    # get the metrics appendix
+    qc_appendices = get_metrics_appendix(library_sources)
+    
+    
+    # list all metrics of interest for each library source
+    # get the Y axis labels for each metric
+    metrics, Y_axis = {}, {}
+    for library_source in library_sources:
+        metrics[library_source] = get_library_metrics(library_source)
+        if library_source == 'CM':
+            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
+        elif library_source == 'WT':
+            Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
+        elif library_source in ['WG', 'PG']:
+            Y_axis[library_source] = ['Read pairs', 'Coverage']
+        elif library_source in ['TS', 'EX']:
+            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
+        elif library_source in ['MC', 'MG']:
+            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
+        else:
+            Y_axis[library_source] = ['Read pairs']
+    
+    header_metrics = {}
+    for i in library_sources:
+        header_metrics[i] = ['Case Id', 'Library Id', 'File prefix'] + Y_axis[i]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     # write report
     # get the report template
     template_dir = os.path.join(os.path.dirname(__file__), './templates')
@@ -4152,28 +4235,25 @@ def write_cumulative_report(args):
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
                'appendix_identifiers': appendix_identifiers,
+               'user': args.user,
                'ticket': os.path.basename(args.ticket),
+               'library_sources': library_sources,
+               'qc_subtables': qc_subtables,
+               'qc_appendices': qc_appendices,
+               'header_metrics': header_metrics,
+               'qc_metrics': qc_metrics
                }
     
     
     
-    # context = {'projects' : projects,
-    #            'file_count': all_released_files,
-    #            'fastq_counts': fastq_counts,
-    #            'figure_files': figure_files,
+    # context = {'figure_files': figure_files,
     #            'samples_missing_metrics': samples_missing_metrics,
-    #            'header_identifiers': header_identifiers,
-    #            'sample_identifiers': sample_identifiers,
     #            ,
-    #            'header_metrics': header_metrics,
     #            'qc_metrics': qc_metrics,
-    #            'qc_subtables': qc_subtables,
-    #            'qc_appendices': qc_appendices,
-    #            'library_sources': library_sources,
+    #            
     #            'libraries': libraries, 
-    #            'user': args.user,
-    #            'ticket': os.path.basename(args.ticket),
-    #            'md5sum': os.path.basename(md5sum_file)}
+    #            ,
+    #             #            'md5sum': os.path.basename(md5sum_file)}
        
     # render template html 
     content = template.render(context)
@@ -4184,28 +4264,10 @@ def write_cumulative_report(args):
 
 
 
-
-
-
-
-
-
-
+    #map_merged_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
+       
     
     
-    
-    
-    
-    # update FPR info with QC metrics
-    map_merged_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
-    
-    print('merged qc data to FPR info')
-    
-    
-    
-    
-    # make a list of library types
-    library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
     
     # list all platforms for each library source
     libraries = {}
@@ -4217,23 +4279,6 @@ def write_cumulative_report(args):
     
     
     
-    # list all metrics of interest for each library source
-    # get the Y axis labels for each metric
-    metrics, Y_axis = {}, {}
-    for library_source in libraries:
-        metrics[library_source] = get_library_metrics(library_source)
-        if library_source == 'CM':
-            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
-        elif library_source == 'WT':
-            Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
-        elif library_source in ['WG', 'PG']:
-            Y_axis[library_source] = ['Read pairs', 'Coverage']
-        elif library_source in ['TS', 'EX']:
-            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
-        elif library_source in ['MC', 'MG']:
-            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
-        else:
-            Y_axis[library_source] = ['Read pairs']
     
     
     print(metrics)
@@ -4262,38 +4307,10 @@ def write_cumulative_report(args):
                     data[library_source][instrument] = metric_data
     
     
-    
-    print(data)
-    
+        
     
     return 1
     
-    
-    {'library': ['CPCGMOH_0339_02_LB01-01',
-      'CPCGMOH_0339_02_LB02-01',
-      'CPCGMOH_0339_02_LB03-01'],
-     'Library Design': 'WG',
-     'Donor': 'CPCGMOH_0339',
-     'Project': 'CPCGMOH',
-     'Tissue Origin': 'Pr',
-     'Tissue Type': 'P',
-     'Group ID': '',
-     'sample': 'CPCGMOH_0339_Pr_P_WG',
-     'Merged Pinery Lims ID': ['6076_1_LDI86370',
-      '6076_1_LDI86371',
-      '6076_1_LDI86372',
-      '6076_2_LDI86370',
-      '6076_2_LDI86371',
-      '6076_2_LDI86372'],
-     'instrument': 'INJECT_Illumina',
-     'bases mapped': 220874148421,
-     'coverage': 67.8133505077365,
-     'coverage deduplicated': 61.02319972139684,
-     'mapped reads': 2220503731,
-     'mark duplicates_PERCENT_DUPLICATION': 0.10013,
-     'total bases on target': 9947914,
-     'total reads': 2220503731,
-     'on_target': 0.0}
     
     # # generate plots for each instrument and library source and keep track of figure files
     # figure_files = {}
@@ -4316,35 +4333,20 @@ def write_cumulative_report(args):
                 print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
         print('========')        
     
-    # write md5sums to separate file
-    md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
-    write_md5sum(files, md5sum_file)
-
-
-
-
-
-
-
     
-    
-    # group metrics by pairs of files
-    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+
+
+
+
+
     
         
-    sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
-    appendix_identifiers = get_identifiers_appendix(files)
-    
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
     for i in library_sources:
         header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
     
     
-    # get the qc metrics subtables
-    qc_subtables = get_mqc_metrics_table_names(library_sources)
-    # get the metrics appendix
-    qc_appendices = get_metrics_appendix(library_sources)
     
 
     # remove figure files from disk    
@@ -4384,11 +4386,7 @@ def write_cumulative_report(args):
          #     header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
          
          
-         # # get the qc metrics subtables
-         # qc_subtables = get_mqc_metrics_table_names(library_sources)
-         # # get the metrics appendix
-         # qc_appendices = get_metrics_appendix(library_sources)
-         
+            
          # # fill in template
          # context = {'projects' : projects,
          #            'file_count': all_released_files,
@@ -4408,32 +4406,7 @@ def write_cumulative_report(args):
          #            'ticket': os.path.basename(args.ticket),
          #            'md5sum': os.path.basename(md5sum_file)}
     
-    # fill in template
-    context = {'projects' : projects,
-                 'file_count': all_released_files,
-                 'fastq_counts': fastq_counts,
-                 'user': args.user,
-                 'ticket': os.path.basename(args.ticket)}
-                 
-     
     
-    
-    
-    
-    # render template html 
-    content = template.render(context)
-
-    # convert html to PDF
-    report_file = os.path.join(working_dir,  '{0}_cumulative_data_release_report.{1}.pdf'.format(args.project, current_time))
-    makepdf(content, report_file)
-
-         # # remove figure files from disk
-         # for i in figure_files:
-         #     for j in figure_files[i]:
-         #         if os.path.isfile(figure_files[i][j]):
-         #             os.remove(figure_files[i][j])
-
-
 
 
     #### legacy code
@@ -4830,6 +4803,7 @@ if __name__ == '__main__':
     c_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     c_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     c_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
+    c_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
         
     
     # r_parser.add_argument('-rn', '--rundirs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
@@ -4840,7 +4814,6 @@ if __name__ == '__main__':
     # r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     # r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
     # r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
-    # r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
     # r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
     
     
