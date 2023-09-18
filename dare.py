@@ -4090,9 +4090,12 @@ def format_qc_metrics(qc_metrics):
                 D[instrument][library_source] = []
             # collect relevant information
             for limskey in qc_metrics[instrument][library_source]:
-                L = [qc_metrics[instrument][library_source][limskey]['donor'],
-                     ';'.join(list(qc_metrics[instrument][library_source][limskey]['libraries'])),
-                     ';'.join(list(qc_metrics[instrument][library_source][limskey]['prefix']))]
+                donor = qc_metrics[instrument][library_source][limskey]['donor']
+                libraries = list(qc_metrics[instrument][library_source][limskey]['libraries'])
+                libraries = ';'.join([fit_into_column(i, library_source) if len(i) >=40 else i for i in libraries])
+                prefix = list(qc_metrics[instrument][library_source][limskey]['prefix'])
+                prefix = ';'.join([fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix])
+                L = [donor, libraries, prefix]
                 for i in metrics:
                     L.append(qc_metrics[instrument][library_source][limskey][i])
                 D[instrument][library_source].append(L)         

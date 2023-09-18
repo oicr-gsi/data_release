@@ -130,8 +130,13 @@
          </tr>        
        {% endfor %}               
   {% endfor %}
-</table>
+ </table>
 
+ <ul>
+    {% for i in qc_appendices['metrics'][library_source] %}
+        <li>{{i}}</li>
+    {% endfor %}
+ </ul>
 
   {% endfor %}
 
