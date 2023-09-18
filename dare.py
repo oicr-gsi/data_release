@@ -1364,187 +1364,187 @@ def count_released_fastqs_by_library_type_instrument(FPR_info):
 
 
 
-def generate_table(sample_metrics, header, column_size):
-    '''
-    (dict, list, dict, str) -> str
+# def generate_table(sample_metrics, header, column_size):
+#     '''
+#     (dict, list, dict, str) -> str
     
-    Returns a html string representing a table
+#     Returns a html string representing a table
     
-    Parameters
-    ----------
-    - sample_metrics (dict): Dictionary with run-level sample metrics
-    - header (list): List of column names
-    - column_size (dict): Dictionary with columns width for each column in header
-    '''
+#     Parameters
+#     ----------
+#     - sample_metrics (dict): Dictionary with run-level sample metrics
+#     - header (list): List of column names
+#     - column_size (dict): Dictionary with columns width for each column in header
+#     '''
     
-    # count the expected number of cells (excluding header) in tables
-    cells = 0
-    for instrument in sample_metrics:
-        for sample in sample_metrics[instrument]:
-            cells += len(sample_metrics[instrument][sample])
+#     # count the expected number of cells (excluding header) in tables
+#     cells = 0
+#     for instrument in sample_metrics:
+#         for sample in sample_metrics[instrument]:
+#             cells += len(sample_metrics[instrument][sample])
     
-    # add padding around text in cells    
-    padding = '3px'
+#     # add padding around text in cells    
+#     padding = '3px'
     
-    # set up counter to track odd and even lines
-    counter = 0
+#     # set up counter to track odd and even lines
+#     counter = 0
 
-    table = []
-    # add table style
-    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
-    # add header
-    table.append('<tr>')
-    for i in header:
-        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
-    table.append('</tr>')
+#     table = []
+#     # add table style
+#     table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
+#     # add header
+#     table.append('<tr>')
+#     for i in header:
+#         table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
+#     table.append('</tr>')
 
-    for instrument in sample_metrics:
-        samples = sorted(list(sample_metrics[instrument].keys()))
-        # add lines in table
-        for sample in samples:
-            for d in sample_metrics[instrument][sample]:
-                if counter % 2 == 0:
-                    table.append('<tr style="background-color: #eee">')
-                else:
-                    table.append('<tr style="background-color: #fff">')
-                for i in header:
-                    if i == 'Reads':
-                        # add commas to read count
-                        j = '{:,}'.format(d['reads'])
-                    elif i == 'On target':
-                        j = str(d['on_target'])
-                    elif i == 'External ID':
-                        j = str(d['ext_id'])
-                    elif i == 'Group ID':
-                        j = str(d['group_id'])
-                    elif i == 'Library ID':
-                        j = str(d['library'])
-                    elif i == 'Library ID (time point)':
-                        j = str(d['library']) + '\n' + '({0})'.format(str(d['timepoint']))
-                    elif i == 'Run':
-                        j = str(d[i.lower()])
-                        if ';' in j:
-                            j = j.replace(';', ';\n')
-                    elif i == 'Indices':
-                        j = str(d['barcode'])
-                        if '-' in j:
-                            j = j.replace('-', '-\n')
-                    elif i == 'Sequencing Run':
-                        j = str(d['run']) + '\n' + str(d['barcode']) 
-                    elif i == 'O':
-                        j = str(d['tissue_origin'])
-                    elif i == 'S':
-                        j = str(d['library_source'])
-                    elif i == 'T':
-                        j = str(d['tissue_type'])
-                    else:
-                        j = str(d[i.lower()])
-                    if counter + 1 == cells:
-                        table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-                    else:
-                        table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-                table.append('</tr>')
-                # update counter
-                counter += 1
-    table.append('</table>')
-    return ''.join(table)
-
-
+#     for instrument in sample_metrics:
+#         samples = sorted(list(sample_metrics[instrument].keys()))
+#         # add lines in table
+#         for sample in samples:
+#             for d in sample_metrics[instrument][sample]:
+#                 if counter % 2 == 0:
+#                     table.append('<tr style="background-color: #eee">')
+#                 else:
+#                     table.append('<tr style="background-color: #fff">')
+#                 for i in header:
+#                     if i == 'Reads':
+#                         # add commas to read count
+#                         j = '{:,}'.format(d['reads'])
+#                     elif i == 'On target':
+#                         j = str(d['on_target'])
+#                     elif i == 'External ID':
+#                         j = str(d['ext_id'])
+#                     elif i == 'Group ID':
+#                         j = str(d['group_id'])
+#                     elif i == 'Library ID':
+#                         j = str(d['library'])
+#                     elif i == 'Library ID (time point)':
+#                         j = str(d['library']) + '\n' + '({0})'.format(str(d['timepoint']))
+#                     elif i == 'Run':
+#                         j = str(d[i.lower()])
+#                         if ';' in j:
+#                             j = j.replace(';', ';\n')
+#                     elif i == 'Indices':
+#                         j = str(d['barcode'])
+#                         if '-' in j:
+#                             j = j.replace('-', '-\n')
+#                     elif i == 'Sequencing Run':
+#                         j = str(d['run']) + '\n' + str(d['barcode']) 
+#                     elif i == 'O':
+#                         j = str(d['tissue_origin'])
+#                     elif i == 'S':
+#                         j = str(d['library_source'])
+#                     elif i == 'T':
+#                         j = str(d['tissue_type'])
+#                     else:
+#                         j = str(d[i.lower()])
+#                     if counter + 1 == cells:
+#                         table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+#                     else:
+#                         table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+#                 table.append('</tr>')
+#                 # update counter
+#                 counter += 1
+#     table.append('</table>')
+#     return ''.join(table)
 
 
-def generate_cumulative_table(sample_metrics, header, column_size, table_type=None):
-    '''
-    (dict, list, dict, str, str) -> str
+
+
+# def generate_cumulative_table(sample_metrics, header, column_size, table_type=None):
+#     '''
+#     (dict, list, dict, str, str) -> str
     
-    Returns a html string representing a table
+#     Returns a html string representing a table
     
-    Parameters
-    ----------
-    - sample_metrics (dict): Dictionary with cumulative sample metrics
-    - header (list): List of column names
-    - column_size (dict): Dictionary with columns width for each column in header
-    - table_type (str): Report library and lane counts rather than Ids if set to metrics    
-    '''
+#     Parameters
+#     ----------
+#     - sample_metrics (dict): Dictionary with cumulative sample metrics
+#     - header (list): List of column names
+#     - column_size (dict): Dictionary with columns width for each column in header
+#     - table_type (str): Report library and lane counts rather than Ids if set to metrics    
+#     '''
     
-    # count the expected number of cells (excluding header) in tables
-    cells = 0
-    for instrument in sample_metrics:
-        cells += len(sample_metrics[instrument].keys())
+#     # count the expected number of cells (excluding header) in tables
+#     cells = 0
+#     for instrument in sample_metrics:
+#         cells += len(sample_metrics[instrument].keys())
       
-    # add padding around text in cells    
-    padding = '3px'
+#     # add padding around text in cells    
+#     padding = '3px'
     
-    # set up counter to track odd and even lines
-    counter = 0
+#     # set up counter to track odd and even lines
+#     counter = 0
 
-    table = []
-    # add table style
-    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
-    # add header
-    table.append('<tr>')
-    for i in header:
-        table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
-    table.append('</tr>')
+#     table = []
+#     # add table style
+#     table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
+#     # add header
+#     table.append('<tr>')
+#     for i in header:
+#         table.append('<th style="width:{0}; border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-collapse: collapse; padding: {1}; text-align: left">{2}</th>'.format(column_size[i], padding, i))
+#     table.append('</tr>')
 
-    for instrument in sample_metrics:
-        samples = sorted(list(sample_metrics[instrument].keys()))
-        # add lines in table
-        for sample in samples:
-            if counter % 2 == 0:
-                table.append('<tr style="background-color: #eee">')
-            else:
-                table.append('<tr style="background-color: #fff">')
-            for i in header:
-                if i == 'Reads':
-                    j = '{:,}'.format(sample_metrics[instrument][sample][i.lower()])    
-                elif i == 'Sample':
-                    j = sample
-                    k = len(j.split('_')) // 4
-                    j = '_'.join(j.split('_')[0:k]) + '_\n' + '_'.join(j.split('_')[k:2*k]) + '_\n' + '_'.join(j.split('_')[2*k:3*k]) + '_\n' + '_'.join(j.split('_')[3*k:])
-                elif i == 'External ID':
-                    j = str(sample_metrics[instrument][sample]['ext_id'])
-                elif i == 'S':
-                    j = str(sample_metrics[instrument][sample]['library_source'])
-                elif i == 'T':
-                    j = str(sample_metrics[instrument][sample]['tissue_type'])
-                elif i == 'O':
-                    j = str(sample_metrics[instrument][sample]['tissue_origin'])
-                elif i == 'Group ID':
-                    j = str(sample_metrics[instrument][sample]['group_id'])
-                    if table_type != 'metrics':
-                        k = len(j.split('_')) // 2
-                        j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:]) 
-                elif i == 'Library ID' or i == 'Libraries':
-                    j = str(sample_metrics[instrument][sample]['library'])
-                elif i == 'Runs':
-                    j = str(sample_metrics[instrument][sample]['run'])
-                elif i == 'Indices':
-                    j = str(sample_metrics[instrument][sample]['barcode'])
-                else:
-                    j = str(sample_metrics[instrument][sample][i.lower()])
+#     for instrument in sample_metrics:
+#         samples = sorted(list(sample_metrics[instrument].keys()))
+#         # add lines in table
+#         for sample in samples:
+#             if counter % 2 == 0:
+#                 table.append('<tr style="background-color: #eee">')
+#             else:
+#                 table.append('<tr style="background-color: #fff">')
+#             for i in header:
+#                 if i == 'Reads':
+#                     j = '{:,}'.format(sample_metrics[instrument][sample][i.lower()])    
+#                 elif i == 'Sample':
+#                     j = sample
+#                     k = len(j.split('_')) // 4
+#                     j = '_'.join(j.split('_')[0:k]) + '_\n' + '_'.join(j.split('_')[k:2*k]) + '_\n' + '_'.join(j.split('_')[2*k:3*k]) + '_\n' + '_'.join(j.split('_')[3*k:])
+#                 elif i == 'External ID':
+#                     j = str(sample_metrics[instrument][sample]['ext_id'])
+#                 elif i == 'S':
+#                     j = str(sample_metrics[instrument][sample]['library_source'])
+#                 elif i == 'T':
+#                     j = str(sample_metrics[instrument][sample]['tissue_type'])
+#                 elif i == 'O':
+#                     j = str(sample_metrics[instrument][sample]['tissue_origin'])
+#                 elif i == 'Group ID':
+#                     j = str(sample_metrics[instrument][sample]['group_id'])
+#                     if table_type != 'metrics':
+#                         k = len(j.split('_')) // 2
+#                         j = '_'.join(j.split('_')[0:k]) + ' \n' + '_'.join(j.split('_')[k:]) 
+#                 elif i == 'Library ID' or i == 'Libraries':
+#                     j = str(sample_metrics[instrument][sample]['library'])
+#                 elif i == 'Runs':
+#                     j = str(sample_metrics[instrument][sample]['run'])
+#                 elif i == 'Indices':
+#                     j = str(sample_metrics[instrument][sample]['barcode'])
+#                 else:
+#                     j = str(sample_metrics[instrument][sample][i.lower()])
                     
-                if i in ['Indices', 'Run', 'Library ID']:
-                    if '-' in j:
-                        j = j.replace('-', '-\n')
-                    if ';' in j:
-                        j = j.replace(';', ';\n')
+#                 if i in ['Indices', 'Run', 'Library ID']:
+#                     if '-' in j:
+#                         j = j.replace('-', '-\n')
+#                     if ';' in j:
+#                         j = j.replace(';', ';\n')
                                         
-                if table_type == 'metrics':
-                    if i == 'Runs':
-                        j = len(list(set(str(sample_metrics[instrument][sample]['run']).split(';'))))
-                    elif i == 'Libraries':
-                        j = len(list(set(str(sample_metrics[instrument][sample]['library']).split(';'))))
-                    #j = len(list(set(j.split(';'))))
+#                 if table_type == 'metrics':
+#                     if i == 'Runs':
+#                         j = len(list(set(str(sample_metrics[instrument][sample]['run']).split(';'))))
+#                     elif i == 'Libraries':
+#                         j = len(list(set(str(sample_metrics[instrument][sample]['library']).split(';'))))
+#                     #j = len(list(set(j.split(';'))))
                                                       
-                if counter + 1 == cells:
-                    table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-                else:
-                    table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
-            table.append('</tr>')
-            # update counter
-            counter += 1
-    table.append('</table>')
-    return ''.join(table)
+#                 if counter + 1 == cells:
+#                     table.append('<td style="border-bottom: 1px solid #000000; padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+#                 else:
+#                     table.append('<td style="padding: {0}; font-size: 10px; text-align: left;">{1}</td>'.format(padding, j))
+#             table.append('</tr>')
+#             # update counter
+#             counter += 1
+#     table.append('</table>')
+#     return ''.join(table)
 
 
 
@@ -4123,12 +4123,17 @@ def format_qc_metrics(qc_metrics):
                 prefix = ';'.join([fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix])
                 L = [donor, libraries, prefix]
                 for i in metrics:
-                    L.append(qc_metrics[instrument][library_source][limskey][i])
+                    if i == 'read_count':
+                        L.append('{:,}'.format(qc_metrics[instrument][library_source][limskey][i]))                     
+                    else:
+                        L.append(qc_metrics[instrument][library_source][limskey][i])
                 D[instrument][library_source].append(L)         
                 # sort according to donor
                 D[instrument][library_source].sort(key=lambda x: x[0])
 
     return D
+
+   
 
 
 def write_cumulative_report(args):
@@ -4206,10 +4211,10 @@ def write_cumulative_report(args):
     emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
     
     # group identifiers, metrics by instrument and library type
-    qc_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
+    library_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
     print('grouped metrics by instrument and library source')
     # format qc metrics for template
-    qc_metrics = format_qc_metrics(qc_metrics)
+    qc_metrics = format_qc_metrics(library_metrics)
         
     # make a list of library types
     library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
@@ -4242,9 +4247,7 @@ def write_cumulative_report(args):
     for i in library_sources:
         header_metrics[i] = ['Case Id', 'Library Id', 'File prefix'] + Y_axis[i]
     
-    
-    
-    
+     
     
     
     
@@ -4259,7 +4262,7 @@ def write_cumulative_report(args):
     template_dir = os.path.join(os.path.dirname(__file__), './templates')
     environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
     template = environment.get_template("cumulative_report_template.html")
-        
+       
     
     # fill in template
     
