@@ -3824,12 +3824,15 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
                 and limskey in merged_limskeys \
                 and k['groupid'][0] == bamqc[i]['Group ID']:
                     assert k['sample_id'][0] == bamqc[i]['sample']
+                    # get the number of read for each file
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
-            readcount = sum(readcount)
+            assert sum(readcount) % 2 == 0
+            # get the number of read pairs 
+            readcount = int(sum(readcount) / 2)
             prefix = list(set(prefix))
             libraries = bamqc[i]['library']
             donor = bamqc[i]['Donor']
@@ -3885,12 +3888,15 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
                 if library_source == rnaseqqc[i]['Library Design'] \
                 and limskey in merged_limskeys \
                 and k['groupid'][0] == rnaseqqc[i]['Group ID']:
+                    # get the number of read for each file
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
-            readcount = sum(readcount)
+            assert sum(readcount) % 2 == 0
+            # get the numbver of read pairs
+            readcount = int(sum(readcount) / 2)
             prefix = list(set(prefix))
             libraries = rnaseqqc[i]['library']
             donor = rnaseqqc[i]['Donor']
@@ -3940,6 +3946,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
             lane = j['lane'][0]
             library = j['library'][0]
             donor = j['sample_name']
+            # get the read count for each file
             readcount = j['read_count']
             if run in cfmedipqc and limskey in cfmedipqc[run]:
                 assert len(cfmedipqc[run][limskey]) == 1
@@ -3971,6 +3978,14 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                         'duplication': duplication,
                         'CpG_enrichment': CpG_enrichment
                         }
+
+    for i in D:
+        for j in D[i]:
+            for k in D[i][j]:
+                # get the number of read pairs
+                assert D[i][j][k]['read_count'] % 2 == 0
+                D[i][j][k]['read_count'] = int(D[i][j][k]['read_count'] / 2)
+                
                         
 
 def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
@@ -3998,6 +4013,7 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
             lane = j['lane'][0]
             library = j['library'][0]
             donor = j['sample_name']
+            # get the number of reads for each file
             readcount = j['read_count']
             if run in emseqqc and limskey in emseqqc[run]:
                 assert len(emseqqc[run][limskey]) == 1
@@ -4027,6 +4043,16 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                         'pUC19_methylation': pUC19_methylation,
                         'percent_duplication': percent_duplication
                         }
+
+    for i in D:
+        for j in D[i]:
+            for k in D[i][j]:
+                # get the number of read pairs
+                assert D[i][j][k]['read_count'] % 2 == 0
+                D[i][j][k]['read_count'] = int(D[i][j][k]['read_count'] / 2)
+                
+
+
     
 def get_metrics_cumulative_report(files, bamqc, rnaseqqc, cfmedipqc, emseqqc):
     '''
