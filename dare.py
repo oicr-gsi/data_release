@@ -3076,7 +3076,35 @@ def merge_bamqc_dnaseqc(bamqc_info, dnaseqqc_info):
             D[run][sample] = dnaseqqc_info[run][sample]
             
     return D        
+
+
+
+def get_Y_axis_labels(library_source):
+    '''
+    (str) -> list
     
+    Returns a list o Y axis labels for the library type
+    
+    Parameters
+    ----------
+    - library_source (str): Specific library type
+    '''
+    
+    L = []
+    if library_source == 'CM':
+        L = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
+    elif library_source == 'WT':
+        L = ['Read pairs', 'rRNA contamination', 'Coding (%)']
+    elif library_source in ['WG', 'PG']:
+        L = ['Read pairs', 'Coverage']
+    elif library_source in ['TS', 'EX']:
+        L = ['Read pairs', 'Coverage', 'On target']
+    elif library_source in ['MC', 'MG']:
+        L = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
+    else:
+        L = ['Read pairs']
+    return L
+
 
 def write_batch_report(args):
     '''
@@ -3165,18 +3193,7 @@ def write_batch_report(args):
     metrics, Y_axis = {}, {}
     for library_source in libraries:
         metrics[library_source] = get_library_metrics(library_source)
-        if library_source == 'CM':
-            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
-        elif library_source == 'WT':
-            Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
-        elif library_source in ['WG', 'PG']:
-            Y_axis[library_source] = ['Read pairs', 'Coverage']
-        elif library_source in ['TS', 'EX']:
-            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
-        elif library_source in ['MC', 'MG']:
-            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
-        else:
-            Y_axis[library_source] = ['Read pairs']
+        Y_axis[library_source] = get_Y_axis_labels(library_source)
         colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
         for platform in libraries[library_source]:
             figure = generate_figures(files, args.project, library_source, platform, metrics[library_source], Y_axis[library_source], colors, working_dir)
@@ -3554,60 +3571,60 @@ def get_cumulative_level_sample_metrics(FPR_info):
 
 
 
-def generate_cumulative_figures(files, project, library_source, platform, metrics, Y_axis, colors, working_dir, height=16, width=13):
-    '''
-    (dict, str, str, str, str, int, int) -> str
+# def generate_cumulative_figures(files, project, library_source, platform, metrics, Y_axis, colors, working_dir, height=16, width=13):
+#     '''
+#     (dict, str, str, str, str, int, int) -> str
     
-    Generate a figure with metrics from FPR and QC-etl for a given library type and sequencing platform
-    and returns the path to the figure file
+#     Generate a figure with metrics from FPR and QC-etl for a given library type and sequencing platform
+#     and returns the path to the figure file
         
-    Parameters
-    ----------
-    - files (dict): Dictionary with file info extracted from FPR and with QC info extracted from qc-etl
-    - project (str): Name of project
-    - library_source (str): Type of library
-    - platform (str): Sequencing platform
-    - working_dir (str): Path to the folder where figure files are written
-    - height (int): Height of the figure
-    - width (int): Width of the figure
-    '''
+#     Parameters
+#     ----------
+#     - files (dict): Dictionary with file info extracted from FPR and with QC info extracted from qc-etl
+#     - project (str): Name of project
+#     - library_source (str): Type of library
+#     - platform (str): Sequencing platform
+#     - working_dir (str): Path to the folder where figure files are written
+#     - height (int): Height of the figure
+#     - width (int): Width of the figure
+#     '''
     
-    # make lists with metrics for each instrument 
-    QC_metrics = get_run_level_metrics(files, platform, library_source, metrics)
-    # remove undefined metric values
-    QC_metrics = clean_up_metrics(QC_metrics)
-    # sort metrics according to read counts (read counts is always first metric)
-    QC_metrics = sort_metrics(QC_metrics)
+#     # make lists with metrics for each instrument 
+#     QC_metrics = get_run_level_metrics(files, platform, library_source, metrics)
+#     # remove undefined metric values
+#     QC_metrics = clean_up_metrics(QC_metrics)
+#     # sort metrics according to read counts (read counts is always first metric)
+#     QC_metrics = sort_metrics(QC_metrics)
         
-    # get the outputfile
-    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
-    outputfile = os.path.join(working_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project, platform, library_source, current_time))
+#     # get the outputfile
+#     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+#     outputfile = os.path.join(working_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project, platform, library_source, current_time))
     
-    if QC_metrics[0]:
-        figure = plt.figure()
-        figure.set_size_inches(width, height)
-        # make a list of with X axis labels to determine which subplot should display the Samples label
-        x_labels = get_x_axis_labels(QC_metrics)
-        # determine how many subplots are expected
-        subplots = count_subplots(QC_metrics) 
-        # determine the position of each subplot
-        subplot_pos = get_subplot_position(QC_metrics)
+#     if QC_metrics[0]:
+#         figure = plt.figure()
+#         figure.set_size_inches(width, height)
+#         # make a list of with X axis labels to determine which subplot should display the Samples label
+#         x_labels = get_x_axis_labels(QC_metrics)
+#         # determine how many subplots are expected
+#         subplots = count_subplots(QC_metrics) 
+#         # determine the position of each subplot
+#         subplot_pos = get_subplot_position(QC_metrics)
             
-        for i in range(len(QC_metrics)):
-            # determine title
-            title = platform + ' {0} libraries'.format(library_source) if i == 0 else None
-            # plot data
-            create_ax(subplots, 1, subplot_pos[i], figure, QC_metrics[i], Y_axis[i], colors[i], title = title, XLabel = x_labels[i])
+#         for i in range(len(QC_metrics)):
+#             # determine title
+#             title = platform + ' {0} libraries'.format(library_source) if i == 0 else None
+#             # plot data
+#             create_ax(subplots, 1, subplot_pos[i], figure, QC_metrics[i], Y_axis[i], colors[i], title = title, XLabel = x_labels[i])
                 
-        # make sure axes do not overlap
-        plt.tight_layout(pad = 2.5)
-        # write figure to file  
-        figure.savefig(outputfile, bbox_inches = 'tight')
-        plt.close()
+#         # make sure axes do not overlap
+#         plt.tight_layout(pad = 2.5)
+#         # write figure to file  
+#         figure.savefig(outputfile, bbox_inches = 'tight')
+#         plt.close()
                 
-        return outputfile
-    else:
-        return ''
+#         return outputfile
+#     else:
+#         return ''
 
 
 
@@ -4135,6 +4152,71 @@ def format_qc_metrics(qc_metrics):
 
    
 
+def generate_cumulative_figures(working_dir, project, qc_metrics, platform, library_type, Y_axis, colors, width=13, height=16):
+    '''
+    (str, str, dict, str, str, list, list, int, int) -> str
+        
+    Generate a figure with metrics from FPR and QC-etl for a specific sequencing platform
+    and library type and returns the path to the figure file
+        
+    Parameters
+    ----------
+    - working_dir (str): Path to the folder where figure files are written
+    - project (str): Name of project
+    - qc_metrics (dict): Dictionary with QC metrics extracted from QC etl caches
+    - platform (str): Sequencing platform
+    - library_type (str): Type of library
+    - Y_axis (list): List of Y_axis labels   
+    - colors (list): List of colors
+    - width (int): Width of the figure
+    - height (int): Height of the figure
+    '''
+    
+    metrics_interest = get_library_metrics(library_type)
+
+    # make lists of metrics, sort according to read count
+    D = {}
+    for i in qc_metrics[platform][library_type]:
+        for j in metrics_interest:
+            if j not in D:
+                D[j] = [qc_metrics[platform][library_type][i][j]]
+            else:
+                D[j].append(qc_metrics[platform][library_type][i][j])
+    
+    L = [D[i] for i in metrics_interest]
+    L = sort_metrics(L)
+    
+    # get the outputfile
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    outputfile = os.path.join(working_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project, platform, library_type, current_time))
+    
+    if L[0]:
+        figure = plt.figure()
+        figure.set_size_inches(width, height)
+        # make a list of with X axis labels to determine which subplot should display the Samples label
+        x_labels = get_x_axis_labels(L)
+        # determine how many subplots are expected
+        subplots = count_subplots(L) 
+        # determine the position of each subplot
+        subplot_pos = get_subplot_position(L)
+        
+        for i in range(len(L)):
+            # determine title
+            title = platform + ' {0} libraries'.format(library_type) if i == 0 else None
+            # plot data
+            create_ax(subplots, 1, subplot_pos[i], figure, L[i], Y_axis[i], colors[i], title = title, XLabel = x_labels[i])
+                
+        # make sure axes do not overlap
+        plt.tight_layout(pad = 2.5)
+        # write figure to file  
+        figure.savefig(outputfile, bbox_inches = 'tight')
+        plt.close()
+                
+        return outputfile
+    else:
+        return ''
+
+    
 
 def write_cumulative_report(args):
     '''
@@ -4199,8 +4281,6 @@ def write_cumulative_report(args):
     # define identifier table header
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
-    
-    
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
     # collect information from rnaseq table
@@ -4224,39 +4304,39 @@ def write_cumulative_report(args):
     # get the metrics appendix
     qc_appendices = get_metrics_appendix(library_sources)
     
-    
-    # list all metrics of interest for each library source
-    # get the Y axis labels for each metric
+    # list all platforms for each library source
+    platforms = {}
+    for i in qc_metrics:
+        for j in qc_metrics[i]:
+            if j in platforms:
+                platforms[j].append(i)
+                platforms[j].sort()
+            else:
+                platforms[j] = [i]
+      
+    print(platforms)            
+      
+    # generate plots for each instrument and library source and keep track of figure files
+    figure_files = {}
     metrics, Y_axis = {}, {}
-    for library_source in library_sources:
+    colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
+    for library_source in platforms:
+        print(library_source)
         metrics[library_source] = get_library_metrics(library_source)
-        if library_source == 'CM':
-            Y_axis[library_source] = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
-        elif library_source == 'WT':
-            Y_axis[library_source] = ['Read pairs', 'rRNA contamination', 'Coding (%)']
-        elif library_source in ['WG', 'PG']:
-            Y_axis[library_source] = ['Read pairs', 'Coverage']
-        elif library_source in ['TS', 'EX']:
-            Y_axis[library_source] = ['Read pairs', 'Coverage', 'On target']
-        elif library_source in ['MC', 'MG']:
-            Y_axis[library_source] = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
-        else:
-            Y_axis[library_source] = ['Read pairs']
+        Y_axis[library_source] = get_Y_axis_labels(library_source)
+        for instrument in platforms[library_source]:
+            print(instrument)
+            figure = generate_cumulative_figures(working_dir, args.project, library_metrics, instrument, library_source, Y_axis[library_source], colors)
+            print(figure)
+            if library_source not in figure_files:
+                figure_files[library_source] = {}
+            figure_files[library_source][instrument] = figure
     
     header_metrics = {}
     for i in library_sources:
         header_metrics[i] = ['Case Id', 'Library Id', 'File prefix'] + Y_axis[i]
-    
-     
-    
-    
-    
-    
-    
-    
-    
-    
-    
+         
+       
     # write report
     # get the report template
     template_dir = os.path.join(os.path.dirname(__file__), './templates')
@@ -4265,7 +4345,6 @@ def write_cumulative_report(args):
        
     
     # fill in template
-    
     context = {'projects' : projects,
                'file_count': all_released_files,
                'fastq_counts': fastq_counts,
@@ -4278,15 +4357,17 @@ def write_cumulative_report(args):
                'qc_subtables': qc_subtables,
                'qc_appendices': qc_appendices,
                'header_metrics': header_metrics,
-               'qc_metrics': qc_metrics
+               'qc_metrics': qc_metrics,
+               'figure_files': figure_files,
+               'platforms': platforms
                }
     
     
     
-    # context = {'figure_files': figure_files,
+    # context = {,
     #            'samples_missing_metrics': samples_missing_metrics,
     #            ,
-    #            'qc_metrics': qc_metrics,
+    #            
     #            
     #            'libraries': libraries, 
     #            ,
@@ -4306,69 +4387,26 @@ def write_cumulative_report(args):
     
     
     
-    # list all platforms for each library source
-    libraries = {}
-    for library_source in library_sources:
-        instruments = sorted(list(set([files[file_swid]['platform'] for file_swid in files if files[file_swid]['library_source'][0] == library_source])))
-        libraries[library_source] = instruments        
-    
-    print(libraries)
-    
-    
-    
-    
-    
-    print(metrics)
-    
-    
-    
-    # get the colors of each metric
-    colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
-    
-    # create lists of metrics for each library type and each instrument, sorted according to read count
-    # make lists of metric values
-    data = {}
-    for library_source in libraries:
-        for instrument in libraries[library_source]:
-            if library_source in ['WG', 'PG', 'TS', 'EX']:
-                metric_data = get_merged_bamqc_metrics(args.project, files, bamqc_info, library_source, instrument)
-            elif library_source == 'WT':
-                metric_data = get_merged_rnaseqqc_metrics(args.project, files, rnaseqqc_info, library_source, instrument)
-            elif library_source in ['CM']:
-                pass
-            
-            
-            if any(map(lambda x: len(x) != 0, (metric_data.values()))):
-                if library_source not in data:
-                    data[library_source] = {}
-                    data[library_source][instrument] = metric_data
-    
+    # # list all platforms for each library source
+    # libraries = {}
+    # for library_source in library_sources:
+    #     instruments = sorted(list(set([files[file_swid]['platform'] for file_swid in files if files[file_swid]['library_source'][0] == library_source])))
+    #     libraries[library_source] = instruments        
     
         
     
-    return 1
+    # # count the number of samples with missing metric values
+    # samples_missing_metrics = count_samples_with_missing_values(files)
     
-    
-    # # generate plots for each instrument and library source and keep track of figure files
-    # figure_files = {}
-    #     for platform in libraries[library_source]:
-    #         figure = generate_figures(files, args.project, library_source, platform, metrics[library_source], Y_axis[library_source], colors, working_dir)
-    #         if library_source not in figure_files:
-    #             figure_files[library_source] = {}
-    #         figure_files[library_source][platform] = figure
-             
-    # count the number of samples with missing metric values
-    samples_missing_metrics = count_samples_with_missing_values(files)
-    
-    # issue warning if samples with missing QC metrics
-    if samples_missing_metrics:
-        print('========')
-        print('WARNING!!')
-        print('Some samples have missing QC information. Please review')
-        for i in samples_missing_metrics:
-            for j in samples_missing_metrics[i]:
-                print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
-        print('========')        
+    # # issue warning if samples with missing QC metrics
+    # if samples_missing_metrics:
+    #     print('========')
+    #     print('WARNING!!')
+    #     print('Some samples have missing QC information. Please review')
+    #     for i in samples_missing_metrics:
+    #         for j in samples_missing_metrics[i]:
+    #             print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
+    #     print('========')        
     
     
 
@@ -4378,244 +4416,20 @@ def write_cumulative_report(args):
 
     
         
-    qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
-    header_metrics = {}
-    for i in library_sources:
-        header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
+    # qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
+    # header_metrics = {}
+    # for i in library_sources:
+    #     header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
     
     
     
 
-    # remove figure files from disk    
-    if args.keep_html == False:
-        for i in figure_files:
-            for j in figure_files[i]:
-                if os.path.isfile(figure_files[i][j]):
-                    os.remove(figure_files[i][j])
-
-    ######
-
-
-    
-    
-                 
-         # # count the number of samples with missing metric values
-         # samples_missing_metrics = count_samples_with_missing_values(files, ['read_count', 'methylation_beta', 'CpG_enrichment', 'rRNA contamination', 'Coding (%)', 'coverage_dedup', 'on_target'])
-         
-         # # issue warning if samples with missing QC metrics
-         # if samples_missing_metrics:
-         #     print('========')
-         #     print('WARNING!!')
-         #     print('Some samples have missing QC information. Please review')
-         #     for i in samples_missing_metrics:
-         #         for j in samples_missing_metrics[i]:
-         #             print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
-         #     print('========')        
-         
-       
-       
-         # sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
-         # appendix_identifiers = get_identifiers_appendix(files)
-         
-         # qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
-         # header_metrics = {}
-         # for i in library_sources:
-         #     header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
-         
-         
-            
-         # # fill in template
-         # context = {'projects' : projects,
-         #            'file_count': all_released_files,
-         #            'fastq_counts': fastq_counts,
-         #            'figure_files': figure_files,
-         #            'samples_missing_metrics': samples_missing_metrics,
-         #            'header_identifiers': header_identifiers,
-         #            'sample_identifiers': sample_identifiers,
-         #            'appendix_identifiers': appendix_identifiers,
-         #            'header_metrics': header_metrics,
-         #            'qc_metrics': qc_metrics,
-         #            'qc_subtables': qc_subtables,
-         #            'qc_appendices': qc_appendices,
-         #            'library_sources': library_sources,
-         #            'libraries': libraries, 
-         #            'user': args.user,
-         #            'ticket': os.path.basename(args.ticket),
-         #            'md5sum': os.path.basename(md5sum_file)}
-    
-    
-
-
-    #### legacy code
-
-
-   #     # re-organize metrics per sample and instrument
-    #     sample_metrics = get_cumulative_level_sample_metrics(FPR_info)
-            
-    # # generate figure files
-    # if args.level == 'single':
-    #     # plot read count, coverage, on target and duplicate rate
-    #     figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 16, 'duplicate (%)', 'on_target', '#009ADE', '#FFC61E', 'Percent duplicate', 'On target', keep_on_target=False)
-    # elif args.level == 'cumulative':
-    #     # plot read count and coverage
-    #     figure_files = generate_figures(project_dir, args.level, args.project_name, sample_metrics, 'reads', 'coverage', 'Read counts', 'Coverage', '#00CD6C', '#AF58BA', 'Samples', 13, 8)
-        
-    # # get current date (year-month-day)
-    # current_date = datetime.today().strftime('%Y-%m-%d')
-    
-    # # write md5sums to separate text file
-    # if args.level == 'single':
-    #     md5_file = os.path.join(project_dir, '{0}_fastqs_release_{1}.md5'.format(args.project_name, current_date))
-    #     # make a list of file paths, md5sum inner lists
-    #     write_md5sums(md5_file, [[FPR_info[file]['md5sum'], FPR_info[file]['filename']] for file in FPR_info])
-            
-    # # make a list to store report
-    # Text = []
-    # # add title and logo
-    # logo = str(get_logo())
-    # height, width = resize_image(logo, 0.085)
-    # Text.append(generate_header_table(logo, width, height, args.level))
-    # Text.append('<br />' * 3)
-    # # add information about project and contact personn
-    # Text.append(generate_project_table(args.project_name, args.project_full_name, current_date))
-    # Text.append('<br />')           
-    
-    # # add description
-    # if args.level == 'single':
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about newly released raw sequences.</p>')
-    # elif args.level == 'cumulative':
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This report provides detailed sample information and QC metrics about all released raw sequences to date.</p>')
-    # Text.append('<br />' * 2)
-          
-    # # list the file count            
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">1. File Count</p>')
-    # if args.level == 'single':
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">This release includes {0} pairs of fastq files. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
-    # elif args.level == 'cumulative':
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">{0} pairs of fastq files have been released. File count is broken down by instrument and run as follow.</p>'.format(count_all_files(fastq_counts)))
-    # Text.append(generate_file_count_table(fastq_counts, ['Platform', 'Run', 'Paired fastq files'], {'Platform': '25%', 'Run': '30%', 'Paired fastq files': '25%'}))
-    # Text.append('<br />')           
-    
-    # # add page break between plots and tables
-    # Text.append('<div style="page-break-after: always;"></div>')
-        
-    # # add QC plots
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">2. QC plots</p>')
-    # if args.level == 'single':
-    #     # count samples with missing values
-    #     discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level, 'duplicate (%)', 'on_target')
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. Other metrics are plotted according to the order of <span style="font-style: italic">read counts</span></p>')
-    # elif args.level == 'cumulative':
-    #     # count samples with missing values
-    #     discarded_samples = count_samples_with_missing_values(sample_metrics, 'reads', 'coverage', args.level)
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">QC plots are reported by instrument. Lines are the median of each metric. <span style="font-style: italic">Read count</span> is plotted by ascending order. <span style="font-style: italic">Coverage</span> is plotted according to the order of <span style="font-style: italic">read counts</span></p>')
-    
-    # if sum(discarded_samples.values()):
-    #     S = ['{0}: {1}'.format(instrument, discarded_samples[instrument]) for instrument in sorted(list(discarded_samples.keys()))]
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Some samples could not be plotted because of missing QC values. Missing QC values appear as NA in the QC tables below. The number of discarded samples for each instrument is: {0}</span></p>'.format(', '.join(S)))
-    # Text.append('<br />')
-    
-    
-    # if args.level == 'single':
-    #     #factor = 0.3
-    #     factor = 1
-        
-    # elif args.level == 'cumulative':
-    #     factor = 1.3
-    
-    # for instrument in sorted(list(sample_metrics.keys())):
-    #     # check that figures exist for instrument
-    #     if instrument in figure_files:
-    #         Text.append(generate_figure_table(figure_files[instrument], factor))
-    #         Text.append('<br />')
-                
-    # # add page break between plots and tables
-    # Text.append('<div style="page-break-after: always;"></div>')
-        
-    # # add table with sample Ids
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 1. Sample identifiers</p>')
-    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 1 provides information about the sequenced samples.</span></p>')
-    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">S: Library type, T: Tissue type, O: Tissue origin.</span></p>')
-       
-    # if args.level == 'single':
-    #     if args.timepoints:
-    #         header = ['External ID', 'Case', 'Group ID', 'Library ID (time point)', 'S', 'O', 'T']
-    #         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID (time point)': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
-    #     else:
-    #         header = ['External ID', 'Case', 'Group ID', 'Library ID', 'S', 'O', 'T']
-    #         column_size = {'Case': '10%', 'Group ID': '36%', 'Library ID': '22%', 'S': '5%', 'O': '5%', 'T': '5%', 'External ID': '17%'}
-    #     Text.append(generate_table(sample_metrics, header, column_size))            
-    # elif args.level == 'cumulative':
-    #     header = ['External ID', 'Case', 'Sample', 'Library ID', 'S', 'O', 'T', 'Run']
-    #     column_size = {'Case': '9%', 'Library ID': '21%', 'S': '3%', 'O': '3%', 'T': '3%', 'Run': '32%', 'Sample': '18%', 'External ID': '11%'}
-    #     Text.append(generate_cumulative_table(sample_metrics, header, column_size))
-        
-    # Text.append('<br />')
-    
-    # # add appendix with library design, tissue origin and type
-    # library_design, tissue_type, tissue_origin = list_library_tissue_codes(sample_metrics, args.level)
-    # L = ['{0}: {1}'.format(i, get_library_design()[i]) for i in library_design]
-    # T = ['{0}: {1}'.format(i, get_tissue_types()[i]) for i in tissue_type]
-    # O = ['{0}: {1}'.format(i, get_tissue_origin()[i]) for i in tissue_origin]
-    
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 1</p>')
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Library type:</span> {0}.<li/></ul>'.format(', '.join(L)))
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Type:</span> {0}.<li/></ul>'.format(', '.join(T)))
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Tissue Origin:</span> {0}.<li/></ul>'.format(', '.join(O)))
-    # # add page break between plots and tables
-    # Text.append('<div style="page-break-after: always;"></div>')
-                
-    # # add QC metrics table
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 2. QC metrics</p>')
-    # Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Table 2 provides QC metrics about the raw sequences of each sample.</span></p>')
-        
-    # if args.level == 'single':
-    #     header = ['Case', 'Library', 'Sequencing Run', 'Reads', 'Coverage', 'On target', 'Duplicate (%)']       
-    #     column_size = {'Case': '10%', 'Library': '22%', 'Sequencing Run': '31%', 'Reads': '9%', 'Coverage': '9%', 'On target': '8%', 'Duplicate (%)': '11%'}
-    #     Text.append(generate_table(sample_metrics, header, column_size))
-    # elif args.level == 'cumulative':
-    #     header = ['Case', 'Sample', 'Libraries', 'Runs', 'Reads', 'Coverage', 'Coverage_dedup']
-    #     column_size = {'Case': '15%', 'Sample': '36%', 'Libraries': '7%', 'Runs': '7%', 'Reads': '10%', 'Coverage': '10%', 'Coverage_dedup': '15%'}
-    #     Text.append(generate_cumulative_table(sample_metrics, header, column_size, table_type='metrics'))        
-    # # add space
-    # Text.append('<br />')    
-    
-    # # add QC metrics appendix
-    # Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:normal">Appendix Table 2</p>')
-    # Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">Raw Coverage:</span> an estimate of the mean depth of coverage in the target space = total bases on target / size of the target space<li/></ul>')
-    # if args.level == 'single':
-    #     Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style= "font-weight: bold">On Target Rate:</span> percentage of reads that overlap the target space by at least one base = reads on target/total reads.<li/></ul>')
-    #     Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Percent duplicate:</span> Percent of duplicate reads estimated by Picard MarkDuplicates.<li/></ul>')
-    # elif args.level == 'cumulative':
-    #     Text.append('<ul style="list-style-type: circle; text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-style:normal; font-weight:normal"><li><span style="font-weight: bold">Coverage Deduplicated:</span> an estimate of the mean depth of coverage after removal of marked pcr duplicates. = raw coverage / (1 – percent_duplicates).<li/></ul>')
-    
-    # # add md5sums
-    # if args.level == 'single':
-    #     Text.append('<p style="text-align: left; color: black; font-size:14px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Table 3. List of md5sums</p>')
-    #     Text.append('<p style="text-align: left; color: black; font-size:12px; font-family: Arial, Verdana, sans-serif; font-weight:normal">A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{0}</span></p>'.format(os.path.basename(md5_file)))
-        
-    # # convert to html
-    # renderer = mistune.Markdown()
-    # Text = '\n'.join(Text)
-    # html_str = renderer(Text)
-    
-    # # convert html to pdf    
-    # report_name = '{0}_run_level_data_release_report.{1}.pdf' if args.level == 'single' else '{0}_cumulative_data_release_report.{1}.pdf'
-    # report_file = os.path.join(project_dir, report_name.format(args.project_name, current_date))
-    # newfile = open(report_file, "wb")
-    # pisa.CreatePDF(html_str, newfile)
-    # newfile.close()
-
-    # # remove figure files from disk
-    # for i in figure_files:
-    #     os.remove(figure_files[i])
-
-
-
-
-
-
-
+    # # remove figure files from disk    
+    # if args.keep_html == False:
+    #     for i in figure_files:
+    #         for j in figure_files[i]:
+    #             if os.path.isfile(figure_files[i][j]):
+    #                 os.remove(figure_files[i][j])
 
 
 
