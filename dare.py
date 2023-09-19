@@ -3168,23 +3168,26 @@ def generate_cumulative_figures(working_dir, project, qc_metrics, platform, libr
 
 def write_cumulative_report(args):
     '''
-    (str, str, str, str, str, str, str, list, str | None)
-
+    (str, str, str, str, str | None, str, str, str, str, str, str, str, str, str)
+       
     Write a cumulative PDF report with QC metrics for all released fastqs for a given project
-
-    - project (str): Project name as it appears in File Provenance Report
-    - working-dir (str): Path to the directory with project directories and links to fastqs 
+  
+    - project (str): Name of project of interest
+    - projects_dir (str): Parent directory containing the project subdirectories with file links
     - project_name (str): Project name used to create the project directory in gsi space
-    - project_code (str): Project code from MISO
-    - bamqc_db (str): Path to the bamqc db
-    - cfmedipqc_db (str): Path to the cfmedipqc db 
-    - run_directories (list): List of directories with links to fastqs
-    - provenance (str): Path to File Provenance Report.
-    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
-                           Prefix is added to the relative path in FPR to determine the full file path.
-    - keep_html (bool): Writes html report to file if True
+    - provenance (str): Path to File Provenance Report
+    - prefix (str | None): Use of prefix assumes that FPR containes relative paths.
+                           Prefix is added to the relative paths in FPR to determine the full file paths
+    - api (str): URL of the Nabu API
+    - merged_bamqc_db (str): Path to the merged bamqc SQLite database
+    - merged_rnaseqqc_db (str): Path to the merged rnaseq SQLite database
+    - cfmedipqc_db (str): Path to the cfmedip SQLite database
+    - emseqqc_db (str): Path to the emseq SQLite database
+    - sample_provenance (str): Path to File Provenance Report
+    - project_full_name (str): Full name of the project
+    - ticket (str): Jira data release ticket code
+    - user (str): Name of the GSI personnel generating the report
     '''
-    
     
     # get current time
     current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -3239,7 +3242,6 @@ def write_cumulative_report(args):
     
     # group identifiers, metrics by instrument and library type
     library_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
-    print('grouped metrics by instrument and library source')
     # format qc metrics for template
     qc_metrics = format_qc_metrics(library_metrics)
         
@@ -3266,13 +3268,9 @@ def write_cumulative_report(args):
     Y_axis = {}
     colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
     for library_source in platforms:
-        print(library_source)
-        #metrics[library_source] = get_library_metrics(library_source)
         Y_axis[library_source] = get_Y_axis_labels(library_source)
         for instrument in platforms[library_source]:
-            print(instrument)
             figure = generate_cumulative_figures(working_dir, args.project, library_metrics, instrument, library_source, Y_axis[library_source], colors)
-            print(figure)
             if library_source not in figure_files:
                 figure_files[library_source] = {}
             figure_files[library_source][instrument] = figure
