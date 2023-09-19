@@ -4362,17 +4362,6 @@ def write_cumulative_report(args):
                'platforms': platforms
                }
     
-    
-    
-    # context = {,
-    #            'samples_missing_metrics': samples_missing_metrics,
-    #            ,
-    #            
-    #            
-    #            'libraries': libraries, 
-    #            ,
-    #             #            'md5sum': os.path.basename(md5sum_file)}
-       
     # render template html 
     content = template.render(context)
 
@@ -4380,56 +4369,11 @@ def write_cumulative_report(args):
     report_file = os.path.join(working_dir,  '{0}_cumulative_data_release_report.{1}.pdf'.format(args.project, current_time))
     makepdf(content, report_file)
 
-
-
-    #map_merged_QC_metrics_to_fpr(files, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
-       
-    
-    
-    
-    # # list all platforms for each library source
-    # libraries = {}
-    # for library_source in library_sources:
-    #     instruments = sorted(list(set([files[file_swid]['platform'] for file_swid in files if files[file_swid]['library_source'][0] == library_source])))
-    #     libraries[library_source] = instruments        
-    
-        
-    
-    # # count the number of samples with missing metric values
-    # samples_missing_metrics = count_samples_with_missing_values(files)
-    
-    # # issue warning if samples with missing QC metrics
-    # if samples_missing_metrics:
-    #     print('========')
-    #     print('WARNING!!')
-    #     print('Some samples have missing QC information. Please review')
-    #     for i in samples_missing_metrics:
-    #         for j in samples_missing_metrics[i]:
-    #             print('Library type: {0} - Platform: {1} - {2} Samples'.format(i, j, samples_missing_metrics[i][j]))
-    #     print('========')        
-    
-    
-
-
-
-
-
-    
-        
-    # qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
-    # header_metrics = {}
-    # for i in library_sources:
-    #     header_metrics[i] = ['Library Id', 'File prefix'] + Y_axis[i]
-    
-    
-    
-
-    # # remove figure files from disk    
-    # if args.keep_html == False:
-    #     for i in figure_files:
-    #         for j in figure_files[i]:
-    #             if os.path.isfile(figure_files[i][j]):
-    #                 os.remove(figure_files[i][j])
+    # remove figure files
+    for i in figure_files:
+        for j in figure_files[i]:
+            if os.path.isfile(figure_files[i][j]):
+                os.remove(figure_files[i][j])
 
 
 
