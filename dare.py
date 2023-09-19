@@ -1001,44 +1001,6 @@ def is_gzipped(file):
         return False
   
 
-
-
-def stich_back_etl_record(record):
-    '''
-    (list) -> list
-    
-    Recreate bamqc etl record when fields have internal commas
-    Fields with internal commas are also split and need to be stiched back
-    
-    Parameters
-    ----------
-    - record (list): List representation of a single record from the comma-separated
-    table of bamqc etl, split on commas. 
-    '''
-    
-    # collect indices of fields with double quotes. 
-    # these fields have comma-separated values
-    L = []
-    # count the number of fields with double quotes (and thus with inernal commas)
-    total = 0
-    for k in range(len(record)):
-        if record[k]:
-            # find start and end position of fields with double quotes
-            if record[k].startswith('"'):
-                total += 1
-                # make sure only one field has double quotes (and internal commas)
-                assert total <= 1
-                # collect start positions of all fields with internal commas
-                L.append([k])
-            if record[k][-1] == '"':
-                # if ending with double quotes, collect end positions of all fields with internal quotes
-                L[-1].append(k)
-    # recreate records by stiching back fields with internal commas
-    record = record[:L[0][0]] + [','.join(record[L[0][0]:L[0][1]+1])] + record[L[0][-1]+1:]
-    return record
-    
-
-
 def compute_on_target_rate(bases_mapped, total_bases_on_target):
     '''
     (int, int) -> float
@@ -1061,123 +1023,8 @@ def compute_on_target_rate(bases_mapped, total_bases_on_target):
                 on_target = math.ceil(on_target)
     return on_target
 
-
-def get_run_level_sample_metrics(FPR_info):
-    '''
-    (dict) -> dict
-    
-    Returns a dictionary with run-level QC metrics and read counts for each sample across instrument
-        
-    Parameters
-    ----------
-    - FPR_info (dict): Run level bam QC metrics and file stats for each released fastq 
-    '''
-    
-    D = {}
-    
-    for file in FPR_info:
-        # set up boolean to match paired end fastqs
-        found = False
-        # get file info        
-        sample = FPR_info[file]['sample_name']
-        lane = FPR_info[file]['lane']
-        run_alias = FPR_info[file]['run_alias']
-        run = FPR_info[file]['run']
-        library = FPR_info[file]['lid']
-        instrument = FPR_info[file]['instrument']
-        barcode = FPR_info[file]['barcode']
-        ext_id = FPR_info[file]['external_id']
-        case = FPR_info[file]['ID']
-        library_source = FPR_info[file]['library_source']
-        tissue_origin = FPR_info[file]['tissue_origin']
-        tissue_type = FPR_info[file]['tissue_type']
-        read_count = FPR_info[file]['read_count']
-        coverage = FPR_info[file]['coverage']
-        coverage_dedup = FPR_info[file]['coverage_dedup']
-        on_target = FPR_info[file]['on_target']
-        duplicate = FPR_info[file]['percent_duplicate']
-        group_id = FPR_info[file]['group_id']
-
-
-        if instrument not in D:
-            D[instrument] = {}
-        
-        if sample not in D[instrument]:
-            D[instrument][sample] = [{'sample': sample, 'lane': lane, 'run': run,
-                                      'run_alias': run_alias, 'library': library,
-                                      'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
-                                      'case': case, 'library_source': library_source,
-                                      'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
-                                      'reads': read_count, 'coverage': coverage,
-                                      'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                                      'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id}]
-        else:
-            # find paired fastq
-            for d in D[instrument][sample]:
-                if run == d['run'] and lane == d['lane'] and library == d['library'] \
-                     and instrument == d['instrument'] and barcode == d['barcode'] \
-                     and ext_id == d['ext_id'] and case == d['case'] and library_source == d['library_source']:
-                         d['reads'] += read_count
-                         assert group_id == d['group_id']
-                         assert coverage == d['coverage']
-                         assert coverage_dedup == d['coverage_dedup']
-                         assert duplicate == d['duplicate (%)']
-                         assert on_target == d['on_target']
-                         assert tissue_origin == d['tissue_origin']
-                         assert tissue_type == d['tissue_type']
-                         d['files'].append(file)
-                         # update boolean. paired end fastq found
-                         found = True
-            if found == False:
-                # record file info
-                D[instrument][sample].append({'sample': sample, 'lane': lane, 'run': run,
-                             'run_alias': run_alias, 'library': library,
-                             'instrument': instrument, 'barcode': barcode, 'ext_id': ext_id,
-                             'case': case, 'library_source': library_source,
-                             'tissue_type': tissue_type, 'tissue_origin': tissue_origin,
-                             'reads': read_count, 'coverage': coverage,
-                             'coverage_dedup': coverage_dedup, 'on_target': on_target,
-                             'duplicate (%)': duplicate, 'files': [file], 'group_id': group_id})
-    return D                         
                                            
             
-                                           
-def group_qc_metric_by_instrument(sample_metrics, metric, level):
-    '''
-    (dict, str, str) - > dict 
-    
-    Returns metric for each sample across instruments
-    
-    
-    Parameters
-    ----------
-    - sample_metrics (dict): Dictionary run-level or cumulative level sample QC metrics  
-    - metric (str): Metric of interest
-    - level (str): Single or cumulative
-    '''
-    
-    # collect metric for each sample and instrument
-    D = {}
-        
-    # check level because data structure is different for run-level or cumulative metrics
-    if level == 'single':
-        for instrument in sample_metrics:
-            for sample in sample_metrics[instrument]:
-                for d in sample_metrics[instrument][sample]:
-                    if instrument in D:
-                        D[instrument].append([d[metric], sample + '_' + d['run'] + '_' + d['lane']])
-                    else:
-                        D[instrument] = [[d[metric], sample + '_' + d['run'] + '_' + d['lane']]]
-    elif level == 'cumulative':
-        for instrument in sample_metrics:
-            for sample in sample_metrics[instrument]:
-                if instrument in D:
-                    D[instrument].append([sample_metrics[instrument][sample][metric], sample])
-                else:
-                    D[instrument] = [[sample_metrics[instrument][sample][metric], sample]]
-    return D
-
-
 def count_released_fastqs_by_instrument(FPR_info, reads):
     '''
     (dict, str) -> dict
@@ -1245,58 +1092,6 @@ def count_released_fastqs_by_library_type_instrument(FPR_info):
 
 
 
-def generate_project_table(project_name, project_full_name, current_date):
-    '''
-    (str, str, str, str, str) -> str
-
-    Returns a html string representing a table with project information
-
-    Parameters
-    ----------
-    - project_name (str): Acronym of the project
-    - project_full_name (str): Full name of the project 
-    - current_date (str): Date of the release (Y-M-D)
-    '''
-
-    content = [project_name, project_full_name, current_date]
-    column_width = [30, 50, 20]
-
-    table = []
-    # add table style
-    table.append('<table style="width:100%; font-family: Arial, Helvetica, sans-serif">')
-    # add header
-    table.append('<tr>')
-    for i in ['Project Acronym', 'Project Name', 'Date']:
-        table.append('<th style="padding: 3px; border: 0.75px solid grey; border-collapse:collapse; text-align: center; font-size:10px">{0}</th>'.format(i))
-    table.append('</tr>')
-    # add lines in table
-    table.append('<tr>')
-    for i in range(len(content)):
-        table.append('<td style="width: {0}%; padding: 3px; border: 0.75px solid grey;  border-collapse:collapse; text-align: center; font-size:10px">{1}</td>'.format(column_width[i], content[i]))
-    table.append('</tr>')
-    table.append('</table>')
-    return ''.join(table)
-
-
-def count_all_files(fastq_counts):
-    '''
-    (dict) -> int
-    
-    Returns the total number of fast files (or number of paired fastq files) across instruments and runs
-    
-    Parameters
-    ----------
-    - fastq_counts (dict): Counts of released fastqs for each run and instrument
-    '''
-
-    total = 0
-    for instrument in fastq_counts:
-        for run in fastq_counts[instrument]:
-            total += fastq_counts[instrument][run]
-    return total
-
-
-
 def list_released_fastqs_project(api, project):
     '''
     (str, str) -> list
@@ -1330,25 +1125,6 @@ def list_released_fastqs_project(api, project):
                 if qc_status.upper() == 'PASS':
                     R.append(file_path)
     return R    
-
-
-
-def write_md5sums(md5_file, md5sums):
-    '''
-    (str, str, str, dict, bool) -> str
-    
-    Writes a table file with file names and md5sums and returns thefile path
-        
-    Parameters
-    ----------
-    - md5_file (str): Path to the outputfile with md5sums
-    - md5sums (dict): Dictionary of file path, md5sum key, value pairs
-    '''
-
-    newfile = open(md5_file, 'w')
-    for i in md5sums:
-        newfile.write('\t'.join([i[0], i[1]]) + '\n')
-    newfile.close()       
 
 
 def get_tissue_types():
@@ -2595,26 +2371,6 @@ def makepdf(html, outputfile):
     htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
 
 
-
-
-
-def write_html(html, outputfile):
-    '''
-    (str) -> None
-    
-    Generates a HTML file from a string of HTML
-   
-    Parameters
-    ----------
-    - html (str) String of formated HTML
-    - outputfile (str): Name of the output HTML file
-    '''
-
-    with open(outputfile, mode="w", encoding="utf-8") as message:
-        message.write(html)
-        print(f"... wrote {outputfile}")
-
-
 def merge_bamqc_dnaseqc(bamqc_info, dnaseqqc_info):
     '''
     (dict, dict) -> None
@@ -2707,7 +2463,6 @@ def write_batch_report(args):
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    #records = get_FPR_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
@@ -2975,134 +2730,6 @@ def extract_merged_rnaseqqc_data(merged_rnaseqqc_db):
         
     return D
     
-
-def get_merged_bamqc_metrics(project, files, merged_bamqc_info, library_source, platform):
-    '''
-    (dict, str, dict) -> None
-    
-    Update the information obtained from File Provenance Report in place with QC information
-    collected from bamqc for a given file determined by file_swid if appropriate library 
-       
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - file_swid (str): Unique file identifier
-    - merged_bamqc_info (dict): QC information from the merged bamqc table
-    '''
-    
-    # initiate dictionary
-    metric_data = {'read_count': [],
-                   'coverage': [],
-                   'coverage_dedup': [],
-                   'on_target': [],
-                   'percent_duplicate': []}
-       
-    for i in merged_bamqc_info:
-        merged_limskeys = sorted(merged_bamqc_info[i]['Merged Pinery Lims ID'])
-        # get read count from all fastqs 
-        if merged_bamqc_info[i]['Project'] == project and merged_bamqc_info[i]['Library Design'] == library_source and \
-            '_'.join(merged_bamqc_info[i]['instrument'].split()) == platform:
-                # collect all limskeys from FPR data
-                L = []
-                # record all read counts
-                read_count = []
-                for file_swid in files:
-                    if files[file_swid]['limskey'][0] in merged_limskeys:
-                        read_count.append(files[file_swid]['read_count'])
-                        L.append(files[file_swid]['limskey'][0])
-        
-                # check that all limskeys have been recorded
-                if sorted(list(set(L))) == sorted(merged_limskeys):
-                    read_count = sum(read_count)
-                    # record each metric
-                    metric_data['read_count'].append(read_count)
-                    metric_data['coverage'].append(round(merged_bamqc_info[i]['coverage'], 2))
-                    metric_data['coverage_dedup'].append(round(merged_bamqc_info[i]['coverage deduplicated'], 2))
-                    metric_data['on_target'].append(round(merged_bamqc_info[i]['on_target'], 2))
-                    metric_data['percent_duplicate'].append(round(merged_bamqc_info[i]['mark duplicates_PERCENT_DUPLICATION'], 2))
-    
-    readcount = metric_data['read_count']
-    coverage = metric_data['coverage']
-    dedup = metric_data['coverage_dedup']
-    target = metric_data['on_target']
-    duplicate = metric_data['percent_duplicate']
-    
-    # sort metrics according to readcount values
-    if readcount: 
-        M = list(zip(readcount, coverage, dedup, target, duplicate))
-        M.sort(key = lambda x: x[0])
-        readcount, coverage, dedup, target, duplicate = zip(*M)
-                   
-        metric_data['read_count'] = readcount
-        metric_data['coverage'] = coverage
-        metric_data['coverage_dedup'] = dedup
-        metric_data['on_target'] = target
-        metric_data['percent_duplicate'] = duplicate
-
-    return metric_data
-
-
-def get_merged_rnaseqqc_metrics(project, files, merged_rnaseqqc_info, library_source, platform):
-    '''
-    (dict, str, dict) -> None
-    
-    Update the information obtained from File Provenance Report in place with QC information
-    collected from bamqc for a given file determined by file_swid if appropriate library 
-       
-    Parameters
-    ----------
-    - FPR_info (dict): Information for each released fastq collected from File Provenance Report
-    - file_swid (str): Unique file identifier
-    - merged_bamqc_info (dict): QC information from the merged bamqc table
-    '''
-    
-    metric_data = {'read_count': [],
-                   "5'-3' bias": [],
-                   'rRNA contamination': [],
-                   'Coding (%)': [],
-                   'Correct strand reads (%)': []}
-    
-    for i in merged_rnaseqqc_info:
-        merged_limskeys = sorted(merged_rnaseqqc_info[i]['Merged Pinery Lims ID'])
-        if merged_rnaseqqc_info[i]['Project'] == project and merged_rnaseqqc_info[i]['Library Design'] == library_source and \
-            '_'.join(merged_rnaseqqc_info[i]['instrument'].split()) == platform:
-                # collect all limskeys from FPR data
-                L = []
-                # record all read counts
-                read_count = []
-                for file_swid in files:
-                    if files[file_swid]['limskey'][0] in merged_limskeys:
-                        read_count.append(files[file_swid]['read_count'])
-                        L.append(files[file_swid]['limskey'][0])
-                      
-                # check that all limskeys have been recorded
-                if sorted(list(set(L))) == sorted(merged_limskeys):
-                    read_count = sum(read_count)
-                    metric_data['read_count'].append(read_count)
-                    metric_data["5'-3' bias"].append(merged_rnaseqqc_info[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS'])
-                    metric_data['rRNA contamination'].append(round((merged_rnaseqqc_info[i]['rrna contamination properly paired'] / merged_rnaseqqc_info[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3))
-                    metric_data['Coding (%)'].append(merged_rnaseqqc_info[i]['PCT_CODING_BASES'])
-                    metric_data['Correct strand reads (%)'].append(merged_rnaseqqc_info[i]['PCT_CORRECT_STRAND_READS'])
-    
-    # sort data according to read count
-    readcount = metric_data['read_count']
-    bias = metric_data["5'-3' bias"]
-    contamination = metric_data['rRNA contamination']
-    coding = metric_data['Coding (%)']
-    strand = metric_data['Correct strand reads (%)']
-    if readcount: 
-        M = list(zip(readcount, bias, contamination, coding, strand))
-        M.sort(key = lambda x: x[0])
-        readcount, bias, contamination, coding, strand = zip(*M)
-        
-        metric_data['read_count'] = readcount
-        metric_data["5'-3' bias"] = bias
-        metric_data['rRNA contamination'] = contamination
-        metric_data['Coding (%)'] = coding
-        metric_data['Correct strand reads (%)'] = strand
-
-    return metric_data
-
 
 def group_fastq_pairs(files):
     '''
@@ -3568,7 +3195,6 @@ def write_cumulative_report(args):
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
-    #records = get_FPR_records(args.project, provenance)
     print('Information was extracted from FPR {0}'.format(provenance))
     
     # make a dict with project information
@@ -3635,15 +3261,13 @@ def write_cumulative_report(args):
             else:
                 platforms[j] = [i]
       
-    print(platforms)            
-      
     # generate plots for each instrument and library source and keep track of figure files
     figure_files = {}
-    metrics, Y_axis = {}, {}
+    Y_axis = {}
     colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
     for library_source in platforms:
         print(library_source)
-        metrics[library_source] = get_library_metrics(library_source)
+        #metrics[library_source] = get_library_metrics(library_source)
         Y_axis[library_source] = get_Y_axis_labels(library_source)
         for instrument in platforms[library_source]:
             print(instrument)
