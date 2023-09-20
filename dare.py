@@ -2929,13 +2929,13 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                 if library_source not in D[platform]:
                     D[platform][library_source] = {}
                 if limskey in D[platform][library_source]:
-                    assert D[platform][library_source][limskey]['prefix'] == prefix
+                    assert D[platform][library_source][limskey]['prefix'][0] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
                     assert D[platform][library_source][limskey]['read_count'] % 2 == 0
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
-                        'prefix': prefix,
+                        'prefix': [prefix],
                         'libraries': library,
                         'donor': donor,
                         'AT_dropout': AT_dropout,
@@ -2988,13 +2988,13 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                 if library_source not in D[platform]:
                     D[platform][library_source] = {}
                 if limskey in D[platform][library_source]:
-                    assert D[platform][library_source][limskey]['prefix'] == prefix
+                    assert D[platform][library_source][limskey]['prefix'][0] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
                     assert D[platform][library_source][limskey]['read_count'] % 2 == 0
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
-                        'prefix': prefix,
+                        'prefix': [prefix],
                         'libraries': library,
                         'donor': donor,
                         'Lambda_methylation': Lambda_methylation,
@@ -3266,24 +3266,8 @@ def write_cumulative_report(args):
     
     # group identifiers, metrics by instrument and library type
     library_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
-    
-    
-    for i in library_metrics:
-        for j in library_metrics[i]:
-            for k in library_metrics[i][j]:
-                if type(library_metrics[i][j][k]['prefix']) == str:
-                    print('str', i, j)
-                else:     
-                    print(type(library_metrics[i][j][k]['prefix']), i, j)
-    
-    
-    
     # convert read counts to counts of read pairs
     convert_read_count_to_read_pairs(library_metrics)
-    
-    
-    
-    
     # format qc metrics for template
     qc_metrics = format_qc_metrics(library_metrics)
         
