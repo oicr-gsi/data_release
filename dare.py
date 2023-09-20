@@ -2936,7 +2936,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
                         'prefix': [prefix],
-                        'libraries': library,
+                        'libraries': [library],
                         'donor': donor,
                         'AT_dropout': AT_dropout,
                         'methylation_beta': methylation_beta,
@@ -2995,7 +2995,7 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
                         'prefix': [prefix],
-                        'libraries': library,
+                        'libraries': [library],
                         'donor': donor,
                         'Lambda_methylation': Lambda_methylation,
                         'pUC19_methylation': pUC19_methylation,
