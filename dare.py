@@ -2796,8 +2796,7 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
-            # get the number of read pairs 
-            readcount = int(sum(readcount) / 2)
+            readcount = sum(readcount)
             prefix = list(set(prefix))
             libraries = bamqc[i]['library']
             donor = bamqc[i]['Donor']
@@ -2860,8 +2859,7 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
-            # get the numbver of read pairs
-            readcount = int(sum(readcount) / 2)
+            readcount = sum(readcount)
             prefix = list(set(prefix))
             libraries = rnaseqqc[i]['library']
             donor = rnaseqqc[i]['Donor']
@@ -2913,6 +2911,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
             donor = j['sample_name']
             # get the read count for each file
             readcount = j['read_count']
+                        
             if run in cfmedipqc and limskey in cfmedipqc[run]:
                 assert len(cfmedipqc[run][limskey]) == 1
                 d = cfmedipqc[run][limskey][0]
@@ -2932,6 +2931,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                 if limskey in D[platform][library_source]:
                     assert D[platform][library_source][limskey]['prefix'] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
+                    assert D[platform][library_source][limskey]['read_count'] % 2 == 0
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
@@ -2943,15 +2943,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                         'duplication': duplication,
                         'CpG_enrichment': CpG_enrichment
                         }
-
-    for i in D:
-        for j in D[i]:
-            for k in D[i][j]:
-                # get the number of read pairs
-                assert D[i][j][k]['read_count'] % 2 == 0
-                D[i][j][k]['read_count'] = int(D[i][j][k]['read_count'] / 2)
-                
-                        
+                            
 
 def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
     '''
@@ -2998,6 +2990,7 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                 if limskey in D[platform][library_source]:
                     assert D[platform][library_source][limskey]['prefix'] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
+                    assert D[platform][library_source][limskey]['read_count'] % 2 == 0
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
@@ -3008,15 +3001,25 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                         'pUC19_methylation': pUC19_methylation,
                         'percent_duplication': percent_duplication
                         }
-
-    for i in D:
-        for j in D[i]:
-            for k in D[i][j]:
-                # get the number of read pairs
-                assert D[i][j][k]['read_count'] % 2 == 0
-                D[i][j][k]['read_count'] = int(D[i][j][k]['read_count'] / 2)
                 
-
+                
+def convert_read_count_to_read_pairs(D):
+    '''
+    (dict) -> None
+    
+    Convert the read counts to read pair counts in place in dictionary D
+    
+    Parameters
+    ----------
+    - D (dict): Dictionary with metrics of interest organized by sequencing plarform and library source
+    '''
+    
+    for platform in D:
+        for library_source in D[platform]:
+            for limskeys in D[platform][library_source]:
+                # get the number of read pairs
+                assert D[platform][library_source][limskeys]['read_count'] % 2 == 0
+                D[platform][library_source][limskeys]['read_count'] = int(D[platform][library_source][limskeys]['read_count'] / 2)  
 
     
 def get_metrics_cumulative_report(files, bamqc, rnaseqqc, cfmedipqc, emseqqc):
@@ -3231,17 +3234,56 @@ def write_cumulative_report(args):
     # define identifier table header
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
+    print('got sample identifiers')
+    
+    
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
+    
+    
+    print('extracted bamqc')
+    
+    
     # collect information from rnaseq table
     rnaseqqc_info = extract_merged_rnaseqqc_data(args.merged_rnaseqqc_db)
+    
+    
+    print('extracted rnaseq qc')
+    
+    
     # collect information from cfmedip table
     cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
+    
+    print('cfmedip qc')
+    
+    
     # collect information from emseq cache
     emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
     
+    print('extracted emseqc')
+    
+    
+    
     # group identifiers, metrics by instrument and library type
     library_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
+    
+    
+    for i in library_metrics:
+        for j in library_metrics[i]:
+            for k in library_metrics[i][j]:
+                if type(library_metrics[i][j][k]['prefix']) == str:
+                    print('str', i, j)
+                else:     
+                    print(type(library_metrics[i][j][k]['prefix']), i, j)
+    
+    
+    
+    # convert read counts to counts of read pairs
+    convert_read_count_to_read_pairs(library_metrics)
+    
+    
+    
+    
     # format qc metrics for template
     qc_metrics = format_qc_metrics(library_metrics)
         
