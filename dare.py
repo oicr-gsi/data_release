@@ -2151,16 +2151,18 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             groupid = i[0]['groupid'][0]
             group_description = i[0]['groupdesc'][0]
             
+            max_length = 20
+            
             # reformat prefix to fit the table column
-            if len(prefix) >= 40:
+            if len(prefix) >= max_length:
                 prefix = fit_into_column(prefix, library_source)
-            if len(library) >= 40:
+            if len(library) >= max_length:
                 library = fit_into_column(library, library_source)
-            if len(sample) >= 40:
+            if len(sample) >= max_length:
                 sample = fit_into_column(sample, library_source)
-            if len(groupid) >= 40:
+            if len(groupid) >= max_length:
                 groupid = fit_into_column(groupid, library_source)
-            if len(group_description) >= 40:
+            if len(group_description) >= max_length:
                 group_description = fit_into_column(group_description, library_source)
                         
             
