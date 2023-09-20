@@ -3086,9 +3086,11 @@ def format_qc_metrics(qc_metrics):
             for limskey in qc_metrics[instrument][library_source]:
                 donor = qc_metrics[instrument][library_source][limskey]['donor']
                 libraries = list(qc_metrics[instrument][library_source][limskey]['libraries'])
-                libraries = ';'.join([fit_into_column(i, library_source) if len(i) >=40 else i for i in libraries])
                 prefix = list(qc_metrics[instrument][library_source][limskey]['prefix'])
-                prefix = ';'.join([fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix])
+                libraries = [fit_into_column(i, library_source) if len(i) >=40 else i for i in libraries]
+                prefix = [fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix]
+                libraries.sort()
+                prefix.sort()
                 L = [donor, libraries, prefix]
                 for i in metrics:
                     if i == 'read_count':
@@ -3233,36 +3235,16 @@ def write_cumulative_report(args):
     appendix_identifiers = get_identifiers_appendix(files)
     # define identifier table header
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
-    
-    print('got sample identifiers')
-    
-    
+       
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
-    
-    
-    print('extracted bamqc')
-    
-    
     # collect information from rnaseq table
     rnaseqqc_info = extract_merged_rnaseqqc_data(args.merged_rnaseqqc_db)
-    
-    
-    print('extracted rnaseq qc')
-    
-    
     # collect information from cfmedip table
     cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
-    
-    print('cfmedip qc')
-    
-    
     # collect information from emseq cache
     emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
-    
-    print('extracted emseqc')
-    
-    
+    print('Extracted QC metrics from QC-etl caches')
     
     # group identifiers, metrics by instrument and library type
     library_metrics = get_metrics_cumulative_report(files, bamqc_info, rnaseqqc_info, cfmedipqc_info, emseqqc_info)
@@ -3300,12 +3282,12 @@ def write_cumulative_report(args):
             if library_source not in figure_files:
                 figure_files[library_source] = {}
             figure_files[library_source][instrument] = figure
-    
+    print('Generated QC plots')
+        
     header_metrics = {}
     for i in library_sources:
         header_metrics[i] = ['Case Id', 'Library Id', 'File prefix'] + Y_axis[i]
          
-       
     # write report
     # get the report template
     template_dir = os.path.join(os.path.dirname(__file__), './templates')

@@ -124,8 +124,16 @@
    </tr>
        {% for i in qc_metrics[instrument][library_source] %}
          <tr>
-           {% for j in i %}
-             <td> {{j}} </td>
+           {% for j in range(i | length) %}
+           <td>
+           {% if j == 1 or j == 2 %}
+              {% for k in i[j] %}
+                 {{k}}
+              {% endfor %} 
+           {% else %}
+              {{i[j]}}
+           {% endif %}
+           </td>
            {% endfor %}
          </tr>        
        {% endfor %}               
