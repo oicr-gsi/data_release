@@ -2843,6 +2843,9 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
         L = []
         readcount = []
         prefix = []
+        # track library ids because not present in rnaseq merged cache
+        libraries = []
+        
         
         # collect read count for all fastqs
         # track limskeys and file prefix for fastqs
@@ -2856,12 +2859,13 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
+                    libraries.extend(k['library'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
-            libraries = rnaseqqc[i]['library']
+            libraries = list(set(libraries))
             donor = rnaseqqc[i]['Donor']
             bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
             contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
