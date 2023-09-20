@@ -2869,8 +2869,8 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
             donor = rnaseqqc[i]['Donor']
             bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
             contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
-            coding = rnaseqqc[i]['PCT_CODING_BASES']
-            strand = rnaseqqc[i]['PCT_CORRECT_STRAND_READS']
+            coding = round(rnaseqqc[i]['PCT_CODING_BASES'], 3)
+            strand = round(rnaseqqc[i]['PCT_CORRECT_STRAND_READS'], 3)
 
             d = {'read_count': readcount,
                  'prefix': prefix,
@@ -2923,10 +2923,10 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                 assert d['Run Alias'] == run
                 assert int(d['Lane Number']) == int(lane)
                 assert d['Barcodes'] == barcode
-                AT_dropout = d['AT Dropout']
-                methylation_beta = d['Methylation beta']
-                duplication = d['Percent Duplication']
-                CpG_enrichment = d['Relative CpG Frequency in Regions']
+                AT_dropout = round(d['AT Dropout'], 3)
+                methylation_beta = round(d['Methylation beta'], 3)
+                duplication = round(d['Percent Duplication'], 3)
+                CpG_enrichment = round(d['Relative CpG Frequency in Regions'], 3)
                     
                 if platform not in D:
                     D[platform] = {}
@@ -2983,9 +2983,9 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                 assert d['Run Alias'] == run
                 assert int(d['Lane Number']) == int(lane)
                 assert d['Barcodes'] == barcode
-                Lambda_methylation = d['Lambda']
-                pUC19_methylation = d['pUC19']
-                percent_duplication = d['mark duplicates_PERCENT_DUPLICATION']
+                Lambda_methylation = round(d['Lambda'], 3)
+                pUC19_methylation = round(d['pUC19'], 3)
+                percent_duplication = round(d['mark duplicates_PERCENT_DUPLICATION'], 3)
 
                 if platform not in D:
                     D[platform] = {}
