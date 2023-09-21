@@ -3258,14 +3258,6 @@ def write_cumulative_report(args):
     convert_read_count_to_read_pairs(library_metrics)
     # format qc metrics for template
     qc_metrics = format_qc_metrics(library_metrics)
-        
-    # make a list of library types
-    library_sources = sorted(list(set([files[i]['library_source'][0] for i in files])))
-    
-    # get the qc metrics subtables
-    qc_subtables = get_qc_metrics_table_names(library_sources)
-    # get the metrics appendix
-    qc_appendices = get_metrics_appendix(library_sources)
     
     # list all platforms for each library source
     platforms = {}
@@ -3276,6 +3268,15 @@ def write_cumulative_report(args):
                 platforms[j].sort()
             else:
                 platforms[j] = [i]
+
+    # make a list of library types from data with QC metrics
+    library_sources = sorted(list(platforms.keys()))
+       
+    # get the qc metrics subtables
+    qc_subtables = get_qc_metrics_table_names(library_sources)
+    # get the metrics appendix
+    qc_appendices = get_metrics_appendix(library_sources)
+    
       
     # generate plots for each instrument and library source and keep track of figure files
     figure_files = {}
