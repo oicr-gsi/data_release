@@ -76,26 +76,19 @@
      <th>{{header_identifiers.4}}</th>
      <th>{{header_identifiers.5}}</th>
      <th>{{header_identifiers.6}}</th>
-     <th>{{header_identifiers.7}}</th>
    </tr>   
    <tr>   
-   {% for library_source in sample_identifiers %}
-     {% for instrument in sample_identifiers[library_source] %}
-       </tr>
-       {% for i in sample_identifiers[library_source][instrument] %}
-         <tr>
-           <td> {{i.0}} </td>
-           <td> {{i.1}} </td>
-           <td> {{i.2}} </td>
-           <td> {{i.3}} </td>
-           <td> {{i.4}} </td>
-           <td> {{i.5}} </td>
-           <td> {{i.6}} </td>
-           <td> {{i.7}} </td>         
-         </tr>        
-       {% endfor %}               
-    {% endfor %}
-   {% endfor %}
+   {% for i in sample_identifiers %}
+     <tr>
+       <td> {{i.0}} </td>
+       <td> {{i.1}} </td>
+       <td> {{i.2}} </td>
+       <td> {{i.3}} </td>
+       <td> {{i.4}} </td>
+       <td> {{i.5}} </td>
+       <td> {{i.6}} </td>
+     </tr>        
+   {% endfor %}               
   </table>
 
   <ul>

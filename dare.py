@@ -2202,6 +2202,70 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
 
 
 
+
+
+def group_cumulative_samples(files):
+    '''
+    (dict) -> list
+    
+    Returns a list of sample identifiers sorted on donor id 
+    
+    Parameters
+    ----------
+    - files (dict): Information about fastqs extracted from File Provenance Report
+    '''
+        
+    # make a list of instruments
+    instruments = list(set([files[file_swid]['platform'] for file_swid in files]))
+    
+    # record sample identifiers across library type and platform
+    SL = []
+    
+    # find pairs of fastqs
+    for platform in instruments:
+        pairs = find_fastq_pairs(files, platform)
+        add_file_prefix(pairs)
+        for i in pairs:
+            # add comma to reads for readability
+            case = i[0]['sample_name']
+            external_name = i[0]['external_name']
+            sample = i[0]['sample_id'][0]
+            library_source = i[0]['library_source'][0]
+            library = i[0]['library'][0]
+            prefix = i[0]['prefix']
+            groupid = i[0]['groupid'][0]
+            group_description = i[0]['groupdesc'][0]
+            
+            
+            max_length = 20
+            
+            # reformat prefix to fit the table column
+            if len(prefix) >= max_length:
+                prefix = fit_into_column(prefix, library_source)
+            if len(library) >= max_length:
+                library = fit_into_column(library, library_source)
+            if len(sample) >= max_length:
+                sample = fit_into_column(sample, library_source)
+            if len(groupid) >= max_length:
+                groupid = fit_into_column(groupid, library_source)
+            if len(group_description) >= max_length:
+                group_description = fit_into_column(group_description, library_source)
+                        
+            tissue_origin = i[0]['tissue_origin'][0]
+            tissue_type = i[0]['tissue_type'][0]
+            L = [case, external_name, sample, group_description, library_source, tissue_origin, tissue_type]
+
+            if L not in SL:
+                SL.append(L)
+    SL.sort(key = lambda x: x[0])
+    
+    return SL            
+
+
+
+
+
+
 def get_library_tissue_types(files):
     '''
     (dict) -> dict
@@ -3245,10 +3309,10 @@ def write_cumulative_report(args):
             rn[i][j] = rn[i][j] = sorted(list(fastq_counts[i][j].keys()))
         
     # get the identifiers of all released files
-    sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
+    sample_identifiers = group_cumulative_samples(files)
     appendix_identifiers = get_identifiers_appendix(files)
     # define identifier table header
-    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+    header_identifiers = ['Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
        
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
