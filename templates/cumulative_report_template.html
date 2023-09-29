@@ -43,9 +43,9 @@
      <th>Paired fastq files</th>     
    </tr>   
    
-   {% for library_type in fastq_counts %}
-     {% for instrument in fastq_counts[library_type] %}
-       {% for run in fastq_counts[library_type][instrument] %}
+   {% for library_type in lt %} 
+     {% for instrument in sp[library_type] %}
+       {% for run in rn[library_type][instrument] %}
          <tr>        
          <td> {{library_type}} </td>
          <td> {{instrument}} </td>

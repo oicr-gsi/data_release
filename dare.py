@@ -3235,6 +3235,14 @@ def write_cumulative_report(args):
     for i in fastq_counts:
         all_released_files += sum([sum(list(j.values())) for j in fastq_counts[i].values()])
     
+    # sort library types, sequencing platforms, sequencing runs
+    lt = sorted(list(fastq_counts.keys()))
+    sp = sp = {i:sorted(fastq_counts[i].keys()) for i in lt}
+    rn = {}
+    for i in lt:
+        rn[i] = {}
+        for j in sp[i]:
+            rn[i][j] = rn[i][j] = sorted(list(fastq_counts[i][j].keys()))
         
     # get the identifiers of all released files
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
@@ -3317,7 +3325,10 @@ def write_cumulative_report(args):
                'header_metrics': header_metrics,
                'qc_metrics': qc_metrics,
                'figure_files': figure_files,
-               'platforms': platforms
+               'platforms': platforms,
+               'lt': lt,
+               'sp': sp,
+               'rn': rn
                }
     
     # render template html 
