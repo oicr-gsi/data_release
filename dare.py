@@ -2374,7 +2374,8 @@ def metrics_definitions():
                    'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.',
                    '{0} methylation'.format(chr(955)): 'Ratio of methylated CpG over total CpG in the negative control',
                    'pUC19 methylation': 'Ratio of methylated CpG over total CpG in the positive control',
-                   'Duplication rate': 'Percent duplication of Picard marked duplicates'}
+                   'Duplication rate': 'Percent duplication of Picard marked duplicates'
+                   }
     
     return definitions
 
@@ -2415,6 +2416,48 @@ def get_metrics_appendix(library_sources):
         counter += 1
         
     return qc_appendix
+
+
+
+
+def get_cumulative_metrics_appendix(library_sources):
+    '''
+    (list) -> dict
+    
+    Returns a dictionry with definitions of columns in the QC metrics table of the cumulative report
+    
+    Parameters
+    ----------
+    - library_sources (list): Sorted list of library types 
+    '''
+
+    # get the QC metrics sub-tables and appendices
+    definitions = metrics_definitions()    
+      
+    counter = 1
+    qc_appendix = {'tables': {}, 'metrics': {}}
+    for library_type in library_sources:
+        qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
+        
+        L = ['Case Id: OICR-generated case identifier',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor.',
+             'Read pairs: {0}'.format(definitions['Read pairs'])]
+        
+        if library_type == 'CM':
+            L.extend([': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG frequency']])
+        elif library_type in ['EX', 'TS']:
+            L.extend([': '.join([i, definitions[i]]) for i in ['Coverage', 'On target']])
+        elif library_type in ['WG', 'PG']:
+            L.extend(['{0}: {1}'.format('Coverage', definitions['Coverage'])])
+        elif library_type == 'WT':
+            L.extend([': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']])
+        elif library_type in ['MC', 'MG']:
+            L.extend([': '.join([i, definitions[i]]) for i in ['{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']])
+        qc_appendix['metrics'][library_type] = L
+        counter += 1
+        
+    return qc_appendix
+
 
 
 def makepdf(html, outputfile):
@@ -2844,6 +2887,7 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
         L = []
         readcount = []
         prefix = []
+        runs = []
         
         # collect read count for all fastqs
         # track limskeys and file prefix for fastqs
@@ -2859,26 +2903,31 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
+                    runs.extend(k['run_id'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
+            runs = sorted(list(set(runs)))
             libraries = bamqc[i]['library']
             donor = bamqc[i]['Donor']
             coverage = round(bamqc[i]['coverage'], 2)
             coverage_dedup = round(bamqc[i]['coverage deduplicated'], 2)
             on_target = round(bamqc[i]['on_target'], 2)
             percent_duplicate = round(bamqc[i]['mark duplicates_PERCENT_DUPLICATION'], 2)
+            sample = bamqc[i]['sample']
 
             d = {'read_count': readcount,
                  'prefix': prefix,
+                 'run': runs,
                  'libraries': libraries,
                  'donor': donor,
                  'coverage': coverage,
                  'coverage_dedup': coverage_dedup,
                  'on_target': on_target,
-                 'percent_duplicate': percent_duplicate}
+                 'percent_duplicate': percent_duplicate,
+                 'sample': sample}
                                    
             if platform not in D:
                 D[platform] = {}
@@ -2911,6 +2960,7 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
         prefix = []
         # track library ids because not present in rnaseq merged cache
         libraries = []
+        runs = []
         
         
         # collect read count for all fastqs
@@ -2926,26 +2976,31 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
                     L.append(limskey)
                     prefix.append(k['prefix'])
                     libraries.extend(k['library'])
+                    runs.extend(k['run_id'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
+            runs = sorted(list(set(runs)))
             libraries = list(set(libraries))
             donor = rnaseqqc[i]['Donor']
             bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
             contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
             coding = round(rnaseqqc[i]['PCT_CODING_BASES'], 3)
             strand = round(rnaseqqc[i]['PCT_CORRECT_STRAND_READS'], 3)
+            sample = '_'.join([donor, rnaseqqc[i]['Tissue Origin'], rnaseqqc[i]['Tissue Type'], rnaseqqc[i]['Group ID']])
 
             d = {'read_count': readcount,
                  'prefix': prefix,
+                 'run': runs,
                  'libraries': libraries,
                  'donor': donor,
                  "5'-3' bias": bias,
                  'rRNA contamination': contamination,
                  'Coding (%)': coding,
-                 'Correct strand reads (%)': strand}
+                 'Correct strand reads (%)': strand,
+                 'sample': sample}
                      
             if platform not in D:
                 D[platform] = {}
@@ -2981,6 +3036,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
             donor = j['sample_name']
             # get the read count for each file
             readcount = j['read_count']
+            sample = j['sample_id'][0]
                         
             if run in cfmedipqc and limskey in cfmedipqc[run]:
                 assert len(cfmedipqc[run][limskey]) == 1
@@ -3002,16 +3058,19 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                     assert D[platform][library_source][limskey]['prefix'][0] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
                     assert D[platform][library_source][limskey]['read_count'] % 2 == 0
+                    assert D[platform][library_source][limskey]['sample'] == sample
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
                         'prefix': [prefix],
+                        'run': run,
                         'libraries': [library],
                         'donor': donor,
                         'AT_dropout': AT_dropout,
                         'methylation_beta': methylation_beta,
                         'duplication': duplication,
-                        'CpG_enrichment': CpG_enrichment
+                        'CpG_enrichment': CpG_enrichment,
+                        'sample': sample
                         }
                             
 
@@ -3040,6 +3099,7 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
             lane = j['lane'][0]
             library = j['library'][0]
             donor = j['sample_name']
+            sample = j['sample_id'][0]
             # get the number of reads for each file
             readcount = j['read_count']
             if run in emseqqc and limskey in emseqqc[run]:
@@ -3061,15 +3121,18 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                     assert D[platform][library_source][limskey]['prefix'][0] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
                     assert D[platform][library_source][limskey]['read_count'] % 2 == 0
+                    assert D[platform][library_source][limskey]['sample'] == sample
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
                         'prefix': [prefix],
+                        'run': run,
                         'libraries': [library],
                         'donor': donor,
                         'Lambda_methylation': Lambda_methylation,
                         'pUC19_methylation': pUC19_methylation,
-                        'percent_duplication': percent_duplication
+                        'percent_duplication': percent_duplication,
+                        'sample': sample
                         }
                 
                 
@@ -3157,11 +3220,17 @@ def format_qc_metrics(qc_metrics):
                 donor = qc_metrics[instrument][library_source][limskey]['donor']
                 libraries = list(qc_metrics[instrument][library_source][limskey]['libraries'])
                 prefix = list(qc_metrics[instrument][library_source][limskey]['prefix'])
+                run = list(qc_metrics[instrument][library_source][limskey]['run'])
                 libraries = [fit_into_column(i, library_source) if len(i) >=40 else i for i in libraries]
                 prefix = [fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix]
+                run = [fit_into_column(i, library_source) if len(i) >=40 else i for i in run]
                 libraries.sort()
                 prefix.sort()
-                L = [donor, libraries, prefix]
+                run.sort()
+                sample = qc_metrics[instrument][library_source][limskey]['sample']
+                               
+                L = [donor, sample, run]
+                
                 for i in metrics:
                     if i == 'read_count':
                         L.append('{:,}'.format(qc_metrics[instrument][library_source][limskey][i]))                     
@@ -3347,7 +3416,8 @@ def write_cumulative_report(args):
     # get the qc metrics subtables
     qc_subtables = get_qc_metrics_table_names(library_sources)
     # get the metrics appendix
-    qc_appendices = get_metrics_appendix(library_sources)
+    #qc_appendices = get_metrics_appendix(library_sources)
+    qc_appendices = get_cumulative_metrics_appendix(library_sources)
     
       
     # generate plots for each instrument and library source and keep track of figure files
@@ -3356,6 +3426,11 @@ def write_cumulative_report(args):
     colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
     for library_source in platforms:
         Y_axis[library_source] = get_Y_axis_labels(library_source)
+        for i in range(len(Y_axis[library_source])):
+            if Y_axis[library_source][i] == 'Read pairs':
+                Y_axis[library_source][i] = 'Total Read Pairs'
+            elif Y_axis[library_source][i] == 'Coverage':
+                Y_axis[library_source][i] = 'Final Merged Coverage'
         for instrument in platforms[library_source]:
             figure = generate_cumulative_figures(working_dir, args.project, library_metrics, instrument, library_source, Y_axis[library_source], colors)
             if library_source not in figure_files:
@@ -3365,7 +3440,7 @@ def write_cumulative_report(args):
         
     header_metrics = {}
     for i in library_sources:
-        header_metrics[i] = ['Case Id', 'Library Id', 'File prefix'] + Y_axis[i]
+        header_metrics[i] = ['Case Id', 'Sample Id', 'Run'] + Y_axis[i]
          
     # write report
     # get the report template
