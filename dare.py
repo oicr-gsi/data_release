@@ -2333,22 +2333,23 @@ def get_identifiers_appendix(files):
 
 
 
-def get_qc_metrics_table_names(library_sources):
+def get_qc_metrics_table_names(library_sources, start=2):
     '''
-    (list) -> dict
+    (list, int) -> dict
     
     Returns a dictionry with Names of QC metrics tables for each library type
     
     Parameters
     ----------
     - library_sources (list): Sorted list of library types 
+    - start (int): Starting number to count the QC tables 
     '''
 
     # get the QC metrics sub-tables titles
     counter = 1
     qc_subtables = {}
     for library_type in library_sources:
-        qc_subtables[library_type] = 'Table 2.{0} QC metrics for {1} libraries'.format(counter, library_type)
+        qc_subtables[library_type] = 'Table {0}.{1} QC metrics for {2} libraries'.format(start, counter, library_type)
         counter += 1
 
     return qc_subtables
@@ -3255,6 +3256,43 @@ def format_qc_metrics(qc_metrics):
 
     return D
 
+
+def format_sequencing_table(files):
+    '''
+    (dict) -> list
+    
+    Returns a list with sequencing information
+    
+    Parameters
+    ----------
+    - files (dict): Dictionary with file information extracted from FPR
+    '''
+
+    pairs = group_fastq_pairs(files)
+
+    SL = []
+    
+    for instrument in pairs:
+        for library_source in pairs[instrument]:
+            for i in pairs[instrument][library_source]:
+                donor = i[0]['sample_name']
+                sample = i[0]['sample_id'][0]
+                library = i[0]['library'][0]
+                library_type = i[0]['library_source'][0]
+                prefix = i[0]['prefix']
+                read_pairs = i[0]['read_count']
+                L = [donor, sample, library, prefix, read_pairs]
+                if L not in SL:
+                    SL.append(L)
+                # sort according to donor, sample, snf library
+                SL.sort(key = lambda x: (x[0], x[1], x[2]))
+    # adjust long names to fit in column
+    for i in range(len(SL)):
+        L = [fit_into_column(j, SL[i][2]) if len(j) >=30 else j for j in SL[i][:-1]]
+        L.append('{:,}'.format(SL[i][-1]))
+        SL[i] = L
+    
+    return SL
    
 
 def generate_cumulative_figures(working_dir, project, qc_metrics, platform, library_type, Y_axis, colors, width=13, height=16):
@@ -3395,7 +3433,10 @@ def write_cumulative_report(args):
     appendix_identifiers = get_identifiers_appendix(files)
     # define identifier table header
     header_identifiers = ['Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
-       
+    
+    # get information for lane level sequencing
+    sequencing = format_sequencing_table(files)
+        
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
     # collect information from rnaseq table
@@ -3427,7 +3468,7 @@ def write_cumulative_report(args):
     library_sources = sorted(list(platforms.keys()))
        
     # get the qc metrics subtables
-    qc_subtables = get_qc_metrics_table_names(library_sources)
+    qc_subtables = get_qc_metrics_table_names(library_sources, 3)
     # get the metrics appendix
     #qc_appendices = get_metrics_appendix(library_sources)
     qc_appendices = get_cumulative_metrics_appendix(library_sources)
@@ -3469,6 +3510,7 @@ def write_cumulative_report(args):
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
                'appendix_identifiers': appendix_identifiers,
+               'sequencing': sequencing,
                'user': args.user,
                'ticket': os.path.basename(args.ticket),
                'library_sources': library_sources,
