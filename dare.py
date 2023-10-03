@@ -2441,7 +2441,8 @@ def get_cumulative_metrics_appendix(library_sources):
         
         L = ['Case Id: OICR-generated case identifier',
              'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor.',
-             'Read pairs: {0}'.format(definitions['Read pairs'])]
+             'Lane Count: Number of sequencing lane',
+             'Total Read Pairs: {0}'.format(definitions['Read pairs'])]
         
         if library_type == 'CM':
             L.extend([': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG frequency']])
@@ -2888,6 +2889,7 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
         readcount = []
         prefix = []
         runs = []
+        lanes = []
         
         # collect read count for all fastqs
         # track limskeys and file prefix for fastqs
@@ -2904,12 +2906,14 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
                     L.append(limskey)
                     prefix.append(k['prefix'])
                     runs.extend(k['run_id'])
+                    lanes.extend(k['run'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
             runs = sorted(list(set(runs)))
+            lanes = list(set(lanes))
             libraries = bamqc[i]['library']
             donor = bamqc[i]['Donor']
             coverage = round(bamqc[i]['coverage'], 2)
@@ -2921,6 +2925,7 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
             d = {'read_count': readcount,
                  'prefix': prefix,
                  'run': runs,
+                 'lane': len(lanes),
                  'libraries': libraries,
                  'donor': donor,
                  'coverage': coverage,
@@ -2961,7 +2966,7 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
         # track library ids because not present in rnaseq merged cache
         libraries = []
         runs = []
-        
+        lanes = []
         
         # collect read count for all fastqs
         # track limskeys and file prefix for fastqs
@@ -2977,12 +2982,14 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
                     prefix.append(k['prefix'])
                     libraries.extend(k['library'])
                     runs.extend(k['run_id'])
+                    lanes.extend(k['run'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
             runs = sorted(list(set(runs)))
+            lanes = list(set(lanes))
             libraries = list(set(libraries))
             donor = rnaseqqc[i]['Donor']
             bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
@@ -2994,6 +3001,7 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
             d = {'read_count': readcount,
                  'prefix': prefix,
                  'run': runs,
+                 'lane': len(lanes),
                  'libraries': libraries,
                  'donor': donor,
                  "5'-3' bias": bias,
@@ -3037,6 +3045,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
             # get the read count for each file
             readcount = j['read_count']
             sample = j['sample_id'][0]
+            lanes = j['run']
                         
             if run in cfmedipqc and limskey in cfmedipqc[run]:
                 assert len(cfmedipqc[run][limskey]) == 1
@@ -3064,6 +3073,7 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                         'read_count': readcount,
                         'prefix': [prefix],
                         'run': run,
+                        'lane': len(lanes),
                         'libraries': [library],
                         'donor': donor,
                         'AT_dropout': AT_dropout,
@@ -3097,6 +3107,7 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
             prefix = j['prefix']
             barcode = j['barcode'][0]
             lane = j['lane'][0]
+            lanes = j['run']
             library = j['library'][0]
             donor = j['sample_name']
             sample = j['sample_id'][0]
@@ -3127,6 +3138,7 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                         'read_count': readcount,
                         'prefix': [prefix],
                         'run': run,
+                        'lane': len(lanes),
                         'libraries': [library],
                         'donor': donor,
                         'Lambda_methylation': Lambda_methylation,
@@ -3228,8 +3240,9 @@ def format_qc_metrics(qc_metrics):
                 prefix.sort()
                 run.sort()
                 sample = qc_metrics[instrument][library_source][limskey]['sample']
-                               
-                L = [donor, sample, run]
+                lane_count = qc_metrics[instrument][library_source][limskey]['lane']
+                
+                L = [donor, sample, lane_count]
                 
                 for i in metrics:
                     if i == 'read_count':
@@ -3440,7 +3453,7 @@ def write_cumulative_report(args):
         
     header_metrics = {}
     for i in library_sources:
-        header_metrics[i] = ['Case Id', 'Sample Id', 'Run'] + Y_axis[i]
+        header_metrics[i] = ['Case Id', 'Sample Id', 'Lane Count'] + Y_axis[i]
          
     # write report
     # get the report template
