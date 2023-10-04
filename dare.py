@@ -2202,6 +2202,70 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
 
 
 
+
+
+def group_cumulative_samples(files):
+    '''
+    (dict) -> list
+    
+    Returns a list of sample identifiers sorted on donor id 
+    
+    Parameters
+    ----------
+    - files (dict): Information about fastqs extracted from File Provenance Report
+    '''
+        
+    # make a list of instruments
+    instruments = list(set([files[file_swid]['platform'] for file_swid in files]))
+    
+    # record sample identifiers across library type and platform
+    SL = []
+    
+    # find pairs of fastqs
+    for platform in instruments:
+        pairs = find_fastq_pairs(files, platform)
+        add_file_prefix(pairs)
+        for i in pairs:
+            # add comma to reads for readability
+            case = i[0]['sample_name']
+            external_name = i[0]['external_name']
+            sample = i[0]['sample_id'][0]
+            library_source = i[0]['library_source'][0]
+            library = i[0]['library'][0]
+            prefix = i[0]['prefix']
+            groupid = i[0]['groupid'][0]
+            group_description = i[0]['groupdesc'][0]
+            
+            
+            max_length = 20
+            
+            # reformat prefix to fit the table column
+            if len(prefix) >= max_length:
+                prefix = fit_into_column(prefix, library_source)
+            if len(library) >= max_length:
+                library = fit_into_column(library, library_source)
+            if len(sample) >= max_length:
+                sample = fit_into_column(sample, library_source)
+            if len(groupid) >= max_length:
+                groupid = fit_into_column(groupid, library_source)
+            if len(group_description) >= max_length:
+                group_description = fit_into_column(group_description, library_source)
+                        
+            tissue_origin = i[0]['tissue_origin'][0]
+            tissue_type = i[0]['tissue_type'][0]
+            L = [case, external_name, sample, group_description, library_source, tissue_origin, tissue_type]
+
+            if L not in SL:
+                SL.append(L)
+    SL.sort(key = lambda x: x[0])
+    
+    return SL            
+
+
+
+
+
+
 def get_library_tissue_types(files):
     '''
     (dict) -> dict
@@ -2242,54 +2306,63 @@ def get_library_tissue_types(files):
     return D
 
 
-def get_identifiers_appendix(files):
+def get_identifiers_appendix(files, report):
     '''
-    (dict) -> list
+    (dict, str) -> list
     
     Returns a list with definitions of columns in the sample identifier table
     
     Parameters
     ----------
     - files (dict): Dictionary with file information from released libraries extracted from FPR
+    - report (str): cumulative or batch report
     '''
 
     # get the library type, tissue type and tissue origin 
     D = get_library_tissue_types(files)
     
-    L = ['Library Id: OICR-generated library identifier',
-         'Case Id: OICR-generated case identifier',
-         'Donor Id: user supplied donor identifier',
-         'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
-         'Sample Description: a description of the Sample Id',
-         'Library Type (LT): {0}'.format(D['Library Type']),
-         'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
-         'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
-    
+    if report  == 'batch':
+        L = ['Library Id: OICR-generated library identifier',
+             'OICR Case Id: OICR-generated case identifier',
+             'Donor Id: user supplied donor identifier',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+             'Sample Description: a description of the Sample Id',
+             'Library Type (LT): {0}'.format(D['Library Type']),
+             'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+             'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
+    elif report == 'cumulative':
+        L = ['OICR Case Id: OICR-generated case identifier',
+             'Donor Id: user supplied donor identifier',
+             'OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+             'Sample Description: a description of the Sample Id',
+             'Library Type (LT): {0}'.format(D['Library Type']),
+             'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+             'Tissue Type (TT): {0}'.format(D['Tissue Type'])]
+       
     return L
 
 
 
-def get_qc_metrics_table_names(library_sources):
+
+def get_qc_metrics_table_names(library_sources, start=2):
     '''
-    (list) -> dict
+    (list, int) -> dict
     
     Returns a dictionry with Names of QC metrics tables for each library type
     
     Parameters
     ----------
     - library_sources (list): Sorted list of library types 
+    - start (int): Starting number to count the QC tables 
     '''
 
     # get the QC metrics sub-tables titles
-    counter = 1
     qc_subtables = {}
     for library_type in library_sources:
-        qc_subtables[library_type] = 'Table 2.{0} QC metrics for {1} libraries'.format(counter, library_type)
-        counter += 1
-
+        qc_subtables[library_type] = 'Table {0} QC metrics for {1} libraries'.format(start, library_type)
+    
     return qc_subtables
-
-
 
 
 def metrics_definitions():
@@ -2310,7 +2383,8 @@ def metrics_definitions():
                    'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.',
                    '{0} methylation'.format(chr(955)): 'Ratio of methylated CpG over total CpG in the negative control',
                    'pUC19 methylation': 'Ratio of methylated CpG over total CpG in the positive control',
-                   'Duplication rate': 'Percent duplication of Picard marked duplicates'}
+                   'Duplication rate': 'Percent duplication of Picard marked duplicates'
+                   }
     
     return definitions
 
@@ -2351,6 +2425,49 @@ def get_metrics_appendix(library_sources):
         counter += 1
         
     return qc_appendix
+
+
+
+
+def get_cumulative_metrics_appendix(library_sources):
+    '''
+    (list) -> dict
+    
+    Returns a dictionry with definitions of columns in the QC metrics table of the cumulative report
+    
+    Parameters
+    ----------
+    - library_sources (list): Sorted list of library types 
+    '''
+
+    # get the QC metrics sub-tables and appendices
+    definitions = metrics_definitions()    
+      
+    counter = 1
+    qc_appendix = {'tables': {}, 'metrics': {}}
+    for library_type in library_sources:
+        qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
+        
+        L = ['OICR Case Id: OICR-generated case identifier',
+             'OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id',
+             'Lane Count: Number of sequencing lane',
+             'Total Read Pairs: {0}'.format(definitions['Read pairs'])]
+        
+        if library_type == 'CM':
+            L.extend([': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG frequency']])
+        elif library_type in ['EX', 'TS']:
+            L.extend([': '.join([i, definitions[i]]) for i in ['Coverage', 'On target']])
+        elif library_type in ['WG', 'PG']:
+            L.extend(['{0}: {1}'.format('Coverage', definitions['Coverage'])])
+        elif library_type == 'WT':
+            L.extend([': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']])
+        elif library_type in ['MC', 'MG']:
+            L.extend([': '.join([i, definitions[i]]) for i in ['{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']])
+        qc_appendix['metrics'][library_type] = L
+        counter += 1
+        
+    return qc_appendix
+
 
 
 def makepdf(html, outputfile):
@@ -2564,7 +2681,7 @@ def write_batch_report(args):
         header_identifiers[0] = 'Library Id (time point)'
     
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
-    appendix_identifiers = get_identifiers_appendix(files)
+    appendix_identifiers = get_identifiers_appendix(files, 'batch')
     
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
@@ -2780,6 +2897,8 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
         L = []
         readcount = []
         prefix = []
+        runs = []
+        lanes = []
         
         # collect read count for all fastqs
         # track limskeys and file prefix for fastqs
@@ -2795,26 +2914,34 @@ def collect_bamqc_metrics(D, pairs, bamqc, platform, library_source):
                     readcount.append(k['read_count'])
                     L.append(limskey)
                     prefix.append(k['prefix'])
+                    runs.extend(k['run_id'])
+                    lanes.extend(k['run'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
+            runs = sorted(list(set(runs)))
+            lanes = list(set(lanes))
             libraries = bamqc[i]['library']
             donor = bamqc[i]['Donor']
             coverage = round(bamqc[i]['coverage'], 2)
             coverage_dedup = round(bamqc[i]['coverage deduplicated'], 2)
             on_target = round(bamqc[i]['on_target'], 2)
             percent_duplicate = round(bamqc[i]['mark duplicates_PERCENT_DUPLICATION'], 2)
+            sample = bamqc[i]['sample']
 
             d = {'read_count': readcount,
                  'prefix': prefix,
+                 'run': runs,
+                 'lane': len(lanes),
                  'libraries': libraries,
                  'donor': donor,
                  'coverage': coverage,
                  'coverage_dedup': coverage_dedup,
                  'on_target': on_target,
-                 'percent_duplicate': percent_duplicate}
+                 'percent_duplicate': percent_duplicate,
+                 'sample': sample}
                                    
             if platform not in D:
                 D[platform] = {}
@@ -2847,7 +2974,8 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
         prefix = []
         # track library ids because not present in rnaseq merged cache
         libraries = []
-        
+        runs = []
+        lanes = []
         
         # collect read count for all fastqs
         # track limskeys and file prefix for fastqs
@@ -2862,26 +2990,34 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
                     L.append(limskey)
                     prefix.append(k['prefix'])
                     libraries.extend(k['library'])
+                    runs.extend(k['run_id'])
+                    lanes.extend(k['run'])
         # check that all limskeys have been recorded
         if sorted(list(set(L))) == sorted(merged_limskeys):
             assert sum(readcount) % 2 == 0
             readcount = sum(readcount)
             prefix = list(set(prefix))
+            runs = sorted(list(set(runs)))
+            lanes = list(set(lanes))
             libraries = list(set(libraries))
             donor = rnaseqqc[i]['Donor']
             bias = rnaseqqc[i]['MEDIAN_5PRIME_TO_3PRIME_BIAS']
             contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
             coding = round(rnaseqqc[i]['PCT_CODING_BASES'], 3)
             strand = round(rnaseqqc[i]['PCT_CORRECT_STRAND_READS'], 3)
+            sample = '_'.join([donor, rnaseqqc[i]['Tissue Origin'], rnaseqqc[i]['Tissue Type'], rnaseqqc[i]['Library Design'], rnaseqqc[i]['Group ID']])
 
             d = {'read_count': readcount,
                  'prefix': prefix,
+                 'run': runs,
+                 'lane': len(lanes),
                  'libraries': libraries,
                  'donor': donor,
                  "5'-3' bias": bias,
                  'rRNA contamination': contamination,
                  'Coding (%)': coding,
-                 'Correct strand reads (%)': strand}
+                 'Correct strand reads (%)': strand,
+                 'sample': sample}
                      
             if platform not in D:
                 D[platform] = {}
@@ -2917,6 +3053,8 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
             donor = j['sample_name']
             # get the read count for each file
             readcount = j['read_count']
+            sample = j['sample_id'][0]
+            lanes = j['run']
                         
             if run in cfmedipqc and limskey in cfmedipqc[run]:
                 assert len(cfmedipqc[run][limskey]) == 1
@@ -2938,16 +3076,20 @@ def collect_cfmedipqc_metrics(D, pairs, cfmedipqc, platform, library_source):
                     assert D[platform][library_source][limskey]['prefix'][0] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
                     assert D[platform][library_source][limskey]['read_count'] % 2 == 0
+                    assert D[platform][library_source][limskey]['sample'] == sample
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
                         'prefix': [prefix],
+                        'run': run,
+                        'lane': len(lanes),
                         'libraries': [library],
                         'donor': donor,
                         'AT_dropout': AT_dropout,
                         'methylation_beta': methylation_beta,
                         'duplication': duplication,
-                        'CpG_enrichment': CpG_enrichment
+                        'CpG_enrichment': CpG_enrichment,
+                        'sample': sample
                         }
                             
 
@@ -2974,8 +3116,10 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
             prefix = j['prefix']
             barcode = j['barcode'][0]
             lane = j['lane'][0]
+            lanes = j['run']
             library = j['library'][0]
             donor = j['sample_name']
+            sample = j['sample_id'][0]
             # get the number of reads for each file
             readcount = j['read_count']
             if run in emseqqc and limskey in emseqqc[run]:
@@ -2997,15 +3141,19 @@ def collect_emseqqc_metrics(D, pairs, emseqqc, platform, library_source):
                     assert D[platform][library_source][limskey]['prefix'][0] == prefix
                     D[platform][library_source][limskey]['read_count'] += readcount
                     assert D[platform][library_source][limskey]['read_count'] % 2 == 0
+                    assert D[platform][library_source][limskey]['sample'] == sample
                 else:
                     D[platform][library_source][limskey] = {
                         'read_count': readcount,
                         'prefix': [prefix],
+                        'run': run,
+                        'lane': len(lanes),
                         'libraries': [library],
                         'donor': donor,
                         'Lambda_methylation': Lambda_methylation,
                         'pUC19_methylation': pUC19_methylation,
-                        'percent_duplication': percent_duplication
+                        'percent_duplication': percent_duplication,
+                        'sample': sample
                         }
                 
                 
@@ -3093,11 +3241,18 @@ def format_qc_metrics(qc_metrics):
                 donor = qc_metrics[instrument][library_source][limskey]['donor']
                 libraries = list(qc_metrics[instrument][library_source][limskey]['libraries'])
                 prefix = list(qc_metrics[instrument][library_source][limskey]['prefix'])
+                run = list(qc_metrics[instrument][library_source][limskey]['run'])
                 libraries = [fit_into_column(i, library_source) if len(i) >=40 else i for i in libraries]
                 prefix = [fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix]
+                run = [fit_into_column(i, library_source) if len(i) >=40 else i for i in run]
                 libraries.sort()
                 prefix.sort()
-                L = [donor, libraries, prefix]
+                run.sort()
+                sample = qc_metrics[instrument][library_source][limskey]['sample']
+                lane_count = qc_metrics[instrument][library_source][limskey]['lane']
+                
+                L = [donor, sample, lane_count]
+                
                 for i in metrics:
                     if i == 'read_count':
                         L.append('{:,}'.format(qc_metrics[instrument][library_source][limskey][i]))                     
@@ -3109,6 +3264,43 @@ def format_qc_metrics(qc_metrics):
 
     return D
 
+
+def format_sequencing_table(files):
+    '''
+    (dict) -> list
+    
+    Returns a list with sequencing information
+    
+    Parameters
+    ----------
+    - files (dict): Dictionary with file information extracted from FPR
+    '''
+
+    pairs = group_fastq_pairs(files)
+
+    SL = []
+    
+    for instrument in pairs:
+        for library_source in pairs[instrument]:
+            for i in pairs[instrument][library_source]:
+                donor = i[0]['sample_name']
+                sample = i[0]['sample_id'][0]
+                library = i[0]['library'][0]
+                library_type = i[0]['library_source'][0]
+                prefix = i[0]['prefix']
+                read_pairs = i[0]['read_count']
+                L = [donor, sample, library, prefix, read_pairs]
+                if L not in SL:
+                    SL.append(L)
+                # sort according to donor, sample, snf library
+                SL.sort(key = lambda x: (x[0], x[1], x[2]))
+    # adjust long names to fit in column
+    for i in range(len(SL)):
+        L = [fit_into_column(j, SL[i][2]) if len(j) >=30 else j for j in SL[i][:-1]]
+        L.append('{:,}'.format(SL[i][-1]))
+        SL[i] = L
+    
+    return SL
    
 
 def generate_cumulative_figures(working_dir, project, qc_metrics, platform, library_type, Y_axis, colors, width=13, height=16):
@@ -3235,13 +3427,24 @@ def write_cumulative_report(args):
     for i in fastq_counts:
         all_released_files += sum([sum(list(j.values())) for j in fastq_counts[i].values()])
     
+    # sort library types, sequencing platforms, sequencing runs
+    lt = sorted(list(fastq_counts.keys()))
+    sp = sp = {i:sorted(fastq_counts[i].keys()) for i in lt}
+    rn = {}
+    for i in lt:
+        rn[i] = {}
+        for j in sp[i]:
+            rn[i][j] = rn[i][j] = sorted(list(fastq_counts[i][j].keys()))
         
     # get the identifiers of all released files
-    sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
-    appendix_identifiers = get_identifiers_appendix(files)
+    sample_identifiers = group_cumulative_samples(files)
+    appendix_identifiers = get_identifiers_appendix(files, 'cumulative')
     # define identifier table header
-    header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
-       
+    header_identifiers = ['OICR Case Id', 'Donor Id', 'OICR Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+    
+    # get information for lane level sequencing
+    sequencing = format_sequencing_table(files)
+        
     # collect information from merged bamqc table
     bamqc_info = extract_merged_bamqc_data(args.merged_bamqc_db)
     # collect information from rnaseq table
@@ -3273,9 +3476,9 @@ def write_cumulative_report(args):
     library_sources = sorted(list(platforms.keys()))
        
     # get the qc metrics subtables
-    qc_subtables = get_qc_metrics_table_names(library_sources)
+    qc_subtables = get_qc_metrics_table_names(library_sources, 3)
     # get the metrics appendix
-    qc_appendices = get_metrics_appendix(library_sources)
+    qc_appendices = get_cumulative_metrics_appendix(library_sources)
     
       
     # generate plots for each instrument and library source and keep track of figure files
@@ -3284,6 +3487,11 @@ def write_cumulative_report(args):
     colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
     for library_source in platforms:
         Y_axis[library_source] = get_Y_axis_labels(library_source)
+        for i in range(len(Y_axis[library_source])):
+            if Y_axis[library_source][i] == 'Read pairs':
+                Y_axis[library_source][i] = 'Total Read Pairs'
+            elif Y_axis[library_source][i] == 'Coverage':
+                Y_axis[library_source][i] = 'Final Merged Coverage'
         for instrument in platforms[library_source]:
             figure = generate_cumulative_figures(working_dir, args.project, library_metrics, instrument, library_source, Y_axis[library_source], colors)
             if library_source not in figure_files:
@@ -3293,7 +3501,7 @@ def write_cumulative_report(args):
         
     header_metrics = {}
     for i in library_sources:
-        header_metrics[i] = ['Case Id', 'Library Id', 'File prefix'] + Y_axis[i]
+        header_metrics[i] = ['OICR Case Id', 'OICR Sample Id', 'Lane Count'] + Y_axis[i]
          
     # write report
     # get the report template
@@ -3309,6 +3517,7 @@ def write_cumulative_report(args):
                'header_identifiers': header_identifiers,
                'sample_identifiers': sample_identifiers,
                'appendix_identifiers': appendix_identifiers,
+               'sequencing': sequencing,
                'user': args.user,
                'ticket': os.path.basename(args.ticket),
                'library_sources': library_sources,
@@ -3317,7 +3526,10 @@ def write_cumulative_report(args):
                'header_metrics': header_metrics,
                'qc_metrics': qc_metrics,
                'figure_files': figure_files,
-               'platforms': platforms
+               'platforms': platforms,
+               'lt': lt,
+               'sp': sp,
+               'rn': rn
                }
     
     # render template html 

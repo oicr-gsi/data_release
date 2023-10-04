@@ -19,7 +19,7 @@
    
    <table id="project_table">
    <tr>
-     <th>Project Code</th>
+     <th>Project Title</th>
      <th>Project Name</th>
      <th>Date</th>     
    </tr>   
@@ -30,10 +30,10 @@
    </tr>
    </table>
     
-   <p>This report accompanies the release of raw sequence data (fastq format) and provides associated sample information and QC metrics.</p>
+   <p>This report is a summary of all the raw sequence data that had been released for this project, and provides associated sample information and sample level QC metrics.</p>
    
-   <h2>1. File Count</h2>
-   <p>A total of {{file_count}} pairs of fastq files have been released for project {{projects['acronym']}}. File count is broken down by library type, instrument and run as follow.</p>
+   <h2File Count</h2>
+   <p>A total of {{file_count}} pairs of fastq files have been released for project {{projects['acronym']}}. File count is broken down by library type, instrument and run.</p>
    
    <table id="info_table">
    <tr>
@@ -43,9 +43,9 @@
      <th>Paired fastq files</th>     
    </tr>   
    
-   {% for library_type in fastq_counts %}
-     {% for instrument in fastq_counts[library_type] %}
-       {% for run in fastq_counts[library_type][instrument] %}
+   {% for library_type in lt %} 
+     {% for instrument in sp[library_type] %}
+       {% for run in rn[library_type][instrument] %}
          <tr>        
          <td> {{library_type}} </td>
          <td> {{instrument}} </td>
@@ -61,7 +61,7 @@
 
   <div class="landscape">
   
-  <h2>2. Sample information for sequenced libraries</h2>
+  <h2>Sample information for sequenced libraries</h2>
 
    <p>Provides information about the sequenced samples.</p>
      
@@ -76,26 +76,19 @@
      <th>{{header_identifiers.4}}</th>
      <th>{{header_identifiers.5}}</th>
      <th>{{header_identifiers.6}}</th>
-     <th>{{header_identifiers.7}}</th>
    </tr>   
    <tr>   
-   {% for library_source in sample_identifiers %}
-     {% for instrument in sample_identifiers[library_source] %}
-       </tr>
-       {% for i in sample_identifiers[library_source][instrument] %}
-         <tr>
-           <td> {{i.0}} </td>
-           <td> {{i.1}} </td>
-           <td> {{i.2}} </td>
-           <td> {{i.3}} </td>
-           <td> {{i.4}} </td>
-           <td> {{i.5}} </td>
-           <td> {{i.6}} </td>
-           <td> {{i.7}} </td>         
-         </tr>        
-       {% endfor %}               
-    {% endfor %}
-   {% endfor %}
+   {% for i in sample_identifiers %}
+     <tr>
+       <td> {{i.0}} </td>
+       <td> {{i.1}} </td>
+       <td> {{i.2}} </td>
+       <td> {{i.3}} </td>
+       <td> {{i.4}} </td>
+       <td> {{i.5}} </td>
+       <td> {{i.6}} </td>
+     </tr>        
+   {% endfor %}               
   </table>
 
   <ul>
@@ -106,7 +99,44 @@
 
   <p style="page-break-after: always;"></p>
 
-  <h2>3. QC metrics</h2>
+
+  <h2>Lane level sequencing</h2>
+
+  <p>Provides information about the sequencing of each library.</p>
+
+  <h3>Table 2. Library and File identifiers</h3> 
+
+  <table id="info_table", style="font-size: 11px;">
+   <tr>
+     <th>OICR Case Id</th>      
+     <th>OICR Sample Id</th>
+     <th>Library Id</th>
+     <th>File Prefix</th>
+     <th>Read Pairs</th>      
+   </tr>   
+   
+   {% for i in sequencing %} 
+     <tr>        
+       <td> {{i.0}} </td>
+       <td> {{i.1}} </td>
+       <td> {{i.2}} </td>
+       <td> {{i.3}} </td>
+       <td> {{i.4}} </td>
+     </tr>
+   {% endfor %}                 
+  </table>
+
+  <ul>
+    <li>OICR Case Id: OICR-generated case identifier</li>
+    <li>OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id
+    <li>Library Id: OICR-generated library identifier</li>
+    <li>File Prefix: The common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5.Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes</li>
+    <li>Number of read pairs. The number of reads is twice the number of read pairs.</li>
+  </ul> 
+
+  <p style="page-break-after: always;"></p> 
+
+  <h2>QC metrics</h2>
   <p>Provides QC metrics about the raw sequences of each sample.</p>
    
   {% for library_source in library_sources %}
@@ -125,16 +155,7 @@
        {% for i in qc_metrics[instrument][library_source] %}
          <tr>
            {% for j in range(i | length) %}
-           <td>
-           {% if j == 1 or j == 2 %}
-              {% for k in i[j] %}
-                 {{k}}
-                 <br> 
-              {% endfor %} 
-           {% else %}
-              {{i[j]}}
-           {% endif %}
-           </td>
+             <td>{{i[j]}}</td>
            {% endfor %}
          </tr>        
        {% endfor %}               
@@ -153,7 +174,7 @@
   
   </div>  
 
-  <h2>4. QC plots</h2>
+  <h2>QC plots</h2>
   
     <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     

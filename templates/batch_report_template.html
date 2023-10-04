@@ -32,8 +32,8 @@
     
    <p>This report accompanies the release of raw sequence data (fastq format) and provides associated sample information and QC metrics.</p>
    
-   <h2>1. File Count</h2>
-   <p>This release includes {{file_count}} pairs of fastq files. File count is broken down by instrument and run as follow.</p>
+   <h2>File Count</h2>
+   <p>This release includes {{file_count}} pairs of fastq files. File count is broken down by instrument and run.</p>
    
    <table id="info_table">
    <tr>
@@ -59,7 +59,7 @@
 
   <div class="landscape">
   
-  <h2>2. Sample information for sequenced libraries</h2>
+  <h2>Sample information for sequenced libraries</h2>
 
    <p>Provides information about the sequenced samples.</p>
      
@@ -104,7 +104,7 @@
 
   <p style="page-break-after: always;"></p>
 
-  <h2>3. QC metrics</h2>
+  <h2>QC metrics</h2>
   <p>Provides QC metrics about the raw sequences of each sample.</p>
    
   {% for library_source in library_sources %}
@@ -141,7 +141,7 @@
   {% endfor %}
   </div>
 
-  <h2>4. QC plots</h2>
+  <h2>QC plots</h2>
   
     <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     
@@ -164,7 +164,7 @@
         {% endfor %}
     {% endfor %}
               
-  <h2>5. List of md5sums</h2>
+  <h2>List of md5sums</h2>
   <p>A list of md5sums is available in the accompanying file: <span style="color: black; font-style: italic">{{md5sum}}</span></p>
 
   <table id="user_table">
