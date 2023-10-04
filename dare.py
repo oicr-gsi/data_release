@@ -2997,7 +2997,7 @@ def collect_rnaseqc_metrics(D, pairs, rnaseqqc, platform, library_source):
             contamination = round((rnaseqqc[i]['rrna contamination properly paired'] / rnaseqqc[i]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3)
             coding = round(rnaseqqc[i]['PCT_CODING_BASES'], 3)
             strand = round(rnaseqqc[i]['PCT_CORRECT_STRAND_READS'], 3)
-            sample = '_'.join([donor, rnaseqqc[i]['Tissue Origin'], rnaseqqc[i]['Tissue Type'], rnaseqqc[i]['Group ID']])
+            sample = '_'.join([donor, rnaseqqc[i]['Tissue Origin'], rnaseqqc[i]['Tissue Type'], rnaseqqc[i]['Library Design'], rnaseqqc[i]['Group ID']])
 
             d = {'read_count': readcount,
                  'prefix': prefix,
