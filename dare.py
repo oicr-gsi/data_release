@@ -2306,30 +2306,42 @@ def get_library_tissue_types(files):
     return D
 
 
-def get_identifiers_appendix(files):
+def get_identifiers_appendix(files, report):
     '''
-    (dict) -> list
+    (dict, str) -> list
     
     Returns a list with definitions of columns in the sample identifier table
     
     Parameters
     ----------
     - files (dict): Dictionary with file information from released libraries extracted from FPR
+    - report (str): cumulative or batch report
     '''
 
     # get the library type, tissue type and tissue origin 
     D = get_library_tissue_types(files)
     
-    L = ['Library Id: OICR-generated library identifier',
-         'Case Id: OICR-generated case identifier',
-         'Donor Id: user supplied donor identifier',
-         'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
-         'Sample Description: a description of the Sample Id',
-         'Library Type (LT): {0}'.format(D['Library Type']),
-         'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
-         'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
-    
+    if report  == 'batch':
+        L = ['Library Id: OICR-generated library identifier',
+             'OICR Case Id: OICR-generated case identifier',
+             'Donor Id: user supplied donor identifier',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+             'Sample Description: a description of the Sample Id',
+             'Library Type (LT): {0}'.format(D['Library Type']),
+             'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+             'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
+    elif report == 'cumulative':
+        L = ['OICR Case Id: OICR-generated case identifier',
+             'Donor Id: user supplied donor identifier',
+             'OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+             'Sample Description: a description of the Sample Id',
+             'Library Type (LT): {0}'.format(D['Library Type']),
+             'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+             'Tissue Type (TT): {0}'.format(D['Tissue Type'])]
+       
     return L
+
 
 
 
@@ -2673,7 +2685,7 @@ def write_batch_report(args):
         header_identifiers[0] = 'Library Id (time point)'
     
     sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
-    appendix_identifiers = get_identifiers_appendix(files)
+    appendix_identifiers = get_identifiers_appendix(files, 'batch')
     
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
     header_metrics = {}
@@ -3430,9 +3442,9 @@ def write_cumulative_report(args):
         
     # get the identifiers of all released files
     sample_identifiers = group_cumulative_samples(files)
-    appendix_identifiers = get_identifiers_appendix(files)
+    appendix_identifiers = get_identifiers_appendix(files, 'cumulative')
     # define identifier table header
-    header_identifiers = ['Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+    header_identifiers = ['OICR Case Id', 'Donor Id', 'OICR Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
     # get information for lane level sequencing
     sequencing = format_sequencing_table(files)
