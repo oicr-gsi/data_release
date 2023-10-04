@@ -2358,15 +2358,11 @@ def get_qc_metrics_table_names(library_sources, start=2):
     '''
 
     # get the QC metrics sub-tables titles
-    counter = 1
     qc_subtables = {}
     for library_type in library_sources:
-        qc_subtables[library_type] = 'Table {0}.{1} QC metrics for {2} libraries'.format(start, counter, library_type)
-        counter += 1
-
+        qc_subtables[library_type] = 'Table {0} QC metrics for {1} libraries'.format(start, library_type)
+    
     return qc_subtables
-
-
 
 
 def metrics_definitions():
