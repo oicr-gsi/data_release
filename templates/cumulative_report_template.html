@@ -32,7 +32,7 @@
     
    <p>This report is a summary of all the raw sequence data that had been released for this project, and provides associated sample information and sample level QC metrics.</p>
    
-   <h2>1. File Count</h2>
+   <h2File Count</h2>
    <p>A total of {{file_count}} pairs of fastq files have been released for project {{projects['acronym']}}. File count is broken down by library type, instrument and run.</p>
    
    <table id="info_table">
@@ -61,7 +61,7 @@
 
   <div class="landscape">
   
-  <h2>2. Sample information for sequenced libraries</h2>
+  <h2>Sample information for sequenced libraries</h2>
 
    <p>Provides information about the sequenced samples.</p>
      
@@ -100,7 +100,7 @@
   <p style="page-break-after: always;"></p>
 
 
-  <h2>3. Lane level sequencing</h2>
+  <h2>Lane level sequencing</h2>
 
   <p>Provides information about the sequencing of each library.</p>
 
@@ -136,7 +136,7 @@
 
   <p style="page-break-after: always;"></p> 
 
-  <h2>4. QC metrics</h2>
+  <h2>QC metrics</h2>
   <p>Provides QC metrics about the raw sequences of each sample.</p>
    
   {% for library_source in library_sources %}
@@ -174,7 +174,7 @@
   
   </div>  
 
-  <h2>5. QC plots</h2>
+  <h2>QC plots</h2>
   
     <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     
