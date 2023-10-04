@@ -2448,8 +2448,8 @@ def get_cumulative_metrics_appendix(library_sources):
     for library_type in library_sources:
         qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
         
-        L = ['Case Id: OICR-generated case identifier',
-             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor.',
+        L = ['OICR Case Id: OICR-generated case identifier',
+             'OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id',
              'Lane Count: Number of sequencing lane',
              'Total Read Pairs: {0}'.format(definitions['Read pairs'])]
         
@@ -3478,7 +3478,6 @@ def write_cumulative_report(args):
     # get the qc metrics subtables
     qc_subtables = get_qc_metrics_table_names(library_sources, 3)
     # get the metrics appendix
-    #qc_appendices = get_metrics_appendix(library_sources)
     qc_appendices = get_cumulative_metrics_appendix(library_sources)
     
       
@@ -3502,7 +3501,7 @@ def write_cumulative_report(args):
         
     header_metrics = {}
     for i in library_sources:
-        header_metrics[i] = ['Case Id', 'Sample Id', 'Lane Count'] + Y_axis[i]
+        header_metrics[i] = ['OICR Case Id', 'OICR Sample Id', 'Lane Count'] + Y_axis[i]
          
     # write report
     # get the report template
