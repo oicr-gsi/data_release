@@ -102,9 +102,9 @@ The basic structure is organized with sample ids, and workflow names and ids.
 ```
 {sample_id:
    {workflow_1:
-      {"workflow_id": "19168526", "workflow_version":"2.0.2"},
+      [{"workflow_id":"19168526", "workflow_version":"2.0.2"}],
     workflow_2:
-      {"workflow_id":"16962244", "workflow_version":"2.0.2"}
+      [{"workflow_id":"16962244", "workflow_version":"2.0.2"}]
    }
 }
 ```
@@ -114,13 +114,15 @@ This will create the following directory structure under the directory specified
 ```
 sample_id
  |- workflow_1
-    |- file 1
-    |- file 2
-    |- ...
+   |- workflow_id
+     |- file 1
+       |- file 2
+       |- ...
  |- workflow_2
-    |- file 1
-    |- file 2
-    |- ...
+   |- workflow_id
+     |- file 1
+     |- file 2
+     |- ...
 ```
 
 #### Renaming workflow sub-directories with the name keyword ####
@@ -130,9 +132,9 @@ Alternatively, the json can include an optional "name" key to replace the name o
 ```
 {sample_id:
   {workflow_1:
-     {"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber" },
+     [{"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber" }],
    workflow_2:
-     {"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations"}
+     [{"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations"}]
   }
 }
 ```
@@ -142,13 +144,15 @@ This json will create the following directory hierarchy
 ```
 sample_id
   |- calls.copynumber
-    |- file 1
-    |- file 2
-    |- ...
+    |- workflow_id 
+      |- file 1
+      |- file 2
+      |- ...
   |- calls.mutations
-    |- file 1
-    |- file 2
-    |- ...
+    |- workflow_id
+      |- file 1
+      |- file 2
+      |- ...
 ``` 
 
 #### Selecting output files with the extension keyword ####
@@ -159,9 +163,9 @@ Files can be filtered and selected using optional keys "extension" or "files". N
 ```
 {sample_id:
   {workflow_1:
-     {"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber", "extension": [".gz"] },
+     [{"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber", "extension": [".gz"] }],
    workflow_2:
-     {"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations", "extension": [".bai", ".bam"]}
+     [{"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations", "extension": [".bai", ".bam"]}]
   }
 }
 ```
@@ -171,13 +175,15 @@ This will only link `gz` files for worklow_1 and `bam` and `bai` files for workf
 ```
 sample_id
   |- calls.copynumber
-    |- file 1.gz
-    |- file 2.gz
-    |- ....gz
+    |- workflow_id
+      |- file 1.gz
+      |- file 2.gz
+      |- ....gz
   |- calls.mutations
-    |- file 1.bam
-    |- file 2.bai
-    | - ...
+    |- workflow_id
+      |- file 1.bam
+      |- file 2.bai
+      | - ...
 ``` 
 
 
@@ -188,9 +194,9 @@ Alternatively, outputfiles can be selected by specifying lists of files with the
 ```
 {sample_id:
   {workflow_1:
-    {"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber", "files": [file1, file2, file3]},
+    [{"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber", "files": [file1, file2, file3]}],
    workflow_2:
-    {"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations", "files": [file1, file2]}
+    [{"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations", "files": [file1, file2]}]
   }
 }
 ```
@@ -201,12 +207,14 @@ This will only link files specified with the `files` keyword.
 ```
 sample_id
   |- calls.copynumber
-    |- file 1
-    |- file 2
-    |- file 3
+    |- workflow_id
+      |- file 1
+      |- file 2
+      |- file 3
   |- calls.mutations
-    |- file 1
-    |- file 2
+    |- workflow_id
+      |- file 1
+      |- file 2
 ``` 
 
 #### Renaming output files with the rename_files keyword ####
@@ -221,13 +229,13 @@ Here the name of the link is specified by key `file_name`.
 ```
 {sample_id:
   {workflow_1:
-    {"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber",
+    [{"workflow_id": "19168526", "workflow_version":"2.0.2", "name": "calls.copynumber",
      "rename_files": [
        {"file_path": "file1", "file_name": "myfile1"}, {"file_path": "file2", "file_name": "this_is_a_file"}
       ]
-    },
+    }],
   workflow_2:
-    {"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations", "files": [file1, file2]}
+    [{"workflow_id":"16962244", "workflow_version":"2.0.2", "name": "calls.mutations", "files": [file1, file2]}]
   }
 }
 ```
@@ -237,11 +245,13 @@ This will result in selecting output files from workflows 1 and 2 and renaming t
 ```
 sample_id
   |- calls.copynumber
-    |- myfile1
-    |- this_is_a_file
+    |- workflow_id
+      |- myfile1
+      |- this_is_a_file
   |- calls.mutations
-    |- file 1
-    |- file 2
+    |- workflow_id
+      |- file 1
+      |- file 2
 ``` 
 
 
