@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+# from jinja2 import Environment, FileSystemLoader
+# from weasyprint import HTML
+# from weasyprint import CSS
 
 
 
@@ -547,7 +547,7 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
 
 def get_pipeline_data(data_structure, files):
     '''
-    (dict, dict)    
+    (dict, dict) -> dict   
     
     Returns a dictionary with the files for each sample and workflow specified in the data_structure
     
@@ -556,58 +556,65 @@ def get_pipeline_data(data_structure, files):
     - data_structure (str): Dictionary with samples, workflows and workflow_run_id hierarchical structure
     - files (dict): Dictionary with all file records for a given project extracted from FPR
     '''
-
     
     D = {}
     
-    for file_swid in files:
-        sample = files[file_swid]['sample_name']
-        workflow = files[file_swid]['workflow']
-        if sample in data_structure:
-            if workflow in data_structure[sample]:
-                if files[file_swid]['workflow_version'] == data_structure[sample][workflow]['workflow_version']:
-                    # get workflow run id
-                    if files[file_swid]['workflow_run_id'] == data_structure[sample][workflow]['workflow_id']:
-                        if sample not in D:
-                            D[sample] = {}
-                        if 'name' in data_structure[sample][workflow]:
-                            workflow_name = data_structure[sample][workflow]['name']
+    for sample_id in data_structure:
+        for file_swid in files:
+            sample = files[file_swid]['sample_name']
+            workflow = files[file_swid]['workflow']
+            version = files[file_swid]['workflow_version']
+            wf_id = files[file_swid]['workflow_run_id']
+            if sample in sample_id and workflow in data_structure[sample_id]:
+                for d in data_structure[sample_id][workflow]:
+                    if version == d['workflow_version'] and wf_id == d['workflow_id']:
+                        if sample_id not in D:
+                            D[sample_id] = {}
+                        # check if workflow name needs to be replaced
+                        if 'name' in d:
+                            workflow_name = d['name']
                         else:
                             workflow_name = workflow
-                        if workflow_name not in D[sample]:
-                            D[sample][workflow_name] = []
-                        
+                        if workflow_name not in D[sample_id]:
+                            D[sample_id][workflow_name] = {}
+                        if wf_id not in D[sample_id][workflow_name]:
+                            D[sample_id][workflow_name][wf_id] = []
                         # check which files are collected
-                        if 'extension' in data_structure[sample][workflow]:
+                        if 'extension' in d:
                             # files are collected based on file extension
                             # get the file extension
                             extension = pathlib.Path(files[file_swid]['file_path']).suffix
-                            if extension in data_structure[sample][workflow]['extension']:
-                                D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
-                        elif 'files' in data_structure[sample][workflow]:
+                            if extension in d['extension']:
+                                D[sample_id][workflow_name][wf_id].append({'file_path': files[file_swid]['file_path'],
+                                                                           'md5': files[file_swid]['md5'],
+                                                                           'file_name': os.path.basename(files[file_swid]['file_path'])})
+                        elif 'files' in d:
                             # files are collected based on file name
-                            if os.path.basename(files[file_swid]['file_path']) in list(map(lambda x: os.path.basename(x),  data_structure[sample][workflow]['files'])):
-                                D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
-                        elif 'rename_files' in data_structure[sample][workflow]:
+                            if os.path.basename(files[file_swid]['file_path']) in list(map(lambda x: os.path.basename(x),  d['files'])):
+                                D[sample_id][workflow_name][wf_id].append({'file_path': files[file_swid]['file_path'],
+                                                                           'md5': files[file_swid]['md5'],
+                                                                           'file_name': os.path.basename(files[file_swid]['file_path'])})
+                        elif 'rename_files' in d:
                             # files are collected based on file name and renamed
                             # make a list of file names
-                            file_paths = list(map(lambda x: os.path.basename(x), [i['file_path'] for i in data_structure[sample][workflow]['rename_files']]))
-                            file_names = [i['file_name'] for i in data_structure[sample][workflow]['rename_files']]
+                            file_paths, file_names = [], []
+                            for i in d['rename_files']:
+                                file_paths.append(os.path.basename(i['file_path']))
+                                file_names.append(i['file_name'])
                             if os.path.basename(files[file_swid]['file_path']) in file_paths:
                                 # collect file path, md5 and new file name used to name the link
                                 j = file_paths.index(os.path.basename(files[file_swid]['file_path']))
-                                D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'],
+                                D[sample_id][workflow_name][wf_id].append({'file_path': files[file_swid]['file_path'],
                                                                  'md5': files[file_swid]['md5'],
                                                                  'file_name': file_names[j]})
                         else:
-                            D[sample][workflow_name].append({'file_path': files[file_swid]['file_path'], 'md5': files[file_swid]['md5']})
+                            D[sample_id][workflow_name][wf_id].append({'file_path': files[file_swid]['file_path'],
+                                                                       'md5': files[file_swid]['md5'],
+                                                                       'file_name': os.path.basename(files[file_swid]['file_path'])})
     
     return D                        
                         
-    
-    
-    
-    
+   
 def write_md5sum(data, outputfile):
     '''
     (dict, str) -> None   
