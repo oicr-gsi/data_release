@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-# from jinja2 import Environment, FileSystemLoader
-# from weasyprint import HTML
-# from weasyprint import CSS
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+from weasyprint import CSS
 
 
 
