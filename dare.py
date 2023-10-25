@@ -445,24 +445,24 @@ def link_pipeline_data(pipeline_data, working_dir):
     '''
       
     for sample_name in pipeline_data:
+        # create sample dir
         sample_dir = os.path.join(working_dir, sample_name)
         os.makedirs(sample_dir, exist_ok=True)
-        
-        # create sample dir
         for workflow_name in pipeline_data[sample_name]:
             # create workflow dir
             workflow_dir = os.path.join(sample_dir, workflow_name)
             os.makedirs(workflow_dir, exist_ok=True)
-            for i in pipeline_data[sample_name][workflow_name]:
-                file = i['file_path']
-                if 'file_name' in i:
-                    # use new file name to name link
+            # create worfkflow run id dir
+            for wf_id in pipeline_data[sample_name][workflow_name]:
+                wfrun_dir = os.path.join(workflow_dir, wf_id)
+                os.makedirs(wfrun_dir, exist_ok=True)
+                # loop over files within each workflow
+                for i in pipeline_data[sample_name][workflow_name][wf_id]:
+                    file = i['file_path']
                     filename = i['file_name']
-                else:
-                    filename = os.path.basename(file)
-                link = os.path.join(workflow_dir, filename)
-                if os.path.isfile(link) == False:
-                    os.symlink(file, link)
+                    link = os.path.join(wfrun_dir, filename)
+                    if os.path.isfile(link) == False:
+                        os.symlink(file, link)
 
 
 
