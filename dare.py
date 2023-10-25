@@ -623,28 +623,39 @@ def write_md5sum(data, outputfile):
     
     Parameters
     ----------
-    - data (dict): Dictionary holding pipeline data or data from a single workflow
+    - data (dict): Dictionary holding data from a single workflow
     - outpufile (str): Path to the outputfile with md5sums
     '''    
     
     newfile = open(outputfile, 'w')
-    # check the data structure to determine if it contains pipeline analysis data or a single workflow data 
-    if 'md5' in data[list(data.keys())[0]]:
-        # single workflow data
-        for file_swid in data:
-            md5 = data[file_swid]['md5']
-            file_path = data[file_swid]['file_path']
-            newfile.write('\t'.join([file_path, md5]) + '\n')
-    else:
-        # pipeline data
-        for sample in data:
-            for workflow_name in data[sample]:
-                for i in data[sample][workflow_name]:
+    for file_swid in data:
+        md5 = data[file_swid]['md5']
+        file_path = data[file_swid]['file_path']
+        newfile.write('\t'.join([file_path, md5]) + '\n')
+    newfile.close()
+
+
+def write_pipeline_md5sum(data, outputfile):
+    '''
+    (dict, str) -> None   
+    
+    Write a file in working_dir with md5sums for all files contained in data
+    
+    Parameters
+    ----------
+    - data (dict): Dictionary holding pipeline data
+    - outpufile (str): Path to the outputfile with md5sums
+    '''    
+    
+    newfile = open(outputfile, 'w')
+    # pipeline data
+    for sample in data:
+        for workflow_name in data[sample]:
+            for workflow_run in data[sample][workflow_name]:
+                for i in data[sample][workflow_name][workflow_run]:
                     newfile.write('\t'.join([i['file_path'], i['md5']]) + '\n')
     newfile.close()
 
-    
-    
 def link_files(args):
     '''
     (str, str, str, str | None, str | None, bool, list | None, str | None, str | None, str, str, str, str | None)
@@ -730,7 +741,7 @@ def link_files(args):
         write_md5sum(files, outputfile)
     elif args.analysis:
         outputfile = os.path.join(working_dir, '{0}.release.{1}.pipeline.md5sums'.format(args.project, current_time))
-        write_md5sum(pipeline_data, outputfile)
+        write_pipeline_md5sum(pipeline_data, outputfile)
     print('Files were extracted from FPR {0}'.format(provenance))
 
 
