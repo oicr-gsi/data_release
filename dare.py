@@ -1688,24 +1688,13 @@ def get_file_prefix(file):
 
 
     filename = os.path.basename(file)
-    x = re.search("[\._]{1}R1[.]+.*fastq.gz|[\._]{1}R2[.]+.*fastq.gz|[\._]{1}R1_.*fastq.gz|[\._]{1}R2_.*fastq.gz", filename)
+    x = re.search("[\._]{1}R[1-2][\._]+.*fastq.gz", filename)
+    
     assert x
     prefix = filename[:x.span()[0]]
     
     return prefix
-
-    
-    # file = os.path.basename(file)
-    # if 'R1.fastq.gz' in file:
-    #     read = 'R1'
-    # elif 'R2.fastq.gz' in file:
-    #     read = 'R2'
-    # prefix = file[:file.rindex(read)]
-    # if prefix[-1] == '_' or prefix[-1] == '.':
-    #     prefix = prefix[:-1]
-        
-    # return prefix
-                 
+     
     
 def add_file_prefix(L):
     '''
