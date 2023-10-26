@@ -21,7 +21,7 @@ import sqlite3
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 from weasyprint import CSS
-
+import re
 
 
 
@@ -1685,17 +1685,26 @@ def get_file_prefix(file):
     ----------
     - file (str): File path
     '''
+
+
+    filename = os.path.basename(file)
+    x = re.search("[\._]{1}R1[.]+.*fastq.gz|[\._]{1}R2[.]+.*fastq.gz|[\._]{1}R1_.*fastq.gz|[\._]{1}R2_.*fastq.gz", filename)
+    assert x
+    prefix = filename[:x.span()[0]]
     
-    file = os.path.basename(file)
-    if 'R1.fastq.gz' in file:
-        read = 'R1'
-    elif 'R2.fastq.gz' in file:
-        read = 'R2'
-    prefix = file[:file.rindex(read)]
-    if prefix[-1] == '_' or prefix[-1] == '.':
-        prefix = prefix[:-1]
-        
     return prefix
+
+    
+    # file = os.path.basename(file)
+    # if 'R1.fastq.gz' in file:
+    #     read = 'R1'
+    # elif 'R2.fastq.gz' in file:
+    #     read = 'R2'
+    # prefix = file[:file.rindex(read)]
+    # if prefix[-1] == '_' or prefix[-1] == '.':
+    #     prefix = prefix[:-1]
+        
+    # return prefix
                  
     
 def add_file_prefix(L):
@@ -2851,8 +2860,6 @@ def extract_merged_rnaseqqc_data(merged_rnaseqqc_db):
     for i in data:
         d = {}
         for j in columns:
-            if j not in dict(i):
-                print(j)
             assert j in dict(i).keys()
             if j == 'Merged Pinery Lims ID':
                 d[j] = list(map(lambda x: x.strip(), i[j].replace('[', '').replace(']', '').replace('\"', '').split(',')))
@@ -3427,17 +3434,19 @@ def write_cumulative_report(args):
     # get information about the released fastqs
     # collect relevant information from File Provenance Report about fastqs for project 
     files = parse_fpr_records(provenance, args.project, ['bcl2fastq'], args.prefix)
+    
     # get the released files at the project level from nabu
     released_files = list_released_fastqs_project(args.api, args.project)
+    
     # resolve links
     released_files = resolve_links(released_files)
     # remove files not released
     to_remove = [file_swid for file_swid in files if os.path.realpath(files[file_swid]['file_path']) not in released_files]
     for file_swid in to_remove:
         del files[file_swid]
+       
     # add time points
     add_time_points(args.sample_provenance, files)
-    
     
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_library_type_instrument(files)
@@ -3456,6 +3465,7 @@ def write_cumulative_report(args):
         
     # get the identifiers of all released files
     sample_identifiers = group_cumulative_samples(files)
+    
     appendix_identifiers = get_identifiers_appendix(files, 'cumulative')
     # define identifier table header
     header_identifiers = ['OICR Case Id', 'Donor Id', 'OICR Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
