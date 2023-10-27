@@ -2108,7 +2108,7 @@ def count_samples_with_missing_values(files):
     return D   
 
 
-def fit_into_column(text, library_source):
+def fit_into_column(text):
     '''
     (str)- > str
     
@@ -2118,17 +2118,39 @@ def fit_into_column(text, library_source):
     Parameters
     ----------
     - text (str): Value in column 
-    - library_source (str): 2-letters code of the library type
     '''
     
-    if library_source in text:
-        text = '{0} {1}'.format(text[:text.index(library_source)+len(library_source)], 
-                                text[text.index(library_source)+len(library_source):])
-    else:
-        text = '{0} {1}'.format(text[:len(text)//2], text[len(text)//2:])
+    text = '{0} {1}'.format(text[:len(text)//2], text[len(text)//2:])
 
     return text
        
+
+def rename_prefix(prefix, library, run):
+    '''
+    (str, str, str) -> str
+    
+    Returns the prefix name in a format that firts the table column
+    
+    Parameters
+    ----------
+    - prefix (str): Name of file prefix
+    - library (str): Library identifier, often part of prefix
+    - run (str): Run identifier, often part of prefix
+    '''
+    
+    text = []
+    
+    assert library in prefix
+    text.append(prefix[:prefix.index(library)+len(library)])
+    remaining = prefix[prefix.index(library)+len(library):]
+    assert run in remaining
+    text.append(remaining[:remaining.index(run)])
+    text.append(remaining[remaining.index(run):])    
+    
+    text = ' '.join(text)
+    
+    return text
+
 
 
 def group_sample_metrics(files, table, metrics = None, add_time_points=None):
@@ -2166,20 +2188,23 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
             prefix = i[0]['prefix']
             groupid = i[0]['groupid'][0]
             group_description = i[0]['groupdesc'][0]
+            run = i[0]['run_id']
             
             max_length = 20
             
+            
             # reformat prefix to fit the table column
+       
             if len(prefix) >= max_length:
-                prefix = fit_into_column(prefix, library_source)
+                prefix = fit_into_column(prefix)
             if len(library) >= max_length:
-                library = fit_into_column(library, library_source)
+                library = fit_into_column(library)
             if len(sample) >= max_length:
-                sample = fit_into_column(sample, library_source)
+                sample = fit_into_column(sample)
             if len(groupid) >= max_length:
-                groupid = fit_into_column(groupid, library_source)
+                groupid = fit_into_column(groupid)
             if len(group_description) >= max_length:
-                group_description = fit_into_column(group_description, library_source)
+                group_description = fit_into_column(group_description)
                         
             
             library_name = '{0} ({1})'.format(i[0]['library'][0], i[0]['time_point'])  
@@ -2257,15 +2282,15 @@ def group_cumulative_samples(files):
             
             # reformat prefix to fit the table column
             if len(prefix) >= max_length:
-                prefix = fit_into_column(prefix, library_source)
+                prefix = fit_into_column(prefix)
             if len(library) >= max_length:
-                library = fit_into_column(library, library_source)
+                library = fit_into_column(library)
             if len(sample) >= max_length:
-                sample = fit_into_column(sample, library_source)
+                sample = fit_into_column(sample)
             if len(groupid) >= max_length:
-                groupid = fit_into_column(groupid, library_source)
+                groupid = fit_into_column(groupid)
             if len(group_description) >= max_length:
-                group_description = fit_into_column(group_description, library_source)
+                group_description = fit_into_column(group_description)
                         
             tissue_origin = i[0]['tissue_origin'][0]
             tissue_type = i[0]['tissue_type'][0]
@@ -3256,9 +3281,9 @@ def format_qc_metrics(qc_metrics):
                 libraries = list(qc_metrics[instrument][library_source][limskey]['libraries'])
                 prefix = list(qc_metrics[instrument][library_source][limskey]['prefix'])
                 run = list(qc_metrics[instrument][library_source][limskey]['run'])
-                libraries = [fit_into_column(i, library_source) if len(i) >=40 else i for i in libraries]
-                prefix = [fit_into_column(i, library_source) if len(i) >=40 else i for i in prefix]
-                run = [fit_into_column(i, library_source) if len(i) >=40 else i for i in run]
+                libraries = [fit_into_column(i) if len(i) >=40 else i for i in libraries]
+                prefix = [fit_into_column(i) if len(i) >=40 else i for i in prefix]
+                run = [fit_into_column(i) if len(i) >=40 else i for i in run]
                 libraries.sort()
                 prefix.sort()
                 run.sort()
@@ -3310,7 +3335,7 @@ def format_sequencing_table(files):
                 SL.sort(key = lambda x: (x[0], x[1], x[2]))
     # adjust long names to fit in column
     for i in range(len(SL)):
-        L = [fit_into_column(j, SL[i][2]) if len(j) >=30 else j for j in SL[i][:-1]]
+        L = [fit_into_column(j) if len(j) >=30 else j for j in SL[i][:-1]]
         L.append('{:,}'.format(SL[i][-1]))
         SL[i] = L
     
