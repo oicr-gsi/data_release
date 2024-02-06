@@ -2125,34 +2125,6 @@ def fit_into_column(text):
     return text
        
 
-def rename_prefix(prefix, library, run):
-    '''
-    (str, str, str) -> str
-    
-    Returns the prefix name in a format that firts the table column
-    
-    Parameters
-    ----------
-    - prefix (str): Name of file prefix
-    - library (str): Library identifier, often part of prefix
-    - run (str): Run identifier, often part of prefix
-    '''
-    
-    text = []
-    
-    assert library in prefix
-    text.append(prefix[:prefix.index(library)+len(library)])
-    remaining = prefix[prefix.index(library)+len(library):]
-    assert run in remaining
-    text.append(remaining[:remaining.index(run)])
-    text.append(remaining[remaining.index(run):])    
-    
-    text = ' '.join(text)
-    
-    return text
-
-
-
 def group_sample_metrics(files, table, metrics = None, add_time_points=None):
     '''
     (dict, str, dict | None, bool| None) -> dict 
