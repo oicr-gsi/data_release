@@ -330,8 +330,12 @@ Parameters
 | -w | Workflow used to generate the output files | optional              |
 | -px | Prefix to file paths if FPR contains relative paths | optional              |
 | --exclude_miseq | Exclude miseq runs | optional              |
-| -a | Nabu api | default              |
+| -n | Nabu api | default              |
 | -fpr | Path to FPR | default              |
+| -e | Files with libraries tagged for non-release | optional              |
+| -f | File with file names to be released              |
+| -a | Files with hierarchical structure storing sample and workflow ids | optional              |
+
 
 
 ## Generating a batch release report with dare.py ##
