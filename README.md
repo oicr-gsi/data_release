@@ -314,7 +314,17 @@ Path to the sample provenance
 
 Tag released files in Nabu.
 
-example usage: ```dare mark -u USER -st pass -rn DIRECTORY -c COMMENT -pr PROJECT```
+There are different ways to mark files in Nabu
+For fastq files typically organized by run folder, one possibility is to point to the run directory containing the file links with the following command:
+
+```dare mark -u USER -st pass -rn DIRECTORY -c TICKET -pr PROJECT```
+
+For analysis pipelines, it is still possible to point to a directory containing links provided that links are not in sub-folders.
+However, it is more convinient to mark files using the same json structure that was used to link the files (see baove section).
+
+```dare mark -u USER -st pass -c TICKET -pr PROJECT -a JSON_FILE``` 
+
+
 
 Parameters
 
@@ -330,8 +340,12 @@ Parameters
 | -w | Workflow used to generate the output files | optional              |
 | -px | Prefix to file paths if FPR contains relative paths | optional              |
 | --exclude_miseq | Exclude miseq runs | optional              |
-| -a | Nabu api | default              |
+| -n | Nabu api | default              |
 | -fpr | Path to FPR | default              |
+| -e | Files with libraries tagged for non-release | optional              |
+| -f | File with file names to be released | optional              |
+| -a | Files with hierarchical structure storing sample and workflow ids | optional              |
+
 
 
 ## Generating a batch release report with dare.py ##

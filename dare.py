@@ -3633,6 +3633,60 @@ def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
         print('Could not update {0} status. Nabu response code: {1}'.format(file_swid, response.status_code))
 
 
+
+
+
+def get_pipeline_swids(data_structure, files):
+    '''
+    (dict, dict) -> list   
+    
+    Returns a list of file swids for each sample and workflow specified in the data_structure
+    
+    Parameters
+    ----------
+    - data_structure (str): Dictionary with samples, workflows and workflow_run_id hierarchical structure
+    - files (dict): Dictionary with all file records for a given project extracted from FPR
+    '''
+    
+    L = []
+         
+    for donor in data_structure:
+        for sample_id in data_structure[donor]:
+            for file_swid in files:
+                sample = files[file_swid]['sample_name']
+                workflow = files[file_swid]['workflow']
+                version = files[file_swid]['workflow_version']
+                wf_id = files[file_swid]['workflow_run_id']
+                if donor == sample and sample in sample_id and workflow in data_structure[donor][sample_id]:
+                    for d in data_structure[donor][sample_id][workflow]:
+                        if version == d['workflow_version'] and wf_id == d['workflow_id']:
+                            # check which files are collected
+                            if 'extension' in d:
+                                # files are collected based on file extension
+                                # get the file extension
+                                extension = pathlib.Path(files[file_swid]['file_path']).suffix
+                                if extension in d['extension']:
+                                    L.append(file_swid)
+                            elif 'files' in d:
+                                # files are collected based on file name
+                                if os.path.basename(files[file_swid]['file_path']) in list(map(lambda x: os.path.basename(x),  d['files'])):
+                                    L.append(file_swid)
+                            elif 'rename_files' in d:
+                                # files are collected based on file name and renamed
+                                file_paths = []
+                                for i in d['rename_files']:
+                                    file_paths.append(os.path.basename(i['file_path']))
+                                if os.path.basename(files[file_swid]['file_path']) in file_paths:
+                                    L.append(file_swid)
+                            else:
+                                L.append(file_swid)
+    
+    L = list(set(L))
+    
+    return L                        
+                        
+
+
 def mark_files_nabu(args):
     '''
     (str, str, str) -> None
@@ -3649,6 +3703,18 @@ def mark_files_nabu(args):
     - user (str): User name to appear in Nabu for each released or whitheld file
     - comment (str): A comment to used to tag the file. For instance the Jira ticket 
     - provenance (str): Path to File Provenance Report
+    - run_directory (str): Directory with links organized by project and run in gsi space
+    - runs (list): List of run IDs
+    - libraries (str): Path to file with libraries tagged for release
+    - workflow (str): Worflow used to generate the output files
+    - nomiseq (bool): Exclude MiSeq runs if True
+    - prefix (str): Use of prefix assumes that FPR containes relative paths.
+                    Prefix is added to the relative paths in FPR to determine the full file paths
+    - exclude (str): Path to file with libraries tagged for non-release
+    - release_files (str): File with file names to be released
+    - nabu (str):  URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca
+    - provenance (str): Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz
+    - analysis (str): Path to the file with hierarchical structure storing sample and workflow ids
     '''
     
     # check valid combinations of parameters
@@ -3656,15 +3722,21 @@ def mark_files_nabu(args):
         sys.exit('-r and -l are exclusive parameters')
     if args.run_directory and (args.workflow or args.runs or args.libraries or args.release_files or args.exclude or args.prefix or args.nomiseq):
         sys.exit('-rn cannot be used with options -w, -r, -l, -f, -e, -px or --exclude_miseq')
-    if all(map(lambda x: x is None, [args.workflow, args.runs, args.libraries, args.release_files, args.exclude, args.prefix, args.nomiseq]))  and args.run_directory is None:
-        sys.exit('Please provide the path to a run folders')
-    if args.workflow is None and args.run_directory is None:
-        sys.exit('Please provide the path to a run folder or a workflow')
-    
+    if args.analysis is None:
+        if all(map(lambda x: x is None, [args.workflow, args.runs, args.libraries, args.release_files, args.exclude, args.prefix, args.nomiseq]))  and args.run_directory is None:
+            sys.exit('Please provide the path to a run folders')
+        if args.workflow is None and args.run_directory is None:
+            sys.exit('Please provide the path to a run folder or a workflow')
+    else:
+        if args.runs or args.libraries or args.run_directory or args.workflow or args.release_files or args.exclude or args.prefix or args.nomiseq:
+            sys.exit('''--analysis cannot be used with options -r, -l, -rn, -w, -f, -e, -px or --exclude_miseq
+                     You are attempting to mark analysis pipeline files. Provide the same json structure used to link the files''')
+       
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
            
     if args.run_directory:
+        # get the swids of the files linked in run directory
         # check directory
         if os.path.isdir(args.run_directory) == False:
             sys.exit('{0} is not a valid directory'.format(args.run_directory))
@@ -3683,16 +3755,33 @@ def mark_files_nabu(args):
         if no_swids:
             for file in no_swids:
                 print('File {0} in directory {1} does not have a swid'.format(os.path.basename(file), args.run_directory))
+    elif args.analysis:
+        # get the file swids from the json structure
+        infile = open(args.analysis)
+        data_structure = json.load(infile)
+        infile.close()
+        
+        # parse FPR records
+        # make a list of workflows
+        workflows = []
+        for i in data_structure:
+            for j in data_structure[i]:
+                workflows.extend(list(data_structure[i][j].keys()))
+        workflows = list(set(workflows))    
+        print('workflows', workflows)
+        files = parse_fpr_records(provenance, args.project, workflows, args.prefix)
+        print('Extracted files from File Provenance Report')
+        swids = get_pipeline_swids(data_structure, files)
     else:
         # collect relevant information from File Provenance Report about fastqs for project 
         files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
         print('Information was extracted from FPR {0}'.format(provenance))
         released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
         swids = list(released_files.keys())
-                
+    
     # mark files il nabu
     for i in swids:
-        change_nabu_status(args.api, i, args.status.upper(), args.user, comment=args.comment)
+        change_nabu_status(args.nabu, i, args.status.upper(), args.user, comment=args.comment)
         
     
 if __name__ == '__main__':
@@ -3749,8 +3838,9 @@ if __name__ == '__main__':
     n_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
     n_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
-    n_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
+    n_parser.add_argument('-n', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
+    n_parser.add_argument('-a', '--analysis', dest='analysis', help='Path to the file with hierarchical structure storing sample and workflow ids')
     n_parser.set_defaults(func=mark_files_nabu)
         
     # write a report
