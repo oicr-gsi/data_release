@@ -10,10 +10,8 @@ server="https://transfer.oicr.on.ca"
 #echo $attachment_id
 
 
-attachment_id=`curl -X POST -H "Accept: application/json" --insecure --user "$api_key:x" -T "$file" https://transfer.oicr.on.ca/message/attachments/binary_upload?filename=${file} | jq .attachment.id`
+attachment_id=`curl -X POST -H "Accept: application/json" --insecure --user "$api_key:x" -T "$file" https://transfer.oicr.on.ca/message/attachments/upload?filename=${file} | jq .attachment.id`
 echo $attachment_id
-
-
 
 
 
