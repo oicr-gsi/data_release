@@ -61,7 +61,7 @@ This parameter appends the suffix to the run folder name containing the file lin
 
 - libraries `-l/ --libraries` :
 Optional parameter. Libraries approved for release.
-Tab-delimited file with 2 columns with library and run Ids. 
+Tab-delimited file with 2 or 3 columns, without header. The First column is always the library identifier, the last column (2nd or 3rd) is always the run identifier. The optional column is the lane number. The lane number is either omitted or specified for all libraries. If the lane number is omitted, all the lanes for a given library and run will be linked. 
 
 - exclude `-e/ --exclude`:
 Optional parameter. Libraries excluded from release.

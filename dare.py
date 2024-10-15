@@ -29,30 +29,43 @@ def get_libraries(library_file):
     '''
     (str) -> dict
     
-    Returns a dictionary with library, run key, value pairs.
+    Returns a dictionary with library, run or libray, lane, run key, value pairs.
     Note: runs need to be specified for all libraries
     
     Parameters
     ----------
     - sample_file (str): Path to sample file. Sample file is a tab delimited file
-                         that includes 2 columns. The first column is always 
-                         the library alias, and the second is run id
+                         that includes 2 or 3 columns columns. The first column is always 
+                         the library alias, and the second is lane or run id
     '''
     D = {}
     
     infile = open(library_file)
-    for line in infile:
-        line = line.rstrip()
-        if line != '':
-            line = line.split()
-            if len(line) != 2:
-                raise ValueError('Run id must be specified for all libraries')        
-            if line[0] in D:
-                D[line[0]].append(line[1])
-            else:
-                D[line[0]] = [line[1]]
+    content = infile.read().strip().split('\n')
+    for i in range(len(content)):
+        content[i] = content[i].split('\t')
     infile.close()
-
+    
+    # check that all lines have the same number of columns
+    if all(map(lambda x: len(x) == 2 or len(x) == 3 , content)) == False:
+        raise ValueError('File must have 2 or 3 columns')
+    if all(map(lambda x: '_' in x[-1], content)) == False:
+        raise ValueError('Run id must be the last column')
+        
+    for i in content:
+        library = i[0]
+        run = i[-1]
+        if len(i) == 2:
+            lane = ''
+        elif len(i) == 3:
+            lane = int(i[1])
+        
+        if library not in D:
+            D[library] = {}
+        if run not in D[library]:
+            D[library][run] = []
+        D[library][run].append(lane)
+       
     return D
 
 
@@ -325,18 +338,26 @@ def exclude_non_specified_libraries(files, valid_libraries):
     for file_swid in files:
         libraries = files[file_swid]['library']
         runs = files[file_swid]['run_id']
-        if len(libraries) != 1 and len(runs) != 1:
+        lanes = files[file_swid]['lane']
+        if len(libraries) != 1 and len(runs) != 1 and len(lanes) != 1:
             sys.exit('Use option -a to link merging-workflows output files')
-        library, run = libraries[0], runs[0]
+        library, run, lane = libraries[0], runs[0], int(lanes[0])
+        # exclude file if libraries is not included in the input sheet
         if library not in valid_libraries:
             exclude.append(file_swid)
+        # exclude file if run is not included in the input sheet
         elif run not in valid_libraries[library]:
             exclude.append(file_swid)
-            
+        # exclude file if lane is specified but not included
+        elif '' not in valid_libraries[library][run] and lane not in valid_libraries[library][run]:
+            exclude.append(file_swid)
+    
     exclude = list(set(exclude))    
+    
     for file_swid in files:
         if file_swid not in exclude:
             D[file_swid] = files[file_swid]        
+    
     return D
         
     
@@ -503,9 +524,10 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
     - nomiseq (bool): Exclude MiSeq runs if True
     - runs (list | None): List of run IDs. Include one or more run Id separated by white space.
                           Other runs are ignored if provided
-    - libraries (str | None): Path to 1 or 2 columns tab-delimited file with library IDs.
-                              The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM).
-                              The second and optional column is the library aliquot ID (eg. LDI32439).
+    - libraries (str | None): Path to 2 or 3 columns tab-delimited file with library IDs.
+                              The first column is always the library alias.
+                              The second column is the lane number or the run identifier.
+                              The last column is always the run identifier
                               Only the samples with these library aliases are used if provided'
     - exclude (str | None): File with sample name or libraries to exclude from the release
     '''
