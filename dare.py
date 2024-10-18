@@ -781,15 +781,16 @@ def link_files(args):
     print('Files were extracted from FPR {0}'.format(provenance))
 
 
-def group_sample_info_mapping(files, add_time_points, add_panel):
+def group_sample_info_mapping(files, add_panel):
     '''
-    (dict, dict, bool, bool) -> dict    
+    (dict, bool) -> dict    
     
     Returns a dictionary of sample information organized by run
         
     Parameters
     ----------
     - files (dict) : Dictionary with file records obtained from parsing FPR
+    - add_panel (bool): Add panel if True
     '''
 
     # group info by run id
@@ -818,15 +819,13 @@ def group_sample_info_mapping(files, add_time_points, add_panel):
         assert len(files[file_swid]['groupid']) == 1
         group_id = files[file_swid]['groupid'][0]
         panel = files[file_swid]['panel']
-        timepoint = files[file_swid]['time_point']
+        
         
         # group files by sample, library, run and lane
         key = '_'.join([sample, library, run, barcode])
         
         
         L = [sample, external_id, library, library_source, tissue_type, tissue_origin, run, barcode, group_id, group_description]
-        if add_time_points:
-            L.append(timepoint)
         if add_panel:
             L.append(panel)
             
@@ -839,90 +838,10 @@ def group_sample_info_mapping(files, add_time_points, add_panel):
     return D            
 
 
-def extract_sample_info(sample_provenance):
-    '''
-    (str) -> list
-    
-    Returns a list of dictionary with sample information pulled down from the
-    sample_provenance Pinary API
-
-    Parameters
-    ----------
-    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
-    '''
-    
-    response = requests.get(sample_provenance)
-    if response.ok:
-        L = response.json()
-    else:
-        L = []
-    return L
-
-
-def get_time_points(sample_information):
-    '''
-    (list) -> dict
-    
-    Returns a dictionary of time points for each library
-    
-    Parameters
-    ----------
-    - sample_information (list): List of dictionary with sample information pulled
-                                 down from the inery API 
-    '''
-
-    D = {}
-
-    for i in sample_information:
-        sample = i['sampleName']
-        if 'timepoint' in i['sampleAttributes']:
-            time_point = i['sampleAttributes']['timepoint']
-        else:
-            time_point = []
-        if sample in D:
-            D[sample].extend(time_point)
-        else:
-            D[sample] = time_point
-        
-    for i in D:
-        D[i] = ';'.join(sorted(list(set(D[i]))))
-        if not D[i]:
-            D[i] = 'NA'
-    return D
-
-
-
-def add_time_points(sample_provenance, files):
-    '''
-    (str, dict) -> None
-    
-    Add time points retrieved from sample_provenance to each sample in sample_metrics.
-    Updates files in place
-    
-    Parameters
-    ----------
-    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
-    - files (dict): Dictionary with file information extracted from FPR
-    '''
-
-    
-    time_points = get_time_points(extract_sample_info(sample_provenance))
-    # add time points
-    for file_swid in files:
-        assert len(files[file_swid]['library']) == 1
-        library = files[file_swid]['library'][0]
-        if library in time_points:
-            files[file_swid]['time_point'] = time_points[library]
-        else:
-            files[file_swid]['time_point'] = 'NA'
-
-
-
-
 def map_external_ids(args):
     '''
-    (str, str, str, str | None, str | None, bool, list | None, str | None, str | None, str, str, str, bool, bool, str) -> None
-    
+    (str, str, str | None, str | None, bool, list | None, str | None, str | None, str, str, bool) -> None
+        
     Generate sample maps with sample and sequencing information
     
     Parameters
@@ -942,9 +861,7 @@ def map_external_ids(args):
     - exclude (str | None): File with sample name or libraries to exclude from the release
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
-    - timepoints (bool): Add time points column to sample map if True
     - add_panel (bool): Add panel column to sample map if True
-    - sample_provenance (str): Pinery API, http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
     '''
 
     if args.runs and args.libraries:
@@ -966,20 +883,14 @@ def map_external_ids(args):
     # get raw sequence file info
     files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
     
-    # add time points
-    add_time_points(args.sample_provenance, files)
-    
     # group sample information by run            
-    sample_info = group_sample_info_mapping(files, args.timepoints, args.add_panel)        
+    sample_info = group_sample_info_mapping(files, args.add_panel)        
     
     # write sample maps
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
     newfile = open(outputfile, 'w')
     header = ['sample', 'sample_id', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'group_id', 'group_description', 'files']
-    if args.timepoints:
-       #header.append('time_points')
-       header.insert(-1, 'time_points')  
     if args.add_panel:
         #header.append('panel')
         header.insert(-1, 'panel')
@@ -2161,9 +2072,9 @@ def fit_into_column(text):
     return text
        
 
-def group_sample_metrics(files, table, metrics = None, add_time_points=None):
+def group_sample_metrics(files, table, metrics = None):
     '''
-    (dict, str, dict | None, bool| None) -> dict 
+    (dict, str, dict | None) -> dict 
     
     Group sample identifiers or metrics 
     
@@ -2172,7 +2083,6 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
     - files (dict): Information about fastqs extracted from File Provenance Report
     - table (str): Table of interest in the report
     - metrics (dict or None): Dictionary with metrics to report or None
-    - add_time_points (bool or None): Add time points to table if True
     '''
     
     
@@ -2215,16 +2125,12 @@ def group_sample_metrics(files, table, metrics = None, add_time_points=None):
                 group_description = fit_into_column(group_description)
                         
             
-            library_name = '{0} ({1})'.format(i[0]['library'][0], i[0]['time_point'])  
             tissue_origin = i[0]['tissue_origin'][0]
             tissue_type = i[0]['tissue_type'][0]
             sequencing_run = '{0} lane_{1}_{2}'.format(i[0]['run_id'][0], i[0]['lane'][0], i[0]['barcode'][0])
                         
             if table == 'sample_identifiers':
                 L = [library, case, external_name, groupid, group_description, library_source, tissue_origin, tissue_type]
-                # add time point if selected
-                if add_time_points:
-                    L[3] = library_name
             elif table == 'qc_metrics':
                 assert metrics
                 QC_metrics = []
@@ -2601,8 +2507,8 @@ def get_Y_axis_labels(library_source):
 
 def write_batch_report(args):
     '''
-    (str, str, str, str, str, str, str, list, str | None)
-
+    (str, str, str, str, str, str, list, str, str | None, bool) -> None
+    
     Write a PDF report with QC metrics and released fastqs for a given project
 
     - project (str): Project name as it appears in File Provenance Report
@@ -2647,9 +2553,6 @@ def write_batch_report(args):
     for file_swid in to_remove:
         del files[file_swid]
     
-    # add time points    
-    add_time_points(args.sample_provenance, files)
-        
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
     all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
@@ -2726,10 +2629,7 @@ def write_batch_report(args):
     # group metrics by pairs of files
     header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
-    if args.timepoints:
-        header_identifiers[0] = 'Library Id (time point)'
-    
-    sample_identifiers = group_sample_metrics(files, 'sample_identifiers', add_time_points=args.timepoints)
+    sample_identifiers = group_sample_metrics(files, 'sample_identifiers')
     appendix_identifiers = get_identifiers_appendix(files, 'batch')
     
     qc_metrics = group_sample_metrics(files, 'qc_metrics', metrics)
@@ -3418,8 +3318,8 @@ def generate_cumulative_figures(working_dir, project, qc_metrics, platform, libr
 
 def write_cumulative_report(args):
     '''
-    (str, str, str, str, str | None, str, str, str, str, str, str, str, str, str)
-       
+    (str, str, str, str, str | None, str, str, str, str, str, str, str) -> None
+        
     Write a cumulative PDF report with QC metrics for all released fastqs for a given project
   
     - project (str): Name of project of interest
@@ -3433,7 +3333,6 @@ def write_cumulative_report(args):
     - merged_rnaseqqc_db (str): Path to the merged rnaseq SQLite database
     - cfmedipqc_db (str): Path to the cfmedip SQLite database
     - emseqqc_db (str): Path to the emseq SQLite database
-    - sample_provenance (str): Path to File Provenance Report
     - project_full_name (str): Full name of the project
     - ticket (str): Jira data release ticket code
     - user (str): Name of the GSI personnel generating the report
@@ -3467,9 +3366,6 @@ def write_cumulative_report(args):
     for file_swid in to_remove:
         del files[file_swid]
        
-    # add time points
-    add_time_points(args.sample_provenance, files)
-    
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_library_type_instrument(files)
     all_released_files = 0 
@@ -3839,9 +3735,7 @@ if __name__ == '__main__':
     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
     m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
     m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
-    m_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to sample map if option is used. By default, time points are not added.')
     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
-    m_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     m_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
     m_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     m_parser.set_defaults(func=map_external_ids)
@@ -3879,8 +3773,6 @@ if __name__ == '__main__':
     r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
     r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
     r_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
-    r_parser.add_argument('--time_points', dest='timepoints', action='store_true', help='Add time points to Identifiers Table if option is used. By default, time points are not added.')
-    r_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     r_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
     r_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
     r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
@@ -3905,7 +3797,6 @@ if __name__ == '__main__':
     c_parser.add_argument('-rq', '--rnaseqqc', dest='merged_rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2merged/latest', help='Path to the merged rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2merged/latest')
     c_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
     c_parser.add_argument('-eq', '--emseqqc', dest='emseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest', help='Path to the emseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest')
-    c_parser.add_argument('-spr', '--sample_provenance', dest='sample_provenance', default='http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance', help='Path to File Provenance Report. Default is http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance')
     c_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
     c_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     c_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
