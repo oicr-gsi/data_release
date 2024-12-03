@@ -3516,17 +3516,17 @@ def map_swid_file(L):
 
 
 
-def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
+def change_nabu_status(api, file_swids, qc_status, user_name, comment=None):
     '''
-    (str, str, str, str, str | None) -> None
+    (str, list, str, str, str | None) -> None
     
-    Modify the record of file with file_swid in Nabu with QC status updated to qc_status,
+    Modify the record of file in file_swids in Nabu with QC status updated to qc_status,
     username updated to user_name and comment updated to comment if used 
     
     Parameters
     ----------
     - api (str): URL of the nabu API
-    - file_swid (str): File unique identifier
+    - file_swids (list): List of file unique identifiers
     - qc_status (str): File QC status: PASS, PENDING or FAIL
     - comment (str): Jira ticket of the release
     '''
@@ -3538,17 +3538,23 @@ def change_nabu_status(api, file_swid, qc_status, user_name, comment=None):
         raise ValueError('QC status is PASS, FAIL or PENDING')
     
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
-    json_data = {'fileqcs': [{'fileid': file_swid, 'qcstatus': qc_status, 'username': user_name}]}
-    if comment:
-        json_data['fileqcs'][0]['comment'] = comment 
+    json_data = {'fileqcs': []}
+    for file_swid in file_swids:
+        d = {'fileid': file_swid, 'qcstatus': qc_status, 'username': user_name}
+        if comment:
+            d['comment'] = comment    
+        json_data['fileqcs'].append(d)
+         
     response = requests.post(api, headers=headers, json=json_data)
     
     # check response code
     if response.status_code == 201:
-        # record created
-        print('Successfully updated {0} status to {1}'.format(file_swid, qc_status))
+        for file_swid in file_swids:
+            # record created
+            print('Successfully updated {0} status to {1}'.format(file_swid, qc_status))
     else:
-        print('Could not update {0} status. Nabu response code: {1}'.format(file_swid, response.status_code))
+        for file_swid in file_swids:
+            print('Could not update {0} status. Nabu response code: {1}'.format(file_swid, response.status_code))
 
 
 
@@ -3697,9 +3703,8 @@ def mark_files_nabu(args):
         released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
         swids = list(released_files.keys())
     
-    # mark files il nabu
-    for i in swids:
-        change_nabu_status(args.nabu, i, args.status.upper(), args.user, comment=args.comment)
+    # mark files in nabu
+    change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.comment)
         
     
 if __name__ == '__main__':
