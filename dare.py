@@ -129,7 +129,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
             if len(workflow) == 1:
                 if workflow[0].lower() == 'bcl2fastq':
                     # skip if not fastq-related workflows    
-                    if pipeline_workflow.lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport']:
+                    if pipeline_workflow.lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']:
                         continue
                 else:
                     # skip if not provided workflow
@@ -741,7 +741,7 @@ def link_files(args):
                 
         # link files to project dir
         if args.suffix == 'fastqs':
-            assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis']
+            assert args.workflow.lower() in ['bcl2fastq', 'casava', 'fileimport', 'fileimportforanalysis', 'import_fastq']
         generate_links(files, True, args.project, working_dir, args.suffix)
         # generate links for files to be witheld from release
         if files_non_release:
