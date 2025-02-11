@@ -18,10 +18,10 @@ import sys
 import json
 import pathlib
 import sqlite3
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
-import re
+# from jinja2 import Environment, FileSystemLoader
+# from weasyprint import HTML
+# from weasyprint import CSS
+# import re
 
 
 
@@ -49,16 +49,16 @@ def get_libraries(library_file):
     # check that all lines have the same number of columns
     if all(map(lambda x: len(x) == 2 or len(x) == 3 , content)) == False:
         raise ValueError('File must have 2 or 3 columns')
-    if all(map(lambda x: '_' in x[-1], content)) == False:
-        raise ValueError('Run id must be the last column')
+    if all(map(lambda x: '_' in x[1], content)) == False:
+        raise ValueError('Run id must be the second column')
         
     for i in content:
         library = i[0]
-        run = i[-1]
+        run = i[1]
         if len(i) == 2:
             lane = ''
         elif len(i) == 3:
-            lane = int(i[1])
+            lane = int(i[-1])
         
         if library not in D:
             D[library] = {}
