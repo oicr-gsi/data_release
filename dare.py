@@ -838,6 +838,45 @@ def group_sample_info_mapping(files, add_panel):
     return D            
 
 
+
+def write_sample_map(project, files, working_dir, add_panel):
+    '''
+    (str, dict, str, bool) -> None
+    
+    Writes a sample map in the working directory about the released files 
+    for the project of interest
+    
+    Parameters
+    ----------
+    - project (str): Project of interest
+    - files (dict): Dictionary with information about the released files
+    - working_dir (str): Directory where the sample map is written
+    - add_panel (bool): Adds panel in the sample map if True
+    '''
+        
+    # group sample information by run            
+    sample_info = group_sample_info_mapping(files, add_panel)        
+   
+    # write sample maps
+    current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
+    outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(project, current_time, 'fastqs'))
+    newfile = open(outputfile, 'w')
+    header = ['case_id', 'donor_id', 'library_id', 'library_type', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'sample_id', 'sample_description', 'files']
+    
+    if add_panel:
+        #header.append('panel')
+        header.insert(-1, 'panel')
+    newfile.write('\t'.join(header) + '\n')
+    # make a list of sorted samples
+    keys = sorted(list(sample_info.keys()))
+    for k in keys:
+        files = ';'.join(list(map(lambda x: os.path.basename(x), sample_info[k]['files'])))
+        info = sample_info[k]['info']
+        info.append(files)        
+        newfile.write('\t'.join(list(map(lambda x: str(x), info))) + '\n')
+    newfile.close()
+    
+
 def map_external_ids(args):
     '''
     (str, str, str | None, str | None, bool, list | None, str | None, str | None, str, str, bool) -> None
@@ -883,26 +922,8 @@ def map_external_ids(args):
     # get raw sequence file info
     files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
     
-    # group sample information by run            
-    sample_info = group_sample_info_mapping(files, args.add_panel)        
-    
-    # write sample maps
-    current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
-    outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(args.project, current_time, suffix))
-    newfile = open(outputfile, 'w')
-    header = ['sample', 'sample_id', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'group_id', 'group_description', 'files']
-    if args.add_panel:
-        #header.append('panel')
-        header.insert(-1, 'panel')
-    newfile.write('\t'.join(header) + '\n')
-    # make a list of sorted samples
-    keys = sorted(list(sample_info.keys()))
-    for k in keys:
-        files = ';'.join(list(map(lambda x: os.path.basename(x), sample_info[k]['files'])))
-        info = sample_info[k]['info']
-        info.append(files)        
-        newfile.write('\t'.join(list(map(lambda x: str(x), info))) + '\n')
-    newfile.close()
+    # write sample map
+    write_sample_map(args.project, files, working_dir, args.add_panel)
     print('Generated sample maps in {0}'.format(working_dir))
     print('Information was extracted from FPR {0}'.format(provenance))
 
@@ -2553,6 +2574,10 @@ def write_batch_report(args):
     for file_swid in to_remove:
         del files[file_swid]
     
+    # write sample map
+    write_sample_map(args.project, files, working_dir, args.add_panel)
+    print('Generated sample maps in {0}'.format(working_dir))
+    
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
     all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
@@ -3787,6 +3812,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
     r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
+    r_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
     r_parser.set_defaults(func=write_batch_report)
     
     
