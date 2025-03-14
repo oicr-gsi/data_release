@@ -2577,8 +2577,7 @@ def write_batch_report(args):
     # write sample map
     write_sample_map(args.project, files, working_dir, args.add_panel)
     print('Generated sample maps in {0}'.format(working_dir))
-    print('Information was extracted from FPR {0}'.format(provenance))
-
+    
     # count the number of released fastq pairs for each run and instrument
     fastq_counts = count_released_fastqs_by_instrument(files, 'read1')
     all_released_files = sum([fastq_counts[instrument][run] for instrument in fastq_counts for run in fastq_counts[instrument]])
