@@ -861,7 +861,8 @@ def write_sample_map(project, files, working_dir, add_panel):
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(project, current_time, 'fastqs'))
     newfile = open(outputfile, 'w')
-    header = ['sample', 'sample_id', 'library', 'library_source', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'group_id', 'group_description', 'files']
+    header = ['case_id', 'donor_id', 'library_id', 'library_type', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'sample_id', 'sample_description', 'files']
+    
     if add_panel:
         #header.append('panel')
         header.insert(-1, 'panel')
