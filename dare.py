@@ -1190,12 +1190,10 @@ def get_library_design():
          'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
          'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq',
          'PG': 'Plasma Whole Genome', 'MC': 'Methylation Detection (C to T) ctDNA',
-         'MG': 'Methylation Detection (C to T) Whole Genome'}
+         'MG': 'Methylation Detection (C to T) Whole Genome', '6B': 'Biomodal 6 base genomes',
+         '5B': 'Biomodal 5 base genomes'}
        
     return D
-
-
-
 
   
  
