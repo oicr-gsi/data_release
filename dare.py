@@ -397,22 +397,29 @@ def create_working_dir(project, project_dir, project_name=None):
     '''    
     (str, str, str | None) -> str
     
-    Creates and returns path to a sub-directory in project_dir named iether after project or after project_name if defined
+    Creates and returns path to a sub-directory in project_dir named either after project or after project_name if defined
         
     Parameters
     ----------
     - project (str): Project name as it appears in File Provenance Report.
-    - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
+    - project_dir (str): Absolute or relative path to the project directory.
     - project_name (str | None): Project name used to create the project directory in gsi space
     '''
-    
+
+    # check if project dir is abolsute or relative path
+    if os.path.isabs(project_dir):
+        projectdir = project_dir
+    else:
+        projectdir = os.path.join(os.getcwd(), project_dir)
+        projectdir = os.path.realpath(projectdir)
+
     # use project as project name if not specified
     if project_name:
         name = project_name
     else:
         name = project
 
-    working_dir = os.path.join(project_dir, name)
+    working_dir = os.path.join(projectdir, name)
     
     os.makedirs(working_dir, exist_ok=True)
     return working_dir
@@ -2552,7 +2559,7 @@ def write_batch_report(args):
         sys.exit('Please provide a list of run folders')
     # get the project directory with release run folders
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
-    
+       
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
@@ -2618,7 +2625,7 @@ def write_batch_report(args):
             if library_source not in figure_files:
                 figure_files[library_source] = {}
             figure_files[library_source][platform] = figure
-             
+    
     # count the number of samples with missing metric values
     samples_missing_metrics = count_samples_with_missing_values(files)
     
@@ -3366,7 +3373,7 @@ def write_cumulative_report(args):
         
     # get the project directory with release run folders
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
-    
+       
     # get the records for the project of interest
     # dereference link to FPR
     provenance = os.path.realpath(args.provenance)
