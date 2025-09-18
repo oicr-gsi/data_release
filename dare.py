@@ -202,7 +202,7 @@ def parse_fpr_records(provenance, project, workflow, prefix=None):
             if read_count:
                 read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
             if 'read_count' in read_count:
-                read_count = int(read_count['read_count'])
+                read_count = int(float(read_count['read_count']))
             else:
                 read_count = -1
        
