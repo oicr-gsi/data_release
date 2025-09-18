@@ -510,6 +510,7 @@ def exclude_non_specified_files(files, file_names):
     '''
     
     D = {}
+    
     for file_swid in files:
         file_name = files[file_swid]['file_name']
         if file_name in file_names:
@@ -541,7 +542,7 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
     
     # keep most recent workflows
     files = select_most_recent_workflow(files)
-       
+    
     # check if a list of valid file names is provided
     if release_files:
         infile = open(release_files)
@@ -550,6 +551,7 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
         infile.close()
     else:
         file_names = []
+    
     if file_names:
         files = exclude_non_specified_files(files, file_names)
     
@@ -566,7 +568,7 @@ def collect_files_for_release(files, release_files, nomiseq, runs, libraries, ex
     valid_libraries = get_libraries(libraries) if libraries else {}
     if valid_libraries:
         files = exclude_non_specified_libraries(files, valid_libraries)
-        
+    
     # find files corresponding to libraries tagged for non-release
     excluded_libraries = get_libraries(exclude) if exclude else {}
     if excluded_libraries:
@@ -4109,9 +4111,10 @@ def mark_files_nabu(args):
         # collect relevant information from File Provenance Report about fastqs for project 
         files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
         print('Information was extracted from FPR {0}'.format(provenance))
+        
         released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
         swids = list(released_files.keys())
-    
+                
     # mark files in nabu
     change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.comment)
         
