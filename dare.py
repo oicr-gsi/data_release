@@ -5183,50 +5183,6 @@ import re
 
 
 
-def get_libraries(library_file):
-    '''
-    (str) -> dict
-    
-    Returns a dictionary with library, run or libray, lane, run key, value pairs.
-    Note: runs need to be specified for all libraries
-    
-    Parameters
-    ----------
-    - sample_file (str): Path to sample file. Sample file is a tab delimited file
-                         that includes 2 or 3 columns columns. The first column is always 
-                         the library alias, and the second is lane or run id
-    '''
-    D = {}
-    
-    infile = open(library_file)
-    content = infile.read().strip().split('\n')
-    for i in range(len(content)):
-        content[i] = content[i].split('\t')
-    infile.close()
-    
-    # check that all lines have the same number of columns
-    if all(map(lambda x: len(x) == 2 or len(x) == 3 , content)) == False:
-        raise ValueError('File must have 2 or 3 columns')
-    if all(map(lambda x: '_' in x[1], content)) == False:
-        raise ValueError('Run id must be the second column')
-        
-    for i in content:
-        library = i[0]
-        run = i[1]
-        if len(i) == 2:
-            lane = ''
-        elif len(i) == 3:
-            lane = int(i[-1])
-        
-        if library not in D:
-            D[library] = {}
-        if run not in D[library]:
-            D[library][run] = []
-        D[library][run].append(lane)
-       
-    return D
-
-
 def get_FPR_records(project, provenance):
     '''
     (str, str) -> list
@@ -5519,40 +5475,6 @@ def exclude_non_specified_libraries(files, valid_libraries):
     return D
         
     
-    
-def get_libraries_for_non_release(files, exclude):
-    '''
-    (dict, dict) -> dict
-
-    Returns a dictionary with file records corresponding to libraries tagged for non-release
-
-    Parameters
-    ----------
-    - files (dict) : Dictionary with file records obtained from parsing FPR
-    - exclude (dict): Dictionary with libraries tagged for non-release
-    '''    
-
-    # make a list of files to exclude
-    L = []
-    
-    D = {}
-    for file_swid in files:
-        libraries = files[file_swid]['library']
-        runs = files[file_swid]['run_id']
-        if len(libraries) != 1 and len(runs) != 1:
-            sys.exit('Use option -a to link merging-workflows output files')
-        library, run = libraries[0], runs[0]
-        if library in exclude and run in exclude[library]:
-            L.append(file_swid)
-        if file_swid in L:
-            D[file_swid] = files[file_swid]
-    
-    return D
-    
-    
-    
-    
-
 def link_pipeline_data(pipeline_data, working_dir):
     '''
     (dict, str) -> None
@@ -6069,9 +5991,19 @@ def is_correct_library(samples, valid_libraries):
     
 def select_files(file_info, project, workflows, runs = None, cases = None, libraries=None, release_files=None):
     '''
-
-
-
+    (dict, str, list, list | None, list | None, dict | None, list | None) -> dict
+     
+    Restrict the file information of the files to release based
+     
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with file information of all files in a case
+    - project (str): Project of interest
+    - workflows (list): List of workflows generating the files to release
+    - runs (list | None): List of sequencing runs of generating the underlying sequences of the data 
+    - cases (List | None): List of case identifiers
+    - libraries (dict | None): Dictionary with libraries and runs for which data is to be released
+    - release_files (list | None): List of file names or file paths to release 
     '''
 
     # selecting on files takes precedence, but files need to belong to project
@@ -6111,8 +6043,14 @@ def select_files(file_info, project, workflows, runs = None, cases = None, libra
     
 def update_file_info(D, file_info):
     '''
+    (dict, dict) -> dict
     
+    Returns an updated dictionary with the file information of a given case
     
+    Parameters
+    ----------
+    - D (dict):
+    - file_info (dict):
     '''
     
     for file in file_info:
@@ -6123,9 +6061,9 @@ def update_file_info(D, file_info):
 
 
 
-def extract_data(provenance_data, project, workflows, runs, cases, libraries, release_files):
+def extract_data(provenance_data, project, workflows, runs=None, cases=None, libraries=None, release_files=None):
     '''
-    (list, str, list, list | None, dict | None, list | None) -> dict
+    (list, str, list, list | None, list | None, dict | None, list | None) -> dict
     
     Returns a dictionary of file information for files selected for release
     
@@ -6134,10 +6072,10 @@ def extract_data(provenance_data, project, workflows, runs, cases, libraries, re
     - provenance_data (list): List of dictionaries with case information
     - project (str): Project of interest
     - workflows (list): List of workflows generating the data to release
-    - runs (list): List of sequencing runs
-    - cases (list): List of case identifiers for which data need to be released
-    - libraries (dict): Dictionary with libraries, runs and optional lanes 
-    - release_files (list): List of files to release
+    - runs (list | None): List of sequencing runs
+    - cases (list | None): List of case identifiers for which data need to be released
+    - libraries (dict | None): Dictionary with libraries, runs and optional lanes 
+    - release_files (list | None): List of files to release
     '''
     
     D = {}
@@ -6207,8 +6145,13 @@ def is_case_info_incomplete(case_data):
 
 def clean_up_provenance(provenance_data):
     '''
+    (list) -> list, list
     
+    Returns a list of dictionaries removing cases for which some information is not defined
     
+    Parameters
+    ----------
+    - provenance_data (list): List of dictionaries with production data for cases
     '''    
     
     to_remove = [i for i in provenance_data if is_case_info_incomplete(i)]
@@ -6216,9 +6159,6 @@ def clean_up_provenance(provenance_data):
         provenance_data.remove(i)
     
     return provenance_data, to_remove
-
-
-
 
 
 def write_md5sum(file_info, outputfile):
@@ -6252,7 +6192,6 @@ def get_file_prefix(file):
     ----------
     - file (str): File path
     '''
-
 
     filename = os.path.basename(file)
     x = re.search("[\._]{1}R[1-2][\._]+.*fastq.gz", filename)
@@ -6398,9 +6337,14 @@ def get_libraries(library_file):
 
 def get_release_files(release_files):
     '''
+    (str) -> list
     
+    Returns a list of file names or file paths to be released
+    Pre-condition: The list should contain only file paths or only file names
     
-    
+    Parameters
+    ----------
+    - release_files (str): Path to the file containing the names or paths of the files to release
     '''
     
     L = []
@@ -6415,19 +6359,16 @@ def get_release_files(release_files):
     return L
 
 
-
-
-def generate_links(file_info, project, working_dir):
+def generate_links(file_info, project_dir):
     '''
-    (dict, str, str, str) -> None
+    (dict, str, str) -> None
     
-    Link fastq files to run directories under the project dir
+    Link files in case and workflow subdirectories of the project directory
         
     Parameters
     ----------
     - file_info (dict): Dictionary with file information
-    - project (str): Name of the project as it appears in FPR
-    - working_dir (str): Path to the project sub-directory in GSI space  
+    - project_dir (str): Path to the project directory in GSI space  
     '''
     
     sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
@@ -6435,7 +6376,7 @@ def generate_links(file_info, project, working_dir):
     for file in file_info:
         case_id = file_info[file]['case_id']
         workflow = file_info[file]['workflow']
-        case_dir = os.path.join(working_dir, case_id)
+        case_dir = os.path.join(project_dir, case_id)
         os.makedirs(case_dir, exist_ok=True)
         donor = list(set([d['donor'] for d in file_info[file]['samples']]))
         assert len(donor) == 1
@@ -6457,10 +6398,6 @@ def generate_links(file_info, project, working_dir):
             link = os.path.join(workflow_dir, filename)
         if os.path.isfile(link) == False:
             os.symlink(file, link)
-
-
-
-
 
 def link_files(args):
     '''
@@ -6532,7 +6469,7 @@ def link_files(args):
     # extract data to release
     libraries = get_libraries(args.libraries)
     release_files = get_release_files(args.release_files)
-    file_info = extract_data(provenance_data, args.project, args.workflows, args.runs, args.cases, libraries, release_files)
+    file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
@@ -6547,11 +6484,55 @@ def link_files(args):
     print('wrote md5sums: {0}'.format(outputfile))
     
     # link data
-    generate_links(file_info, args.project, working_dir)
+    generate_links(file_info, working_dir)
     print('linked data to {0}'.format(working_dir))
     
     
+       
+def map_external_ids(args):
+    '''
+    (str, str, str, str, str | None, list | None, list | None) -> None
         
+    Generate sample maps with sample and sequencing information
+    
+    Parameters
+    ----------
+    - provenance (str): Path to json with production data. Default is
+                        /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
+    - project (str): Project of interest
+    - projects_dir (str): Parent directory containing the project subdirectories with file links.
+                          Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
+    - project_name (str): Project name used to create the project directory in gsi space
+    - libraries (str | None): File with libraries tagged for release.
+                              The first column is always the library.
+                              The second column is the run id.
+                              The third optional column is the lane number.
+    - runs (list | None): List of run Ids
+    - cases (List | None): List of case Ids
+    '''
+    
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')    
+        
+    # create a working directory to link files and save md5sums 
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    
+    # load data
+    provenance_data = load_data(args.provenance)
+    print('loaded data')
+    # clean up data
+    provenance_data, deleted_cases = clean_up_provenance(provenance_data)
+    print('removed {0} incomplete cases'.format(deleted_cases))
+    # extract data to release
+    libraries = get_libraries(args.libraries)
+    file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries)
+    print('extracted data for {0} files'.format(len(file_info))) 
+
+    # create sample map
+    sample_map = write_sample_map(args.project, file_info, working_dir)
+    print('wrote sample map {0}'.format(sample_map))
+      
+       
         
     
 if __name__ == '__main__':
@@ -6574,20 +6555,16 @@ if __name__ == '__main__':
     #l_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the file with hierarchical structure storing sample and workflow ids')
     l_parser.set_defaults(func=link_files)
     
-   	# # map external IDs 
-    # m_parser = subparsers.add_parser('map', help="Map files to external IDs")
-    # m_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
-    # m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
-    # m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-    # m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
-    # m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
-    # m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
-    # m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
-    # m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
-    # m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
-    # m_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
-    # m_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
-    # m_parser.set_defaults(func=map_external_ids)
+   	# map external IDs 
+    m_parser = subparsers.add_parser('map', help="Map files to external IDs")
+    m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
+    m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
+    m_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
+    m_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
+    m_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
+    m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
+    m_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    m_parser.set_defaults(func=map_external_ids)
 
     # # mark files in nabu 
     # n_parser = subparsers.add_parser('mark', help="Mark released or withheld files in Nabu")
