@@ -6654,8 +6654,6 @@ def mark_files_nabu(args):
     - ticket (str): Jira ticket 
     '''
     
-    ##### add option to select files based on analysis json
-       
     # check options
     if args.release_files:
         a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories]
@@ -6705,37 +6703,15 @@ def mark_files_nabu(args):
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
-        release_files = get_release_files(args.release_files)
+        if args.analyses:
+            release_files = get_analysis_files(args.analyses)
+        if args.release_files:
+            release_files = get_release_files(args.release_files)
         file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
         print('extracted data for {0} files'.format(len(file_info))) 
 
-    
-    
-    
-    
-    # elif args.analysis:
-    #     # get the file swids from the json structure
-    #     infile = open(args.analysis)
-    #     data_structure = json.load(infile)
-    #     infile.close()
-        
-    #     # parse FPR records
-    #     # make a list of workflows
-    #     workflows = []
-    #     for i in data_structure:
-    #         for j in data_structure[i]:
-    #             workflows.extend(list(data_structure[i][j].keys()))
-    #     workflows = list(set(workflows))    
-    #     print('workflows', workflows)
-    #     files = parse_fpr_records(provenance, args.project, workflows, args.prefix)
-    #     print('Extracted files from File Provenance Report')
-    #     swids = get_pipeline_swids(data_structure, files)
-    
-    
-    
     # make a list of swids
     swids = [file_info[i]['accession'] for i in file_info]
-                        
     # mark files in nabu
     change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.ticket)
 
@@ -6781,14 +6757,13 @@ if __name__ == '__main__':
     qc_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     qc_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
     qc_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
-    #qc_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the file with hierarchical structure storing sample and workflow ids')
+    qc_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
     qc_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
     qc_parser.add_argument('-n', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     qc_parser.add_argument('-st', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     qc_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
     qc_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change')
     qc_parser.set_defaults(func=mark_files_nabu)
-    
     
     
         
