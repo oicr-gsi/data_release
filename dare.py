@@ -7277,15 +7277,37 @@ def map_external_ids(args):
                               The third optional column is the lane number.
     - runs (list | None): List of run Ids
     - cases (List | None): List of case Ids
+    - release_files (str | None): File with file names or full paths of files to release
+    - analyses (str | None): Path to the json file storing analysis data
+    - directories (list | None): List of directories with links or files to mark in Nabu
     '''
     
-    #### add json and diorectories
+    # check options
+    if args.release_files:
+        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        if any(a):
+            c = ['-r', '-c', '-l', '-a', '-d']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-f cannot be used with options {0}'.format(err))
+    elif args.analyses:
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories]
+        if any(a):
+            c = ['-f', '-r', '-c', '-l', '-d']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-a cannot be used with options {0}'.format(err))
+    elif args.directories:
+        # check that all directories are valid
+        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
+            sys.exit('Please provide valid directories with -d')        
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses]
+        if any(a):
+            c = ['-f', '-r', '-c', '-l', '-a']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-d cannot be used with options {0}'.format(err))
+    else:
+        if args.runs and args.libraries:
+           sys.exit('-r and -l are exclusive parameters')    
     
-    
-    
-    if args.runs and args.libraries:
-        sys.exit('-r and -l are exclusive parameters')    
-        
     # create a working directory to link files and save md5sums 
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     
@@ -7295,10 +7317,32 @@ def map_external_ids(args):
     # clean up data
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
     print('removed {0} incomplete cases'.format(deleted_cases))
-    # extract data to release
-    libraries = get_libraries(args.libraries)
-    file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries)
-    print('extracted data for {0} files'.format(len(file_info))) 
+    
+    
+    if args.directories:
+        # list of the linked files
+        linked_files = []
+        # list all files in directories and subdirectories
+        # list path of target files if files are links
+        for directory in args.directories:
+            linked_files.extend(list_files(directory))
+        # keep only fastq files
+        if linked_files:
+            linked_files = [i for i in linked_files if 'fastq.gz' in i]
+        file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+    else:
+        # extract data to release
+        libraries = get_libraries(args.libraries)
+        release_files = []
+        if args.analyses:
+            release_files = get_analysis_files(args.analyses)
+        if args.release_files:
+            release_files = get_release_files(args.release_files)
+        # keep only the fastq files 
+        if release_files:
+            release_files = [i for i in release_files if 'fastq.gz' in i]
+        file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
     sample_map = write_sample_map(args.project, file_info, working_dir)
@@ -7640,6 +7684,9 @@ if __name__ == '__main__':
     m_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     m_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
+    m_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
+    m_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
