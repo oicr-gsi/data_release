@@ -25,223 +25,6 @@ import re
 
 
 
-# def get_libraries(library_file):
-#     '''
-#     (str) -> dict
-    
-#     Returns a dictionary with library, run or libray, lane, run key, value pairs.
-#     Note: runs need to be specified for all libraries
-    
-#     Parameters
-#     ----------
-#     - sample_file (str): Path to sample file. Sample file is a tab delimited file
-#                          that includes 2 or 3 columns columns. The first column is always 
-#                          the library alias, and the second is lane or run id
-#     '''
-#     D = {}
-    
-#     infile = open(library_file)
-#     content = infile.read().strip().split('\n')
-#     for i in range(len(content)):
-#         content[i] = content[i].split('\t')
-#     infile.close()
-    
-#     # check that all lines have the same number of columns
-#     if all(map(lambda x: len(x) == 2 or len(x) == 3 , content)) == False:
-#         raise ValueError('File must have 2 or 3 columns')
-#     if all(map(lambda x: '_' in x[1], content)) == False:
-#         raise ValueError('Run id must be the second column')
-        
-#     for i in content:
-#         library = i[0]
-#         run = i[1]
-#         if len(i) == 2:
-#             lane = ''
-#         elif len(i) == 3:
-#             lane = int(i[-1])
-        
-#         if library not in D:
-#             D[library] = {}
-#         if run not in D[library]:
-#             D[library][run] = []
-#         D[library][run].append(lane)
-       
-#     return D
-
-
-# def get_FPR_records(project, provenance):
-#     '''
-#     (str, str) -> list
-    
-#     Returns a list with all the records from the File Provenance Report for a given project.
-#     Each individual record in the list is a list of fields    
-    
-#     Parameters
-#     ----------
-#     - project (str): Name of a project or run as it appears in File Provenance Report
-#     - provenance (str): Path to File Provenance Report.
-#     '''
-        
-#     # get the records for a single project
-#     records = []
-#     # open provenance for reading. allow gzipped file or not
-#     if is_gzipped(provenance):
-#         infile = gzip.open(provenance, 'rt', errors='ignore')
-#     else:
-#         infile = open(provenance)
-#     for line in infile:
-#         if project in line:
-#             line = line.rstrip().split('\t')
-#             if project == line[1]:
-#                 records.append(line)
-#     infile.close()
-#     return records
-
-
-
-# def parse_fpr_records(provenance, project, workflow, prefix=None):
-#     '''
-#     (str, str, list, str | None) -> dict
-  
-#     Returns a dictionary with file info extracted from FPR for a given project 
-#     and a given workflow if workflow is speccified. 
-            
-#     Parameters
-#     ----------
-#     - provenance (str): Path to File Provenance Report
-#     - project (str): Project name as it appears in File Provenance Report. 
-#     - workflow (list): List of workflows used to generate the output files.
-#     - prefix (str | None): Prefix used to recover file full paths when File Provevance contains relative paths.
-#     '''
-    
-#     # create a dict {file_swid: {file info}}
-#     D  = {}
-    
-#     # get all the records for a single project
-#     records = get_FPR_records(project, provenance)
-    
-#     # parse the records and get all the files for a given project
-#     for i in records:
-#         # keep records for project
-#         if project == i[1]:
-#             pipeline_workflow = i[30]
-#             # check workflow
-#             if len(workflow) == 1:
-#                 if workflow[0].lower() == 'bcl2fastq':
-#                     # skip if not fastq-related workflows    
-#                     if pipeline_workflow.lower() not in ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']:
-#                         continue
-#                 else:
-#                     # skip if not provided workflow
-#                     if workflow[0].lower() != pipeline_workflow.lower():
-#                         continue
-#             else:
-#                 if pipeline_workflow.lower() not in list(map(lambda x: x.lower(), workflow)):
-#                     continue
-            
-#             # get file path
-#             if prefix:
-#                 file_path = os.path.join(prefix, i[46])
-#             else:
-#                 file_path = i[46]
-#             # get file name
-#             file_name = os.path.basename(file_path)
-#             # get sample name
-#             sample_name = i[7]
-#             # get parent sample name
-#             parent_sample = i[9].split(':')[0]
-#             # get time stamp and convert to epoch
-#             creation_date = i[0]
-#             # remove milliseconds
-#             creation_date = creation_date.split('.')[0]
-#             pattern = '%Y-%m-%d %H:%M:%S'
-#             creation_date = int(time.mktime(time.strptime(creation_date, pattern)))
-#             # record platform
-#             platform = i[22]
-            
-#             # get md5sum
-#             md5 = i[47]
-#             # get workdlow swid
-#             workflow_run_id = i[36]
-#             # get workflow version
-#             workflow_version = i[31]
-#             # get file swid
-#             file_swid = i[44]
-  
-#             # for merging workflows there will be multiple values for the variables below
-#             # get library aliquot
-#             aliquot = i[56].split('_')[-1]
-#             # get library aliases
-#             library = i[13]
-#             # get lims key
-#             limskey = i[56]
-#             # get run id
-#             run_id = i[18]
-#             # get run
-#             run = i[23]   
-#             # get lane
-#             lane = i[24]
-#             # get barcode
-#             barcode = i[27]  
-          
-#             geo = i[12]
-#             if geo:
-#                 geo = {k.split('=')[0]:k.split('=')[1] for k in geo.split(';')}
-#             else:
-#                 geo = {}
-#             for j in ['geo_external_name', 'geo_group_id', 'geo_group_id_description',
-#                       'geo_targeted_resequencing', 'geo_library_source_template_type',
-#                       'geo_tissue_type', 'geo_tissue_origin']:
-#                 if j not in geo:
-#                     geo[j] = 'NA'
-#                 if j == 'geo_group_id':
-#                     # removes misannotations
-#                     geo[j] = geo[j].replace('&2011-04-19', '').replace('2011-04-19&', '')
-       
-#             read_count = i[45]
-#             if read_count:
-#                 read_count = {k.split('=')[0]:k.split('=')[1] for k in i[45].split(';')}
-#             if 'read_count' in read_count:
-#                 read_count = int(float(read_count['read_count']))
-#             else:
-#                 read_count = -1
-       
-#             sample_id = sample_name + '_' + geo['geo_tissue_origin']+ '_' + geo['geo_tissue_type'] + '_' + geo['geo_library_source_template_type'] + '_' + geo['geo_group_id']
-         
-#             d = {'workflow': pipeline_workflow, 'file_path': file_path, 'file_name': file_name,
-#                  'sample_name': sample_name, 'creation_date': creation_date, 'platform': platform,
-#                  'md5': md5, 'workflow_run_id': workflow_run_id, 'workflow_version': workflow_version,
-#                  'file_swid': file_swid, 'external_name': geo['geo_external_name'],
-#                  'panel': geo['geo_targeted_resequencing'], 'library_source': [geo['geo_library_source_template_type']],
-#                  'parent_sample': [parent_sample], 'run_id': [run_id], 'run': [run],
-#                  'limskey': [limskey], 'aliquot': [aliquot], 'library': [library],
-#                  'barcode': [barcode], 'tissue_type': [geo['geo_tissue_type']],
-#                  'tissue_origin': [geo['geo_tissue_origin']], 'groupdesc': [geo['geo_group_id_description']],
-#                  'groupid': [geo['geo_group_id']], 'read_count': read_count, 'sample_id': [sample_id], 'lane': [lane]}
-            
-#             if file_swid not in D:
-#                 D[file_swid] = d
-#             else:
-#                 assert D[file_swid]['file_path'] == file_path
-#                 assert D[file_swid]['external_name'] == geo['geo_external_name']
-#                 assert D[file_swid]['read_count'] == read_count
-#                 D[file_swid]['sample_id'].append(sample_id)
-#                 D[file_swid]['parent_sample'].append(parent_sample)
-#                 D[file_swid]['run_id'].append(run_id)
-#                 D[file_swid]['run'].append(run)
-#                 D[file_swid]['limskey'].append(limskey)
-#                 D[file_swid]['aliquot'].append(aliquot)
-#                 D[file_swid]['library'].append(library)
-#                 D[file_swid]['barcode'].append(barcode)
-#                 D[file_swid]['tissue_type'].append(geo['geo_tissue_type'])
-#                 D[file_swid]['tissue_origin'].append(geo['geo_tissue_origin'])
-#                 D[file_swid]['library_source'].append(geo['geo_library_source_template_type'])
-#                 D[file_swid]['groupdesc'].append(geo['geo_group_id_description'])
-#                 D[file_swid]['groupid'].append(geo['geo_group_id'])
-#                 D[file_swid]['lane'].append(lane)
-    
-#     return D    
-        
             
 
 # def select_most_recent_workflow(files):
@@ -280,118 +63,6 @@ import re
     
     
 
-# def exclude_miseq_secords(files):
-#     '''
-#     (dict) -> dict
-    
-#     Returns a new dictionary removing file records in files if sequencing was performed on a MiSeq platform.
-        
-#     Parameters
-#     ----------
-#     - files (dict): Dictionary with file records obtained from parsing FPR
-#     '''
-    
-#     D = {}
-#     exclude = [file_swid for file_swid in files if 'miseq' in files[file_swid]['platform'].lower()]
-#     for file_swid in files:
-#         if file_swid not in exclude:
-#             D[file_swid] = files[file_swid]        
-#     return D
-
-      
-# def exclude_non_specified_runs(files, runs):
-#     '''
-#     (dict, list) -> dict
-    
-#     Returns a new dictionary removing file records in files if sequencing was performed during a run not specified in runs,
-    
-#     Parameters
-#     ----------
-#     - files (dict) : Dictionary with file records obtained from parsing FPR
-#     - runs (list): List of run ids to keep
-#     '''    
-    
-#     D = {}
-#     exclude = [file_swid for file_swid in files if set(files[file_swid]['run_id']).intersection(set(runs)) != set(files[file_swid]['run_id'])]
-    
-#     for file_swid in files:
-#         if file_swid not in exclude:
-#             D[file_swid] = files[file_swid]        
-#     return D
-    
-
-# def exclude_non_specified_libraries(files, valid_libraries):
-#     '''
-#     (dict, dict) -> dict
-
-#     Returns a new dictionary removing file records corresponding to libraries not specified in libraries 
-
-#     Parameters
-#     ----------
-#     - files (dict) : Dictionary with file records obtained from parsing FPR
-#     - valid_libraries (dict): Dictionary with libraries tagged for release
-#     '''    
-    
-#     D = {}
-#     exclude = []
-
-#     for file_swid in files:
-#         libraries = files[file_swid]['library']
-#         runs = files[file_swid]['run_id']
-#         lanes = files[file_swid]['lane']
-#         if len(libraries) != 1 and len(runs) != 1 and len(lanes) != 1:
-#             sys.exit('Use option -a to link merging-workflows output files')
-#         library, run, lane = libraries[0], runs[0], int(lanes[0])
-#         # exclude file if libraries is not included in the input sheet
-#         if library not in valid_libraries:
-#             exclude.append(file_swid)
-#         # exclude file if run is not included in the input sheet
-#         elif run not in valid_libraries[library]:
-#             exclude.append(file_swid)
-#         # exclude file if lane is specified but not included
-#         elif '' not in valid_libraries[library][run] and lane not in valid_libraries[library][run]:
-#             exclude.append(file_swid)
-    
-#     exclude = list(set(exclude))    
-    
-#     for file_swid in files:
-#         if file_swid not in exclude:
-#             D[file_swid] = files[file_swid]        
-    
-#     return D
-        
-    
-    
-# def get_libraries_for_non_release(files, exclude):
-#     '''
-#     (dict, dict) -> dict
-
-#     Returns a dictionary with file records corresponding to libraries tagged for non-release
-
-#     Parameters
-#     ----------
-#     - files (dict) : Dictionary with file records obtained from parsing FPR
-#     - exclude (dict): Dictionary with libraries tagged for non-release
-#     '''    
-
-#     # make a list of files to exclude
-#     L = []
-    
-#     D = {}
-#     for file_swid in files:
-#         libraries = files[file_swid]['library']
-#         runs = files[file_swid]['run_id']
-#         if len(libraries) != 1 and len(runs) != 1:
-#             sys.exit('Use option -a to link merging-workflows output files')
-#         library, run = libraries[0], runs[0]
-#         if library in exclude and run in exclude[library]:
-#             L.append(file_swid)
-#         if file_swid in L:
-#             D[file_swid] = files[file_swid]
-    
-#     return D
-    
-    
     
 # def create_working_dir(project, project_dir, project_name=None):
 #     '''    
@@ -424,40 +95,6 @@ import re
 #     os.makedirs(working_dir, exist_ok=True)
 #     return working_dir
     
-
-# def generate_links(files, release, project, working_dir, suffix):
-#     '''
-#     (dict, bool, str, str, str) -> None
-    
-#     Link fastq files to run directories under the project dir
-        
-#     Parameters
-#     ----------
-#     - files_release (dict): Dictionary with file information
-#     - release (bool): True if files were tagged for release and False otherwise
-#     - project (str): Name of the project as it appears in FPR
-#     - working_dir (str): Path to the project sub-directory in GSI space  
-#     - suffix (str): Indicates fastqs or datafiles
-#     '''
-    
-#     for file_swid in files:
-#         if len(files[file_swid]['run_id']) != 1:
-#             sys.exit('Use parameter -a to specify how files should be linked')
-#         assert len(files[file_swid]['run_id']) == 1
-#         run = files[file_swid]['run_id'][0]
-#         run_name = run + '.{0}.{1}'.format(project, suffix)
-#         if release == False:
-#             run_name += '.withold'
-        
-#         run_dir = os.path.join(working_dir, run_name)
-        
-#         os.makedirs(run_dir, exist_ok=True)
-#         filename = files[file_swid]['file_name']
-#         link = os.path.join(run_dir, filename)
-#         file = files[file_swid]['file_path']
-#         if os.path.isfile(link) == False:
-#             os.symlink(file, link)
-
 
 
 # def link_pipeline_data(pipeline_data, working_dir):
@@ -497,25 +134,6 @@ import re
 
 
 
-# def exclude_non_specified_files(files, file_names):
-#     '''
-#     (dict, list) -> dict
-    
-#     Returns a new dictionary with file records keeping only the files listed in file_names
-    
-#     Parameters
-#     ----------
-#     - files (dict) : Dictionary with file records obtained from parsing FPR
-#     - file_names (list): List of valid file names for release 
-#     '''
-    
-#     D = {}
-    
-#     for file_swid in files:
-#         file_name = files[file_swid]['file_name']
-#         if file_name in file_names:
-#             D[file_swid] = files[file_swid]
-#     return D
 
 
 # def collect_files_for_release(files, release_files, nomiseq, runs, libraries, exclude):
@@ -653,25 +271,6 @@ import re
 #     return D                        
                         
    
-# def write_md5sum(data, outputfile):
-#     '''
-#     (dict, str) -> None   
-    
-#     Write a file in working_dir with md5sums for all files contained in data
-    
-#     Parameters
-#     ----------
-#     - data (dict): Dictionary holding data from a single workflow
-#     - outpufile (str): Path to the outputfile with md5sums
-#     '''    
-    
-#     newfile = open(outputfile, 'w')
-#     for file_swid in data:
-#         md5 = data[file_swid]['md5']
-#         file_path = data[file_swid]['file_path']
-#         newfile.write('\t'.join([file_path, md5]) + '\n')
-#     newfile.close()
-
 
 # def write_pipeline_md5sum(data, outputfile):
 #     '''
@@ -755,95 +354,6 @@ import re
 
 
 
-# def write_sample_map(project, files, working_dir, add_panel):
-#     '''
-#     (str, dict, str, bool) -> None
-    
-#     Writes a sample map in the working directory about the released files 
-#     for the project of interest
-    
-#     Parameters
-#     ----------
-#     - project (str): Project of interest
-#     - files (dict): Dictionary with information about the released files
-#     - working_dir (str): Directory where the sample map is written
-#     - add_panel (bool): Adds panel in the sample map if True
-#     '''
-        
-#     # group sample information by run            
-#     sample_info = group_sample_info_mapping(files, add_panel)        
-   
-#     # write sample maps
-#     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
-#     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(project, current_time, 'fastqs'))
-#     newfile = open(outputfile, 'w')
-#     header = ['case_id', 'donor_id', 'library_id', 'library_type', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'sample_id', 'sample_description', 'files']
-    
-#     if add_panel:
-#         #header.append('panel')
-#         header.insert(-1, 'panel')
-#     newfile.write('\t'.join(header) + '\n')
-#     # make a list of sorted samples
-#     keys = sorted(list(sample_info.keys()))
-#     for k in keys:
-#         files = ';'.join(list(map(lambda x: os.path.basename(x), sample_info[k]['files'])))
-#         info = sample_info[k]['info']
-#         info.append(files)        
-#         newfile.write('\t'.join(list(map(lambda x: str(x), info))) + '\n')
-#     newfile.close()
-    
-
-# def map_external_ids(args):
-#     '''
-#     (str, str, str | None, str | None, bool, list | None, str | None, str | None, str, str, bool) -> None
-        
-#     Generate sample maps with sample and sequencing information
-    
-#     Parameters
-#     ----------    
-#     - provenance (str): Path to File Provenance Report.
-#     - project (str): Project name as it appears in File Provenance Report.
-#     - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
-#                            Prefix is added to the relative path in FPR to determine the full file path.
-#     - release_files (str | None): Path to file with file names to be released 
-#     - nomiseq (bool): Exclude MiSeq runs if True
-#     - runs (list | None): List of run IDs. Include one or more run Id separated by white space.
-#                           Other runs are ignored if provided
-#     - libraries (str | None): Path to 1 or 2 columns tab-delimited file with library IDs.
-#                               The first column is always the library alias (TGL17_0009_Ct_T_PE_307_CM).
-#                               The second and optional column is the library aliquot ID (eg. LDI32439).
-#                               Only the samples with these library aliases are used if provided'
-#     - exclude (str | None): File with sample name or libraries to exclude from the release
-#     - project_name (str): Project name used to create the project directory in gsi space
-#     - projects_dir (str): Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/
-#     - add_panel (bool): Add panel column to sample map if True
-#     '''
-
-#     if args.runs and args.libraries:
-#         sys.exit('-r and -l are exclusive parameters')
-    
-#     # dereference link to FPR
-#     provenance = os.path.realpath(args.provenance)
-
-#     # sample maps are generated using fastq-generating workflows
-#     workflow, suffix = 'bcl2fastq', 'fastqs'
-    
-#     # create a working directory to link files and save md5sums 
-#     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
-    
-#     # parse FPR records
-#     files = parse_fpr_records(provenance, args.project, [workflow], args.prefix)
-#     print('Extracted files from File Provenance Report')
-    
-#     # get raw sequence file info
-#     files, files_non_release = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
-    
-#     # write sample map
-#     write_sample_map(args.project, files, working_dir, args.add_panel)
-#     print('Generated sample maps in {0}'.format(working_dir))
-#     print('Information was extracted from FPR {0}'.format(provenance))
-
-
 # def list_files_release_folder(directories):
 #     '''
 #     (list) -> list
@@ -882,84 +392,7 @@ import re
 #     return files
 
 
-# def is_gzipped(file):
-#     '''
-#     (str) -> bool
-
-#     Return True if file is gzipped
-
-#     Parameters
-#     ----------
-#     - file (str): Path to file
-#     '''
-    
-#     # open file in rb mode
-#     infile = open(file, 'rb')
-#     header = infile.readline()
-#     infile.close()
-#     if header.startswith(b'\x1f\x8b\x08'):
-#         return True
-#     else:
-#         return False
   
-
-# def compute_on_target_rate(bases_mapped, total_bases_on_target):
-#     '''
-#     (int, int) -> float
-    
-#     Returns the percent on target rate
-    
-#     Parameters
-#     ----------
-#     - bases_mapped (int): Number of bases mapping the reference
-#     - total_bases_on_target (int): Number of bases mapping the target
-#     '''
-    
-#     try:
-#         on_target = round(total_bases_on_target / bases_mapped * 100, 2)
-#     except:
-#         on_target = 'NA'
-#     finally:
-#         if on_target != 'NA':
-#             if math.ceil(on_target) == 100:
-#                 on_target = math.ceil(on_target)
-#     return on_target
-
-                                           
-            
-# def count_released_fastqs_by_instrument(FPR_info, reads):
-#     '''
-#     (dict, str) -> dict
-    
-#     Returns the count of released fastqs for each run and instrument
-    
-#     Parameters
-#     ----------
-#     - FPR_info (dict): Information about the released fastqs collected from File Provenance Report
-#     - reads (str): Count all files (read= all) or fastq pairs (read= read1)
-#     '''
-        
-#     # count released fastqs by instrument and run
-#     D = {}
-#     for file in FPR_info:
-#         instrument = FPR_info[file]['platform']
-#         assert len(FPR_info[file]['run_id']) == 1
-#         run = FPR_info[file]['run_id'][0]
-#         if instrument not in D:
-#             D[instrument] = {}
-#         if reads == 'all_reads':
-#             if run not in D[instrument]:
-#                 D[instrument][run] = 1
-#             else:
-#                 D[instrument][run] += 1
-#         elif reads == 'read1':
-#             if 'R1' in FPR_info[file]['file_path']:
-#                 if run not in D[instrument]:
-#                     D[instrument][run] = 1
-#                 else:
-#                     D[instrument][run] += 1
-#     return D
-    
 
 
 # def count_released_fastqs_by_library_type_instrument(FPR_info):
@@ -3928,103 +3361,6 @@ import re
 #     return L                        
                         
 
-
-# def mark_files_nabu(args):
-#     '''
-#     (str, str, str) -> None
-
-#     Mark released files with user name and PASS and withheld files with user name and FAIL in Nabu
-
-#     Parameters
-#     ----------    
-#     - project (str): Name of Project in FPR
-#     - directory (str): Directory with links organized by project and run in gsi space 
-#     - status (str): Mark files accordingly when released or withheld. Valid options:
-#                      - pass: files that are released
-#                      - fail: files that are withheld
-#     - user (str): User name to appear in Nabu for each released or whitheld file
-#     - comment (str): A comment to used to tag the file. For instance the Jira ticket 
-#     - provenance (str): Path to File Provenance Report
-#     - run_directory (str): Directory with links organized by project and run in gsi space
-#     - runs (list): List of run IDs
-#     - libraries (str): Path to file with libraries tagged for release
-#     - workflow (str): Worflow used to generate the output files
-#     - nomiseq (bool): Exclude MiSeq runs if True
-#     - prefix (str): Use of prefix assumes that FPR containes relative paths.
-#                     Prefix is added to the relative paths in FPR to determine the full file paths
-#     - exclude (str): Path to file with libraries tagged for non-release
-#     - release_files (str): File with file names to be released
-#     - nabu (str):  URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca
-#     - provenance (str): Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz
-#     - analysis (str): Path to the file with hierarchical structure storing sample and workflow ids
-#     '''
-    
-#     # check valid combinations of parameters
-#     if args.runs and args.libraries:
-#         sys.exit('-r and -l are exclusive parameters')
-#     if args.run_directory and (args.workflow or args.runs or args.libraries or args.release_files or args.exclude or args.prefix or args.nomiseq):
-#         sys.exit('-rn cannot be used with options -w, -r, -l, -f, -e, -px or --exclude_miseq')
-#     if args.analysis is None:
-#         if all(map(lambda x: x is None, [args.workflow, args.runs, args.libraries, args.release_files, args.exclude, args.prefix, args.nomiseq]))  and args.run_directory is None:
-#             sys.exit('Please provide the path to a run folders')
-#         if args.workflow is None and args.run_directory is None:
-#             sys.exit('Please provide the path to a run folder or a workflow')
-#     else:
-#         if args.runs or args.libraries or args.run_directory or args.workflow or args.release_files or args.exclude or args.prefix or args.nomiseq:
-#             sys.exit('''--analysis cannot be used with options -r, -l, -rn, -w, -f, -e, -px or --exclude_miseq
-#                      You are attempting to mark analysis pipeline files. Provide the same json structure used to link the files''')
-       
-#     # dereference link to FPR
-#     provenance = os.path.realpath(args.provenance)
-           
-#     if args.run_directory:
-#         # get the swids of the files linked in run directory
-#         # check directory
-#         if os.path.isdir(args.run_directory) == False:
-#             sys.exit('{0} is not a valid directory'.format(args.run_directory))
-#         # make a list of files in directory
-#         # get the real path of the links in directory
-#         files = [os.path.realpath(os.path.join(args.run_directory, i)) for i in os.listdir(args.run_directory) if os.path.isfile(os.path.join(args.run_directory, i))]
-#         # make a list of swids
-#         swids = []
-#         records = get_FPR_records(args.project, provenance)
-#         print('Information was extracted from FPR {0}'.format(provenance))
-#         mapped_files = map_swid_file(records)
-#         # get the swid Ids
-#         swids = [mapped_files[file] for file in files if file in mapped_files]
-#         # list the released files without any swid
-#         no_swids = [file for file in files if file not in mapped_files]
-#         if no_swids:
-#             for file in no_swids:
-#                 print('File {0} in directory {1} does not have a swid'.format(os.path.basename(file), args.run_directory))
-#     elif args.analysis:
-#         # get the file swids from the json structure
-#         infile = open(args.analysis)
-#         data_structure = json.load(infile)
-#         infile.close()
-        
-#         # parse FPR records
-#         # make a list of workflows
-#         workflows = []
-#         for i in data_structure:
-#             for j in data_structure[i]:
-#                 workflows.extend(list(data_structure[i][j].keys()))
-#         workflows = list(set(workflows))    
-#         print('workflows', workflows)
-#         files = parse_fpr_records(provenance, args.project, workflows, args.prefix)
-#         print('Extracted files from File Provenance Report')
-#         swids = get_pipeline_swids(data_structure, files)
-#     else:
-#         # collect relevant information from File Provenance Report about fastqs for project 
-#         files = parse_fpr_records(provenance, args.project, [args.workflow], args.prefix)
-#         print('Information was extracted from FPR {0}'.format(provenance))
-        
-#         released_files, _  = collect_files_for_release(files, args.release_files, args.nomiseq, args.runs, args.libraries, args.exclude)
-#         swids = list(released_files.keys())
-                
-#     # mark files in nabu
-#     change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.comment)
-        
     
 # if __name__ == '__main__':
 
@@ -4032,39 +3368,7 @@ import re
 #     parser = argparse.ArgumentParser(prog = 'dare.py', description='A tool to manage data release')
 #     subparsers = parser.add_subparsers(help='sub-command help', dest='subparser_name')
     
-#    	# map external IDs 
-#     m_parser = subparsers.add_parser('map', help="Map files to external IDs")
-#     m_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
-#     m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
-#     m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-#     m_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project. Files are further filtered by run is runs parameter if provided, or all files for the project and workflow are used', required=True)
-#     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
-#     m_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
-#     m_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
-#     m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
-#     m_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
-#     m_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
-#     m_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
-#     m_parser.set_defaults(func=map_external_ids)
 
-#     # mark files in nabu 
-#     n_parser = subparsers.add_parser('mark', help="Mark released or withheld files in Nabu")
-#     n_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report. Used to parse the FPR by project', required = True)
-#     n_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
-#     n_parser.add_argument('-st', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
-#     n_parser.add_argument('-rn', '--rundir', dest='run_directory', help='Directory with links organized by project and run in gsi space')
-#     n_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
-#     n_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
-#     n_parser.add_argument('-w', '--workflow', dest='workflow', help='Worflow used to generate the output files')
-#     n_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
-#     n_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
-#     n_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
-#     n_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
-#     n_parser.add_argument('-c', '--comment', dest='comment', help='Comment to be added to the released file')
-#     n_parser.add_argument('-n', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
-#     n_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
-#     n_parser.add_argument('-a', '--analysis', dest='analysis', help='Path to the file with hierarchical structure storing sample and workflow ids')
-#     n_parser.set_defaults(func=mark_files_nabu)
         
 #     # write a report
 #     r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
@@ -5779,6 +5083,7 @@ def extract_sample_info(case_data):
         sample_id = d['sampleId']
         tissue_origin = d['tissueOrigin']
         tissue_type = d['tissueType']
+        instrument = d['instrument']
         
         assert lims_id not in D
         D[lims_id] = {'lims_id': lims_id, 'barcode': barcode, 'donor': donor,
@@ -5786,7 +5091,8 @@ def extract_sample_info(case_data):
                       'group_description': group_description, 'lane': lane,
                       'library': library, 'library_design': library_design,
                       'project': project, 'run': run, 'sample_id': sample_id,
-                      'tissue_origin': tissue_origin, 'tissue_type': tissue_type}
+                      'tissue_origin': tissue_origin, 'tissue_type': tissue_type,
+                      'instrument': instrument}
             
     return D            
         
@@ -6209,26 +5515,6 @@ def write_md5sum(file_info, outputfile):
 
 
 
-def get_file_prefix(file):
-    '''
-    (str) -> str
-    
-    Returns the file prefix of a fastq file.
-    File prefix is the file name without the file extension and read number
-    
-    Parameters
-    ----------
-    - file (str): File path
-    '''
-
-    filename = os.path.basename(file)
-    x = re.search("[\._]{1}R[1-2][\._]+.*fastq.gz", filename)
-    
-    assert x
-    prefix = filename[:x.span()[0]]
-    
-    return prefix
-     
 
 
 def group_sample_info_mapping(file_info):
@@ -6500,6 +5786,1396 @@ def list_files(directory):
     return files
 
 
+
+
+
+def count_released_fastqs_by_instrument(file_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with fastq files organized by instrument and run
+        
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with file information for a case
+    '''
+        
+    sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+        
+    D = {}
+    
+    for file in file_info:
+        assert file_info[file]['workflow'].lower() in sequencing_workflows
+        for d in file_info[file]['samples']:
+            run = d['run']
+            instrument = d['instrument']
+            
+            if instrument not in D:
+                D[instrument] = {}
+            if run not in D[instrument]:
+                D[instrument][run] = []
+            D[instrument][run].append(file)
+            D[instrument][run] = list(set(D[instrument][run]))
+    
+    return D
+    
+
+
+
+
+def compute_on_target_rate(bases_mapped, total_bases_on_target):
+    '''
+    (int, int) -> float
+    
+    Returns the percent on target rate
+    
+    Parameters
+    ----------
+    - bases_mapped (int): Number of bases mapping the reference
+    - total_bases_on_target (int): Number of bases mapping the target
+    '''
+    
+    try:
+        on_target = round(total_bases_on_target / bases_mapped * 100, 2)
+    except:
+        on_target = 'NA'
+    finally:
+        if on_target != 'NA':
+            if math.ceil(on_target) == 100:
+                on_target = math.ceil(on_target)
+    return on_target
+
+
+
+def extract_bamqc_data(bamqc_db):
+    '''
+    (str) -> dict
+    
+    Returns a dictionary with project-level relevant information from the bamqc table of qc-etl
+        
+    Parameters
+    ----------
+    - bamqc_db (str): Path to the bamqc SQLite database generated by qc-etl
+    '''
+            
+    conn = sqlite3.connect(bamqc_db)
+    cur = conn.cursor()
+    
+    # get table name
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    table_name = [i[0] for i in cur][0]
+    # get all data from table
+    conn.row_factory = sqlite3.Row
+    data = conn.execute('select * from {0}'.format(table_name)).fetchall()
+        
+    columns = ['sample', 'Pinery Lims ID', 'Run Alias', 'instrument', 'library', 'Barcodes', 
+               'coverage', 'coverage deduplicated', 'mark duplicates_PERCENT_DUPLICATION',
+               'mapped reads', 'total bases on target', 'total reads', 'bases mapped', 'Lane Number']
+    
+    D = {}
+    for i in data:
+        d = {}
+        for j in columns:
+            if j in ['coverage', 'coverage deduplicated', 'mark duplicates_PERCENT_DUPLICATION']:
+                d[j] = float(i[j])        
+            elif j in ['mapped reads', 'total bases on target', 'total reads', 'bases mapped', 'Lane Number']:
+                d[j] = int(i[j])  
+            else:
+                d[j] = i[j]
+                
+        # compute on_target rate, not available through qc-etl
+        d['on_target'] = compute_on_target_rate(d['bases mapped'], d['total bases on target']) 
+                        
+        sample = i['Pinery Lims ID']
+        assert sample not in D
+        D[sample] = d
+    return D
+
+
+
+
+
+def merge_bamqc_dnaseqc(bamqc_info, dnaseqqc_info):
+    '''
+    (dict, dict) -> None
+    
+    Merge the QC information extracted from the bamqc and dnaseqqc databases.
+    Note that records in dnseqqc have precedence over records in bamqc in case of duplicates
+        
+    Parameters
+    ----------
+    - bamqc_info (dict): QC information for each paired fastq from the bamqc db
+    - dnaseqqc_info (dict): QC information for each paired fastq from the dnaseqqc db
+    '''
+    
+    D = {}
+    
+    # dnaseq qc has precedence over bam qc in case of duplicate records
+    for sample in dnaseqqc_info:
+        D[sample] =  dnaseqqc_info[sample]
+       
+    for sample in bamqc_info:
+        if sample not in D:
+            D[sample] = bamqc_info[sample]
+    
+    return D        
+
+
+def extract_cfmedipqc_data(cfmedipqc_db):
+    '''
+    (str) -> dict
+    
+    Returns a dictionary with project-level relevant information from the cfmedip table of qc-etl
+        
+    Parameters
+    ----------
+    - cfmedipqc_db (str): Path to the cfmedip SQLIte database generated by qc-etl
+    '''
+    
+    #conn = sqlite3.connect('prov_report_test.db')
+    conn = sqlite3.connect(cfmedipqc_db)
+    conn.row_factory = sqlite3.Row
+    
+    # get all data
+    data = conn.execute('select * from cfmedipqc_cfmedipqc_4').fetchall()
+
+    conn.close()
+    
+    # get clumns of interest
+    columns = ['AT Dropout',
+               'Methylation beta',
+               'Percent Duplication',          
+               'Relative CpG Frequency in Regions',
+               'Barcodes',
+               'Lane Number',
+               'Pinery Lims ID',
+               'Run Alias']
+    
+    D = {}
+
+    for i in data:
+        i = dict(i)
+        sample = i['Pinery Lims ID']
+        d = {}
+        for j in columns:
+            try:
+                float(i[j])
+            except:
+                d[j] = i[j]
+            else:
+                d[j] = round(float(i[j]), 3)
+        assert sample not in D
+        D[sample] = d
+                  
+    return D
+
+
+def extract_rnaseqqc_data(rnaseqqc_db):
+    '''
+    (str) -> dict
+    
+    Returns a dictionary with project-level relevant information from the rnaseqqc table of qc-etl
+        
+    Parameters
+    ----------
+    - rnaseqqc_db (str): Path to the rnaseq SQLIte database generated by qc-etl
+    '''
+    
+    conn = sqlite3.connect(rnaseqqc_db)
+    cur = conn.cursor()
+    
+    # get table name
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    table_name = [i[0] for i in cur][0]
+    
+    # get all data from table
+    conn.row_factory = sqlite3.Row
+    data = conn.execute('select * from {0}'.format(table_name)).fetchall()
+    conn.close()
+    
+    # get clumns of interest
+    columns = ['Barcodes',
+               'Lane Number',
+               'Pinery Lims ID',
+               'Run Alias',
+               'PCT_CODING_BASES',
+               'rrna contamination in total (QC-passed reads + QC-failed reads)',
+               'rrna contamination properly paired',
+               'PCT_CORRECT_STRAND_READS',
+               'MEDIAN_5PRIME_TO_3PRIME_BIAS']
+        
+        
+    D = {}
+
+    for i in data:
+        i = dict(i)
+        sample = i['Pinery Lims ID']
+        d = {}
+        for j in columns:
+            try:
+                float(i[j])
+            except:
+                d[j] = i[j]
+            else:
+                d[j] = round(float(i[j]), 3)
+        assert sample not in D
+        D[sample] = d
+           
+    return D
+
+
+
+def extract_emseqqc_data(emseqqc_db):
+    '''
+    (str) -> dict
+    
+    Returns a dictionary with emseqqc from the qc-etl 
+        
+    Parameters
+    ----------
+    - emseqqc_db (str): Path to the emseqqc SQLIte database generated by qc-etl
+    '''
+    
+    conn = sqlite3.connect(emseqqc_db)
+    conn.row_factory = sqlite3.Row
+    # get all methylation data
+    data = conn.execute('select * from emseqqc_methylation_2').fetchall()
+    conn.close()
+    
+    # get clumns of interest
+    columns = ['Barcodes',
+               'Lane Number',
+               'Pinery Lims ID',
+               'Run Alias',
+               'Lambda',
+               'pUC19']
+               
+    D = {}
+
+    for i in data:
+        i = dict(i)
+        sample = i['Pinery Lims ID']
+        d = {}
+        for j in columns:
+            try:
+                float(i[j])
+            except:
+                d[j] = i[j]
+            else:
+                d[j] = round(float(i[j]), 3)
+        assert sample not in D
+        D[sample] = d           
+    
+    
+    # add duplication rate 
+    conn = sqlite3.connect(emseqqc_db)
+    conn.row_factory = sqlite3.Row
+    data2 = conn.execute('select * from emseqqc_bamqc_2').fetchall()
+    conn.close()
+    
+    for i in data2:
+        i = dict(i)
+        run = i['Run Alias']
+        sample = i['Pinery Lims ID']
+        barcodes = i['Barcodes']
+        lane = i['Lane Number']
+        duplicate = i['mark duplicates_PERCENT_DUPLICATION']
+        
+        # find dict in D
+        assert sample in D
+        assert D[sample]['Barcodes'] == barcodes and D[sample]['Run Alias'] == run
+        assert D[sample]['Lane Number'] == lane
+        D[sample]['mark duplicates_PERCENT_DUPLICATION'] = duplicate    
+
+    return D
+
+
+def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
+    '''
+    (dict, str, dict) -> None
+    
+    Update the file information in place with the QC information
+    collected from cfmedipqc for a given file if library source is CM
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with information about the released fastqs
+    - file (str): File path
+    - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedip QC db
+    '''
+    
+    qc_found = False
+    assert len(file_info[file]['samples']) == 1
+    run = file_info[file]['samples'][0]['run']
+    limskey = file_info[file]['samples'][0]['lims_id']
+    barcode = file_info[file]['samples'][0]['barcode']     
+    lane = file_info[file]['samples'][0]['lane']
+    library_design = file_info[file]['samples'][0]['library_design']
+    
+    if library_design ==' CM' and limskey in cfmedipqc_info:
+        assert limskey == cfmedipqc_info[limskey]['Pinery Lims ID']
+        assert lane == cfmedipqc_info[limskey]['Lane Number']
+        assert barcode == cfmedipqc_info[limskey]['Barcodes']
+        assert run == cfmedipqc_info[limskey]['Run Alias']
+        qc_found = True
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {'AT_dropout': cfmedipqc_info[limskey]['AT Dropout'],
+                                      'methylation_beta': cfmedipqc_info[limskey]['Methylation beta'],
+                                      'duplication': cfmedipqc_info[limskey]['Percent Duplication'],
+                                      'CpG_enrichment': cfmedipqc_info[limskey]['Relative CpG Frequency in Regions']}
+    
+    if library_design == 'CM' and qc_found == False:
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {'AT_dropout': 'NA',
+                                      'methylation_beta': 'NA',
+                                      'duplication': 'NA',
+                                      'CpG_enrichment': 'NA'}
+    
+    
+
+
+def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
+    '''
+    (dict, str, dict) -> None
+    
+    Update the file information in place with the QC information
+    collected from rnaseqqc for a given file if library source is WT
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with information about the released fastqs
+    - file (str): File path
+    - rnaseqqc_info (dict): QC information for each paired fastq from the rnaseqqc QC db
+    '''
+    
+    
+    qc_found = False
+    assert len(file_info[file]['samples']) == 1
+    run = file_info[file]['samples'][0]['run']
+    limskey = file_info[file]['samples'][0]['lims_id']
+    barcode = file_info[file]['samples'][0]['barcode']     
+    lane = file_info[file]['samples'][0]['lane']
+    library_design = file_info[file]['samples'][0]['library_design']
+    
+    # check that limskey in recorded in rnaseqqc_db
+    if library_design == 'WT' and limskey in rnaseqqc_info:
+        assert limskey == rnaseqqc_info[limskey]['Pinery Lims ID']
+        assert lane == rnaseqqc_info[limskey]['Lane Number']
+        assert barcode == rnaseqqc_info[limskey]['Barcodes']
+        assert run == rnaseqqc_info[limskey]['Run Alias']
+        qc_found = True
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {"5'-3' bias": rnaseqqc_info[limskey]['MEDIAN_5PRIME_TO_3PRIME_BIAS'],
+                                      'rRNA contamination': round((rnaseqqc_info[limskey]['rrna contamination properly paired'] / rnaseqqc_info[limskey]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3),
+                                      'Coding (%)': rnaseqqc_info[limskey]['PCT_CODING_BASES'],
+                                      'Correct strand reads (%)': rnaseqqc_info[limskey]['PCT_CORRECT_STRAND_READS']}
+    
+    if library_design == 'WT' and qc_found == False:
+        assert 'metrics' not in file_info[file]    
+        file_info[file]['metrics'] = {"5'-3' bias": 'NA',
+                                      'rRNA contamination': 'NA',
+                                      'Coding (%)': 'NA',
+                                      'Correct strand reads (%)': 'NA'}
+    
+        
+
+def add_bamqc_metrics(file_info, file, bamqc_info):
+    '''
+    (dict, str, dict) -> None
+    
+    Update the file information with QC information collected from bamqc for a given file 
+           
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with information about the released fastqs
+    - file (str): File path
+    - bamqc_info (dict): QC information for each paired fastq from the bamqc table
+    '''
+    
+    qc_found = False
+    assert len(file_info[file]['samples']) == 1
+    run = file_info[file]['samples'][0]['run']
+    limskey = file_info[file]['samples'][0]['lims_id']
+    barcode = file_info[file]['samples'][0]['barcode']     
+    lane = file_info[file]['samples'][0]['lane']
+    library_design = file_info[file]['samples'][0]['library_design']
+    sample_id = file_info[file]['samples'][0]['sample_id']
+    group_id = file_info[file]['samples'][0]['group_id']
+    library = file_info[file]['samples'][0]['library']
+    instrument = file_info[file]['samples'][0]['instrument']
+     
+    excluded_libraries = ['CM', 'WT', 'MC', 'MG']
+    
+    # check that limskey in recorded in bamqc
+    if library_design not in excluded_libraries and limskey in bamqc_info:
+        assert limskey == bamqc_info[limskey]['Pinery Lims ID']
+        assert lane == bamqc_info[limskey]['Lane Number']
+        assert barcode == bamqc_info[limskey]['Barcodes']
+        assert run == bamqc_info[limskey]['Run Alias']
+        assert '_'.join(sample_id.split('_')[:2]) == '_'.join(bamqc_info[limskey]['sample'].split('_')[:2])
+        if group_id == 'NA':
+            assert ('_'.join(sample_id.split('_')[:-1]) == bamqc_info[limskey]['sample'] or library == bamqc_info[limskey]['sample'])
+        assert instrument  == bamqc_info[limskey]['instrument']
+        qc_found = True
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {'coverage': round(bamqc_info[limskey]['coverage'], 2),
+                                      'coverage_dedup': round(bamqc_info[limskey]['coverage deduplicated'], 2),
+                                      'on_target': round(bamqc_info[limskey]['on_target'], 2),
+                                      'percent_duplicate': round(bamqc_info[limskey]['mark duplicates_PERCENT_DUPLICATION'], 2)}
+        
+    if library_design not in excluded_libraries and qc_found == False:
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {'coverage': 'NA',
+                                      'coverage_dedup': 'NA',
+                                      'on_target': 'NA',
+                                      'percent_duplicate': 'NA'}
+
+
+
+def add_emseqqc_metrics(file_info, file, emseqqc_info):
+    '''
+    (dict, str, dict) -> None
+      
+    Update the file information with QC information collected from emseqqc for a given file 
+           
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with information about the released fastqs
+    - file (str): File path
+    - emseqqc_info (dict): QC information for each paired fastq from the emseq QC db
+    '''
+        
+    qc_found = False
+    assert len(file_info[file]['samples']) == 1
+    run = file_info[file]['samples'][0]['run']
+    limskey = file_info[file]['samples'][0]['lims_id']
+    barcode = file_info[file]['samples'][0]['barcode']     
+    lane = file_info[file]['samples'][0]['lane']
+    library_design = file_info[file]['samples'][0]['library_design']
+    
+    # check that limskey has qc
+    if library_design in ['MC', 'MG'] and limskey in emseqqc_info:
+        assert limskey == emseqqc_info[limskey]['Pinery Lims ID']
+        assert lane ==  emseqqc_info[limskey]['Lane Number']
+        assert barcode == emseqqc_info[limskey]['Barcodes']
+        assert run == emseqqc_info[limskey]['Run Alias']
+        qc_found = True
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {'Lambda_methylation': emseqqc_info[limskey]['Lambda'],
+                                      'pUC19_methylation': emseqqc_info[limskey]['pUC19'],
+                                      'percent_duplication': emseqqc_info[limskey]['mark duplicates_PERCENT_DUPLICATION']}
+        
+    if library_design in ['MC', 'MG'] and qc_found == False:
+        assert 'metrics' not in file_info[file]
+        file_info[file]['metrics'] = {'Lambda_methylation': 'NA',
+                                      'pUC19_methylation': 'NA',
+                                      'percent_duplication': 'NA'}
+          
+        
+
+def add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info):
+    '''
+    (dict, dict, dict, dict, dict) -> None
+    
+    Update the file information with information collected from the appropriate library source-specific QC db
+    
+    Parameters
+    ----------
+    - file_info (dict): File information for fastqs 
+    - bamqc_info (dict): QC information for each paired fastq from the bamqc db
+    - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedipqc db
+    - rnaseqqc_info (dict) QC information for each paired fastqs from the rnaseqqc db
+    - emseqqc_info (dict) QC information for each paired fastqs from the emseqqc db
+    '''
+    
+    for file in file_info:
+        assert len(file_info[file]['samples']) == 1
+        library_design = file_info[file]['samples'][0]['library_design']
+        if library_design == 'CM':
+            add_cfmedipqc_metrics(file_info, file, cfmedipqc_info)
+        elif library_design == 'WT':
+            add_rnaseqqc_metrics(file_info, file, rnaseqqc_info)
+        elif library_design in ['WG', 'EX', 'TS', 'PG']:
+            add_bamqc_metrics(file_info, file, bamqc_info)
+        elif library_design in ['MC', 'MG']:
+            add_emseqqc_metrics(file_info, file, emseqqc_info)              
+
+
+
+def map_library_design_to_instrument(file_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary of library design and its sequencing instruments
+        
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with information about the released fastqs
+    '''
+    
+    # list all instruments for each library design
+    library_designs = {}
+    for file in file_info:
+        for d in file_info[file]['samples']:
+            instrument = d['instrument']
+            library_design = d['library_design']
+            if library_design not in library_designs:
+                library_designs[library_design] = []
+            library_designs[library_design].append(instrument)
+            library_designs[library_design] = sorted(list(library_designs[library_design]))
+                                                          
+    return library_designs            
+        
+
+
+
+def get_library_metrics(library_type):
+    '''
+    (str) -> list
+    
+    Returns a list of metrics of interest for library_type if library_type is assigned specific metrics
+    and returns a list with read count only otherwise
+    
+    Parameters
+    ----------
+    - library_type (str): The Library code defined in MISO
+    '''
+    
+    metrics = {'CM': ['read_count', 'methylation_beta', 'CpG_enrichment'],
+               'WT': ['read_count', 'rRNA contamination', 'Coding (%)'],
+               'WG': ['read_count', 'coverage_dedup'],
+               'PG': ['read_count', 'coverage_dedup'],
+               'TS': ['read_count', 'coverage_dedup', 'on_target'],
+               'EX': ['read_count', 'coverage_dedup', 'on_target'],
+               'MC': ['read_count', 'Lambda_methylation', 'pUC19_methylation', 'percent_duplication'],
+               'MG': ['read_count', 'Lambda_methylation', 'pUC19_methylation', 'percent_duplication']}
+               
+    if library_type in metrics:
+        return metrics[library_type]
+    else:
+        return ['read_count']
+
+
+
+def get_Y_axis_labels(library_source):
+    '''
+    (str) -> list
+    
+    Returns a list o Y axis labels for the library type
+    
+    Parameters
+    ----------
+    - library_source (str): Specific library type
+    '''
+    
+    L = []
+    if library_source == 'CM':
+        L = ['Read pairs', 'Methylation {0}'.format(chr(946)), 'CpG frequency']
+    elif library_source == 'WT':
+        L = ['Read pairs', 'rRNA contamination', 'Coding (%)']
+    elif library_source in ['WG', 'PG']:
+        L = ['Read pairs', 'Coverage']
+    elif library_source in ['TS', 'EX']:
+        L = ['Read pairs', 'Coverage', 'On target']
+    elif library_source in ['MC', 'MG']:
+        L = ['Read pairs', '{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']
+    else:
+        L = ['Read pairs']
+    return L
+
+
+
+def get_file_prefix(file):
+    '''
+    (str) -> str
+    
+    Returns the file prefix of a fastq file.
+    File prefix is the file name without the file extension and read number
+    
+    Parameters
+    ----------
+    - file (str): File path
+    '''
+
+    filename = os.path.basename(file)
+    x = re.search("[\._]{1}R[1-2][\._]+.*fastq.gz", filename)
+    
+    assert x
+    prefix = filename[:x.span()[0]]
+    
+    return prefix
+     
+
+def add_file_prefix(file_info):
+    '''
+    (dict) -> None
+
+    Adds file prefix to each fastq file in the file info dictionary in place.
+    Pre-condition: The dictionary only stores information for FASTQ files   
+        
+    Parameters
+    ----------
+    - file_info (dict): Dictrionary of fastq file information
+    '''
+
+    for file in file_info:
+        prefix = get_file_prefix(file)
+        file_info['prefix'] = prefix
+
+
+def find_fastq_pairs(file_info, platform):
+    '''
+    (dict, str) -> list
+    
+    Returns a list of 2-item lists with dictionary about file info of paired fastqs
+    for a specific sequencing instrument.
+    Pre-condition: All reads are paired-reads and it exists 2 fastqs for read 1 and read 2
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with fastq file information 
+    = platform (str): Sequencing instrument
+    '''
+     
+    # make a list with dictionaries of file info
+    L = []
+    for file1 in file_info:
+        for file2 in file_info:
+            if file1 != file2 and file_info[file1]['wfrun_id'] == file_info[file2]['wfrun_id']:
+                assert file_info[file1]['metrics'] == file_info[file2]['metrics']
+                assert file_info[file1]['prefix'] == file_info[file2]['prefix']
+                read_num = [[file1, int(file_info[file1]['attributes']['read_number'][0])],
+                            [file2, int(file_info[file2]['attributes']['read_number'][0])]]
+                read_num.sort(key=lambda x: x[1])
+                assert file_info[file1]['samples'][0]['instrument'] == file_info[file2]['samples'][0]['instrument']
+                if file_info[file1]['samples'][0]['instrument'] == platform:
+                    L.append([{read_num[0][0]: file_info[read_num[0][0]]},
+                              {read_num[1][0]: file_info[read_num[1][0]]}])
+                    
+    return L
+
+
+
+
+def get_run_level_metrics(file_info, platform, library_source):
+    '''
+    (dict, str, str) -> (list)
+    
+    Returns a tuple with parallel lists of run-level metrics for a given instrument.
+    Pre-condition: All reads are paired-reads and it exists 2 fastqs for read 1 and read 2
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with fastq file information  
+    - platform (str): Sequencing platform
+    - library_source (str): Type of library (eg: CM, WG, WT)
+    '''
+    
+    # get the list of metrics of interest 
+    metrics = get_library_metrics(library_source)
+        
+    # find fastq pairs
+    L = find_fastq_pairs(file_info, platform)
+    
+    # make parallel lists for each metrics
+    QC_metrics = [[] for i in range(len(metrics))]
+    
+    for i in L:
+        # record only metrics from read 1 file
+        file = list(i[0].keys())[0]
+        if i[0][file]['samples'][0]['library_design'] == library_source:
+            for j in range(len(metrics)):
+                QC_metrics[j].append(i[0][file]['metrics'][j])            
+           
+    return QC_metrics                 
+
+
+def clean_up_metrics(metrics):
+    '''
+    (list) -> list
+    
+    Returns a list of lists with metrics without missing values NA, keeping the original order of the lists
+    
+    Parameters
+    ----------
+    - metrics (list): List of metrics
+    '''
+    
+    while any(list(map(lambda x: 'NA' in x, metrics))):
+        for i in metrics:
+            if 'NA' in i:
+                pos = i.index('NA')
+                break
+        for i in range(len(metrics)):
+            if metrics[i]:
+                del metrics[i][pos]
+    return metrics 
+
+
+def sort_metrics(QC_metrics):
+    '''
+    (list) -> list
+    
+    Returns a list of lists of metrics preserving the order among lists and 
+    and sorted according to the order of reads (ie, 1st metric)
+    Pre-condition: There is no missing values and all lists have the same length
+        
+    Parameters
+    ----------
+    - QC_metrics (list): List list of metrics. The 1st list are the read counts
+    '''
+    
+    # make a list with inner lists containing each the ith value of each metric
+    a = list(zip(*QC_metrics))
+    # sort the inner lists according to the read count, it the first value of each inner list
+    a.sort(key=lambda x : x[0])
+    # unpack the sorted list to get back the list of each metric, order-preserved and read-counts sorted
+    if a:
+        QC_metrics = list(zip(*a))
+    return QC_metrics 
+
+
+
+def get_x_axis_labels(data):
+    '''
+    (list) -> list
+    
+    Returns a list of x axis labels.
+    Only the last defined metrics in data is labeled with Samples
+        
+    Parameters
+    ----------
+    - data (list): List of lists with metrics
+    '''
+    
+    
+    # make a list with x labels to find out wich subplot should show Samples label
+    labels = ['Samples' if data[i] else None for i in range(len(data))]
+    max_index = 0
+    for i in range(len(labels)):
+        if labels[i]:
+            max_index = i
+    for i in range(len(labels)):
+        if i < max_index:
+            labels[i] = None
+    return labels
+
+
+def count_subplots(data):
+    '''
+    (list) -> int
+    
+    Returns the number of expected subplots in figure.
+        
+    Parameters
+    ----------
+    - data (list): List of lists with metrics
+    '''
+    
+    # determine how many subplots are expected with defined metrics
+    return sum([1 if i else 0 for i in data])
+
+
+
+def get_subplot_position(data):
+    '''
+    (list) -> list
+    
+    Returns the position of each subplot for metrics in data.
+        
+    Parameters
+    ----------
+    - data (list): List of lists with metrics
+    '''
+    
+    subplot_pos = [1 if i else 0 for i in data]
+    for i in range(1,len(subplot_pos)):
+        subplot_pos[i] = subplot_pos[i-1] + subplot_pos[i]
+    return subplot_pos
+
+
+
+def create_ax(row, col, pos, figure, Data, YLabel, color, title = None, XLabel = None):
+    '''
+    (int, int, int, matplotlib.figure.Figure, list, str, str, str | None, str | None)
+    
+    Parameters
+    ----------
+    
+    - row (int): Row position of the plot in figure
+    - col (int): Column position of the plot in figure
+    - figure (matplotlib.figure.Figure): Matplotlib figure
+    - Data (list): List of metrics to plot in graph
+    - YLabel (str): Label of the Y axis
+    - color (str): Color of markers for Data
+    - title (str | None): Title of the graph
+    - XLabel (str | None): Label of the X axis    
+    '''
+    
+    # create ax in figure to plot data
+    ax = figure.add_subplot(row, col, pos)
+    
+    # plot data and median  
+    xcoord = [i/10 for i in range(len(Data))]
+        
+    ax.plot(xcoord, Data, clip_on=False, linestyle='', marker= 'o', markerfacecolor = color, markeredgecolor = color, markeredgewidth = 1, markersize = 10, alpha=0.5)
+    # compute median the data
+    median = np.median(Data)
+    # plot median and mean. use zorder to bring line to background
+    ax.axhline(y=median, color=color, linestyle='-', linewidth=1.5, alpha=0.5, zorder=1)
+    
+    # start y axis at 0
+    ax.set_ylim(ymin=0)
+       
+    # write axis labels
+    if XLabel is not None:
+        ax.set_xlabel(XLabel, color='black', size=18, ha='center', weight= 'normal')
+    ax.set_ylabel(YLabel, color='black', size=18, ha='center', weight='normal')
+    
+    # add title 
+    if title is not None:
+        ax.set_title(title, weight='bold', pad =20, fontdict={'fontsize':20})
+
+    # set xticks
+    # get all the ticks and set labels to empty str
+    plt.xticks(xcoord, ['' for i in range(len(xcoord))], ha='center', fontsize=12, rotation=0)
+    # set every N ticks
+    N = 3
+    xticks_pos = ax.get_xticks()
+    xticks_labels = ax.get_xticklabels()
+    myticks = [j for i,j in enumerate(xticks_pos) if not i % N]  # index of selected ticks
+    newlabels = [label for i,label in enumerate(xticks_labels) if not i % N]
+    plt.xticks(myticks, newlabels, ha='center', fontsize=12, rotation=0)
+    
+    # add splace bewteen axis and tick labels
+    ax.yaxis.labelpad = 17
+    
+    # do not show frame lines  
+    ax.spines["top"].set_visible(False)    
+    ax.spines["bottom"].set_visible(True)    
+    ax.spines["right"].set_visible(False)    
+    ax.spines["left"].set_visible(False)    
+        
+    # offset the x axis
+    for loc, spine in ax.spines.items():
+        spine.set_position(('outward', 5))
+        #spine.set_smart_bounds(True)
+    
+    # add a light grey horizontal grid to the plot, semi-transparent, 
+    ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5, linewidth = 0.5)  
+    # hide these grids behind plot objects
+    ax.set_axisbelow(True)
+    
+    # disable scientific notation
+    ax.ticklabel_format(style='plain', axis='y')
+    
+    return ax
+
+
+def generate_library_platform_figure(file_info, project, library_source, platform, colors, working_dir, height=16, width=13):
+    '''
+    (dict, str, str, str, str, int, int) -> str
+    
+    Generate a figure with metrics QC-etl for a given library type and sequencing platform
+    and returns the path to the figure file
+        
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with fastq file information with metrics extracted from qc-etl
+    - project (str): Name of project
+    - library_source (str): Type of library
+    - platform (str): Sequencing platform
+    - working_dir (str): Path to the folder where figure files are written
+    - height (int): Height of the figure
+    - width (int): Width of the figure
+    '''
+    
+    # make lists with metrics for each instrument 
+    QC_metrics = get_run_level_metrics(file_info, platform, library_source)
+    # remove undefined metric values
+    QC_metrics = clean_up_metrics(QC_metrics)
+    # sort metrics according to read counts (read counts is always first metric)
+    QC_metrics = sort_metrics(QC_metrics)
+        
+    # get the outputfile
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    outputfile = os.path.join(working_dir, '{0}.{1}.{2}.{3}.QC_plots.png'.format(project, platform, library_source, current_time))
+    
+    if QC_metrics[0]:
+        figure = plt.figure()
+        figure.set_size_inches(width, height)
+        # make a list of with X axis labels to determine which subplot should display the Samples label
+        x_labels = get_x_axis_labels(QC_metrics)
+        # determine how many subplots are expected
+        subplots = count_subplots(QC_metrics) 
+        # determine the position of each subplot
+        subplot_pos = get_subplot_position(QC_metrics)
+    
+        # get the Y axis labels
+        Y_axis = get_Y_axis_labels(library_source)
+                
+        for i in range(len(QC_metrics)):
+            # determine title
+            title = platform + ' {0} libraries'.format(library_source) if i == 0 else None
+            # plot data
+            create_ax(subplots, 1, subplot_pos[i], figure, QC_metrics[i], Y_axis[i], colors[i], title = title, XLabel = x_labels[i])
+                
+        # make sure axes do not overlap
+        plt.tight_layout(pad = 2.5)
+        # write figure to file  
+        figure.savefig(outputfile, bbox_inches = 'tight')
+        plt.close()
+                
+        return outputfile
+    else:
+        return ''
+
+
+def generate_report_plots(file_info, project, library_designs, working_dir):
+    '''
+    (dict, str, dict, str) -> dict
+    
+    Returns a dictionary with figure paths for each library design and sequencing platorm
+
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with fastq file information with metrics extracted from qc-etl
+    - project (str): Name of project
+    - library_designs (dict): Dictionary instruments for each library design
+    - working_dir (str): Path to the folder where figure files are written
+    '''
+
+    # generate a figure for each instrument and library source and keep track of figure files
+    figure_files = {}
+    for library_source in library_designs:
+        colors = ['#00CD6C', '#AF58BA', '#FFC61E', '#009ADE']
+        for platform in library_designs[library_source]:
+            figure = generate_library_platform_figure(file_info, project, library_source, platform, colors, working_dir)
+            if library_source not in figure_files:
+                figure_files[library_source] = {}
+            figure_files[library_source][platform] = figure
+
+    return figure_files
+
+
+
+
+
+def count_samples_with_missing_values(file_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with the number of samples with missing metric values for
+    each library type and instrument
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with file information and QC metrics extracted from qc-etl
+    '''
+    
+    # count the number of samples with missing values for each instrument and library type
+    D = {}
+    for file in file_info:
+        platform = file_info[file]['samples'][0]['instrument']
+        sample = file_info[file]['samples'][0]['external_id']
+        library_design = file_info[file]['samples'][0]['library_design']
+        metrics = get_library_metrics(library_design)
+                       
+        for i in metrics:
+            if i in file_info[file]['metrics'] and file_info[file]['metrics'][i] == 'NA':
+                if library_design not in D:
+                    D[library_design] = {}
+                if platform not in D[library_design]:
+                    D[library_design][platform] = set()
+                D[library_design][platform].add(sample)
+    
+    for library_design in D:
+        for platform in D[library_design]:
+            D[library_design][platform] = len(list(D[library_design][platform]))
+    
+    for library_design in D:
+        to_remove = [platform for platform in D[library_design] if D[library_design][platform] == 0]
+        for platform in to_remove:
+            del D[library_design][platform]
+    to_remove = [library_design for library_design in D if len(D[library_design]) == 0]
+    for i in to_remove:
+        del D[i]
+    
+    return D   
+
+
+def fit_into_column(text):
+    '''
+    (str)- > str
+    
+    
+    Returns text reformatted to fit the table column
+    
+    Parameters
+    ----------
+    - text (str): Value in column 
+    '''
+    
+    text = '{0} {1}'.format(text[:len(text)//2], text[len(text)//2:])
+
+    return text
+
+
+
+
+
+def group_sample_metrics(file_info, table):
+    '''
+    (dict, str) -> dict 
+    
+    Group sample identifiers or metrics 
+    
+    Parameters
+    ----------
+    - file_info (dict): Information about fastq files with metrics extracted from QC etl
+    - table (str): Table of interest in the report
+    '''
+    
+    # make a list of instruments
+    instruments = []
+    for file in file_info:
+        for d in file_info[file]['samples']:
+            instruments.append(d['instrument'])
+    instruments = list(set(instruments))
+    
+    # record sample metrics for each instrument
+    D = {}
+    
+    # find pairs of fastqs
+    for platform in instruments:
+        pairs = find_fastq_pairs(file_info, platform)
+        for i in pairs:
+            file = list(i[0].keys())[0]
+            
+            library = i[0][file]['samples'][0]['library']
+            library_design = i[0][file]['samples'][0]['library_design']
+            prefix = i[0][file]['prefix']
+            group_id = i[0][file]['samples'][0]['group_id']
+            group_description =  i[0][file]['samples'][0]['group_description']
+            run =  i[0][file]['samples'][0]['run']
+            case_id = i[0][file]['case_id']
+            external_name = i[0][file]['samples'][0]['external_id']      
+            sample = i[0][file]['samples'][0]['sample_id']     
+            donor = i[0][file]['samples'][0]['donor']
+            tissue_origin = i[0][file]['samples'][0]['tissue_origin']
+            tissue_type = i[0][file]['samples'][0]['tissue_type']
+            lane = i[0][file]['samples'][0]['lane']
+            barcode = i[0][file]['samples'][0]['barcode']
+            sequencing_run = '{0} lane_{1}_{2}'.format(run, lane, barcode)
+            
+            max_length = 20
+                        
+            # reformat prefix to fit the table column
+            if len(prefix) >= max_length:
+                prefix = fit_into_column(prefix)
+            if len(library) >= max_length:
+                library = fit_into_column(library)
+            if len(sample) >= max_length:
+                sample = fit_into_column(sample)
+            if len(group_id) >= max_length:
+                group_id = fit_into_column(group_id)
+            if len(group_description) >= max_length:
+                group_description = fit_into_column(group_description)
+                        
+            if table == 'sample_identifiers':
+                L = [case_id, library, donor, external_name, group_id, group_description, library_design, tissue_origin, tissue_type]
+            elif table == 'qc_metrics':
+                metrics = get_library_metrics(library_design)
+                QC_metrics = []
+                for metric in metrics:
+                    if metric == 'read_count':
+                        QC_metrics.append('{:,}'.format(i[0]['read_count']))
+                    else:
+                        QC_metrics.append(i[0][metric])
+                L = [library, prefix]
+                L.extend(QC_metrics)
+                
+            if library_design not in D:
+                D[library_design] = {}
+            if platform not in D[library_design]:
+                D[library_design][platform] = []
+            if L not in D[library_design][platform]:
+                D[library_design][platform].append(L)
+    # sort sample info on sample name
+    for i in D:
+        for j in D[i]:
+            D[i][j].sort(key = lambda x: x[0])        
+        
+    return D            
+
+
+def get_tissue_types():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary mapping Tissue Type codes to their definitions
+    Pre-condition: These definitions are obtained from the Configuration tab in MISO
+    '''
+    
+    D = {'X': 'Xenograft derived from some tumour. Note: may not necessarily be a mouse xenograft',
+         'U': 'Unspecified',
+         'T': 'Unclassifed tumour',
+         'S': 'Serum from blood where clotting proteins have been removed',
+         'R': 'Reference or non-tumour, non-diseased tissue sample. Typically used as a donor-specific comparison to a diseased tissue, usually a cancer',
+         'P': 'Primary tumour',
+         'O': 'Organoid',
+         'n': 'Unknown',
+         'M': 'Metastatic tumour',
+         'F': 'Fibroblast cells',
+         'E': 'Endothelial cells',
+         'C': 'Cell line derived from a tumour',
+         'B': 'Benign tumour',
+         'A': 'Cells taken from Ascites fluid'}
+    
+    return D
+
+def get_tissue_origin():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary mapping Tissue Origin codes to their definitions
+    Pre-condition: These definitions are obtained from the Configuration tab in MISO
+    '''
+    
+    D = {'Ab': 'Abdomen', 'Ad': 'Adipose', 'Ae': 'Adnexa', 'Ag': 'Adrenal', 'An': 'Anus',
+         'Ao': 'Anorectal', 'Ap': 'Appendix', 'As': 'Ascites', 'At': 'Astrocytoma', 'Av': 'Ampulla',
+         'Ax': 'Axillary', 'Ba': 'Back', 'Bd': 'Bile', 'Bi': 'Biliary', 'Bl': 'Bladder',
+         'Bm': 'Bone', 'Bn': 'Brain', 'Bo': 'Bone', 'Br': 'Breast', 'Bu': 'Buccal',
+         'Bw': 'Bowel', 'Cb': 'Cord', 'Cc': 'Cecum', 'Ce': 'Cervix', 'Cf': 'Cell-Free', 'Ch': 'Chest',
+         'Cj': 'Conjunctiva', 'Ck': 'Cheek', 'Cn': 'Central', 'Co': 'Colon', 'Cr': 'Colorectal',
+         'Cs': 'Cul-de-sac', 'Ct': 'Circulating', 'Di': 'Diaphragm', 'Du': 'Duodenum',
+         'En': 'Endometrial', 'Ep': 'Epidural', 'Es': 'Esophagus', 'Ey': 'Eye', 'Fa': 'Fallopian',
+         'Fb': 'Fibroid', 'Fs': 'Foreskin', 'Ft': 'Foot', 'Ga': 'Gastric', 'Gb': 'Gallbladder',
+         'Ge': 'Gastroesophageal', 'Gi': 'Gastrointestinal', 'Gj': 'Gastrojejunal', 'Gn': 'Gingiva',
+         'Gt': 'Genital', 'Hp': 'Hypopharynx', 'Hr': 'Heart', 'Ic': 'ileocecum', 'Il': 'Ileum',
+         'Ki': 'Kidney', 'La': 'Lacrimal', 'Lb': 'Limb', 'Le': 'Leukocyte', 'Lg': 'Leg',
+         'Li': 'Large', 'Ln': 'Lymph', 'Lp': 'Lymphoblast', 'Lu': 'Lung', 'Lv': 'Liver', 
+         'Lx': 'Larynx', 'Ly': 'Lymphocyte', 'Md': 'Mediastinum', 'Me': 'Mesenchyme', 'Mn': 'Mandible',
+         'Mo': 'Mouth', 'Ms': 'Mesentary', 'Mu': 'Muscle', 'Mx': 'Maxilla', 'Nk': 'Neck',
+         'nn': 'Unknown', 'No': 'Nose', 'Np': 'Nasopharynx', 'Oc': 'Oral', 'Om': 'Omentum',
+         'Or': 'Orbit', 'Ov': 'Ovary', 'Pa': 'Pancreas', 'Pb': 'Peripheral', 'Pc': 'Pancreatobiliary',
+         'Pd': 'Parathyroid', 'Pe': 'Pelvic', 'Pg': 'Parotid', 'Ph': 'Paratracheal', 'Pi': 'Penis',
+         'Pl': 'Plasma', 'Pm': 'Peritoneum', 'Pn': 'Peripheral', 'Po': 'Peri-aorta', 'Pr': 'Prostate',
+         'Pt': 'Palate', 'Pu': 'Pleura', 'Py': 'periampullary', 'Ra': 'Right', 'Rc': 'Rectosigmoid',
+         'Re': 'Rectum', 'Ri': 'Rib', 'Rp': 'Retroperitoneum', 'Sa': 'Saliva', 'Sb': 'Small',
+         'Sc': 'Scalp', 'Se': 'Serum', 'Sg': 'Salivary', 'Si': 'Small', 'Sk': 'Skin', 'Sm': 'Skeletal',
+         'Sn': 'Spine', 'So': 'Soft', 'Sp': 'Spleen', 'Sr': 'Serosa', 'Ss': 'Sinus', 'St': 'Stomach',
+         'Su': 'Sternum', 'Ta': 'Tail', 'Te': 'Testes', 'Tg': 'Thymic', 'Th': 'Thymus',
+         'Tn': 'Tonsil', 'To': 'Throat', 'Tr': 'Trachea', 'Tu': 'Tongue', 'Ty': 'Thyroid',
+         'Uc': 'Urachus', 'Ue': 'Ureter', 'Um': 'Umbilical', 'Up': 'Urine', 'Ur': 'Urethra',
+         'Us': 'Urine', 'Ut': 'Uterus', 'Uw': 'Urine', 'Vg': 'Vagina', 'Vu': 'Vulva', 'Wm': 'Worm'}
+
+    return D
+
+
+def get_library_design():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary mapping Library Design codes to their definitions
+    Pre-condition: These definitions are obtained from the Configuration tab in MISO
+    '''
+
+    D = {'WT': 'Whole Transcriptome', 'WG': 'Whole Genome', 'TS': 'Targeted Sequencing',
+         'TR': 'Total RNA', 'SW': 'Shallow Whole Genome', 'SM': 'smRNA', 'SC': 'Single Cell',
+         'NN': 'Unknown', 'MR': 'mRNA', 'EX': 'Exome', 'CT': 'ctDNA', 'CM': 'cfMEDIP',
+         'CH': 'ChIP-Seq', 'BS': 'Bisulphite Sequencing', 'AS': 'ATAC-Seq',
+         'PG': 'Plasma Whole Genome', 'MC': 'Methylation Detection (C to T) ctDNA',
+         'MG': 'Methylation Detection (C to T) Whole Genome', '6B': 'Biomodal 6 base genomes',
+         '5B': 'Biomodal 5 base genomes'}
+       
+    return D
+
+
+
+def get_library_tissue_types(file_info):
+    '''
+    (dict) -> dict
+    
+    Returns a dictionary with tissue origin, type and library source definitions from MISO
+    for each released library
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with fastq file information 
+    '''
+
+    D = {'Library Type': [], 'Tissue Type': [], 'Tissue Origin': []}
+
+    # definitions are from the Configuration tab in MISO
+    tissue_types = get_tissue_types()
+    tissue_origin = get_tissue_origin()
+    library_design = get_library_design()
+
+    for file in file_info:
+        for d in file_info[file]['samples']:
+            D['Library Type'].append(d['library_design'])
+            D['Tissue Type'].append(d['tissue_type'])
+            D['Tissue Origin'].append(d['tissue_origin'])
+    for i in D:
+        D[i] = sorted(list(set(D[i])))                
+       
+    for i in range(len(D['Library Type'])):
+        D['Library Type'][i] = '{0}: {1}'.format(D['Library Type'][i], library_design[D['Library Type'][i]])
+    for i in range(len(D['Tissue Type'])):
+        D['Tissue Type'][i] = '{0}: {1}'.format(D['Tissue Type'][i], tissue_types[D['Tissue Type'][i]])
+    for i in range(len(D['Tissue Origin'])):
+        D['Tissue Origin'][i] = '{0}: {1}'.format(D['Tissue Origin'][i], tissue_origin[D['Tissue Origin'][i]])
+    
+    for i in D:
+        D[i] = ', '.join(D[i])                
+    
+    return D
+
+
+
+
+def get_identifiers_appendix(file_info, report):
+    '''
+    (dict, str) -> list
+    
+    Returns a list with definitions of columns in the sample identifier table
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with fastq file information
+    - report (str): cumulative or batch report
+    '''
+
+    # get the library type, tissue type and tissue origin 
+    D = get_library_tissue_types(file_info)
+    
+    if report  == 'batch':
+        L = ['OICR Case: OICR-generated case identifier',
+            'Library Id: OICR-generated library identifier',
+             'Case Id: OICR-generated donor identifier',
+             'Donor Id: user supplied donor identifier',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+             'Sample Description: a description of the Sample Id',
+             'Library Type (LT): {0}'.format(D['Library Type']),
+             'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+             'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
+    elif report == 'cumulative':
+        L = ['OICR Case Id: OICR-generated case identifier',
+             'Donor Id: user supplied donor identifier',
+             'OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id',
+             'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
+             'Sample Description: a description of the Sample Id',
+             'Library Type (LT): {0}'.format(D['Library Type']),
+             'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
+             'Tissue Type (TT): {0}'.format(D['Tissue Type'])]
+       
+    return L
+
+           
+def get_qc_metrics_table_names(library_sources, start=2):
+    '''
+    (list, int) -> dict
+    
+    Returns a dictionry with Names of QC metrics tables for each library type
+    
+    Parameters
+    ----------
+    - library_sources (list): Sorted list of library types 
+    - start (int): Starting number to count the QC tables 
+    '''
+
+    # get the QC metrics sub-tables titles
+    qc_subtables = {}
+    for library_type in library_sources:
+        qc_subtables[library_type] = 'Table {0} QC metrics for {1} libraries'.format(start, library_type)
+    
+    return qc_subtables
+
+
+
+def metrics_definitions():
+    '''
+    (None) -> dict
+    
+    Returns a dictionary with definitions of metrics and identifiers
+    '''
+    
+    definitions = {'CpG frequency': 'The frequency of CpGs within the captured regions.',
+                   'Methylation {0}'.format(chr(946)): 'Proportion of the methylated signal over the total signal.',
+                   'Coding (%)': 'Percentage of bases in the coding regions of the genome.',
+                   'Coverage': 'Mean depth of coverage corrected for duplication rate.',
+                   'On target': 'Percentage of mapped bases within the target region.',
+                   'rRNA contamination': 'Percentage of reads aligning to ribosomal sequences.',
+                   'Library Id': 'OICR generated library identifier.',
+                   'File prefix': 'The common prefix, followed by the sequencing Read (R1, R2) and the file suffix .fastq.gz. The file prefix is formed from the following: 1. Library Id, 2. Run date, 3. Instrument Id, 4. Sequencing Instrument Run, 5. Flow cell identifier, 6. Lane number, 7. Demultiplex barcodes',
+                   'Read pairs': 'Number of read pairs. The number of reads is twice the number of read pairs.',
+                   '{0} methylation'.format(chr(955)): 'Ratio of methylated CpG over total CpG in the negative control',
+                   'pUC19 methylation': 'Ratio of methylated CpG over total CpG in the positive control',
+                   'Duplication rate': 'Percent duplication of Picard marked duplicates'
+                   }
+    
+    return definitions
+
+
+def get_metrics_appendix(library_sources):
+    '''
+    (list) -> dict
+    
+    Returns a dictionry with definitions of columns in the sample identifier table
+    
+    Parameters
+    ----------
+    - library_sources (list): Sorted list of library types 
+    '''
+
+    # get the QC metrics sub-tables and appendices
+    
+    definitions = metrics_definitions()    
+    columns = [': '.join([i, definitions[i]]) for i in ['Library Id', 'File prefix', 'Read pairs']]
+    
+    counter = 1
+    qc_appendix = {'tables': {}, 'metrics': {}}
+    for library_type in library_sources:
+        qc_appendix['tables'][library_type] = 'Appendix Table 2.{0}'.format(counter)
+        if library_type == 'CM':
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Methylation {0}'.format(chr(946)), 'CpG frequency']]
+        elif library_type in ['EX', 'TS']:
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['Coverage', 'On target']]
+        elif library_type in ['WG', 'PG']:
+            qc_appendix['metrics'][library_type] = columns + ['{0}: {1}'.format('Coverage', definitions['Coverage'])]
+        elif library_type == 'WT':
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['rRNA contamination', 'Coding (%)']]
+        elif library_type in ['MC', 'MG']:
+            qc_appendix['metrics'][library_type] = columns + [': '.join([i, definitions[i]]) for i in ['{0} methylation'.format(chr(955)), 'pUC19 methylation', 'Duplication rate']]
+        else:
+            qc_appendix['metrics'][library_type] = columns
+        counter += 1
+        
+    return qc_appendix
+
+
+def makepdf(html, outputfile):
+    """
+    (str) -> None
+    
+    Generates a PDF file from a string of HTML
+   
+    Parameters
+    ----------
+    - html (str) String of formated HTML
+    - outputfile (str): Name of the output PDF file
+    """
+    
+    #htmldoc = HTML(string=html, base_url=__file__)
+    #htmldoc.write_pdf(outputfile, stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
+
+    css_file = os.path.join(os.path.dirname(__file__), './static/css/style.css')
+    htmldoc = HTML(string=html, base_url=__file__)
+    htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
+
+
+
 def link_files(args):
     '''
     (str, str, str, str, str | None, list | None, list | None, List | None, str | None, str | None ) -> None
@@ -6556,6 +7232,7 @@ def link_files(args):
     print('removed {0} incomplete cases'.format(deleted_cases))
     # extract data to release
     libraries = get_libraries(args.libraries)
+    release_files = []
     if args.analyses:
         release_files = get_analysis_files(args.analyses)
     if args.release_files:
@@ -6601,6 +7278,10 @@ def map_external_ids(args):
     - runs (list | None): List of run Ids
     - cases (List | None): List of case Ids
     '''
+    
+    #### add json and diorectories
+    
+    
     
     if args.runs and args.libraries:
         sys.exit('-r and -l are exclusive parameters')    
@@ -6703,6 +7384,7 @@ def mark_files_nabu(args):
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
+        release_files = []
         if args.analyses:
             release_files = get_analysis_files(args.analyses)
         if args.release_files:
@@ -6714,6 +7396,204 @@ def mark_files_nabu(args):
     swids = [file_info[i]['accession'] for i in file_info]
     # mark files in nabu
     change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.ticket)
+
+
+
+
+def write_batch_report(args):
+    '''
+    (str, str, str, str, str, str, list, str, str | None, bool) -> None
+    
+    Write a PDF report with QC metrics and released fastqs for a given project
+
+    - project (str): Project name as it appears in File Provenance Report
+    - working-dir (str): Path to the directory with project directories and links to fastqs 
+    - project_name (str): Project name used to create the project directory in gsi space
+    - project_code (str): Project code from MISO
+    - bamqc_db (str): Path to the bamqc db
+    - cfmedipqc_db (str): Path to the cfmedipqc db 
+    - run_directories (list): List of directories with links to fastqs
+    - provenance (str): Path to File Provenance Report.
+    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
+                           Prefix is added to the relative path in FPR to determine the full file path.
+    - keep_html (bool): Writes html report to file if True
+    '''
+
+    # check options
+    if args.release_files:
+        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        if any(a):
+            c = ['-r', '-c', '-l', '-a', '-d']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-f cannot be used with options {0}'.format(err))
+    elif args.analyses:
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories]
+        if any(a):
+            c = ['-f', '-r', '-c', '-l', '-d']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-a cannot be used with options {0}'.format(err))
+    elif args.directories:
+        # check that all directories are valid
+        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
+            sys.exit('Please provide valid directories with -d')        
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses]
+        if any(a):
+            c = ['-f', '-r', '-c', '-l', '-a']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-d cannot be used with options {0}'.format(err))
+    else:
+        if args.runs and args.libraries:
+           sys.exit('-r and -l are exclusive parameters')    
+    
+    # create working directory
+    working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
+    
+    # get the files to mark
+    # load data
+    provenance_data = load_data(args.provenance)
+    print('loaded data')
+    # clean up data
+    provenance_data, deleted_cases = clean_up_provenance(provenance_data)
+    print('removed {0} incomplete cases'.format(deleted_cases))
+    
+    if args.directories:
+        # list of the linked files
+        linked_files = []
+        # list all files in directories and subdirectories
+        # list path of target files if files are links
+        for directory in args.directories:
+            linked_files.extend(list_files(directory))
+        # keep only fastq files
+        if linked_files:
+            linked_files = [i for i in linked_files if 'fastq.gz' in i]
+        file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+    else:
+        # extract data to release
+        libraries = get_libraries(args.libraries)
+        release_files = []
+        if args.analyses:
+            release_files = get_analysis_files(args.analyses)
+        if args.release_files:
+            release_files = get_release_files(args.release_files)
+        # keep only the fastq files 
+        if release_files:
+            release_files = [i for i in release_files if 'fastq.gz' in i]
+        file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        print('extracted data for {0} files'.format(len(file_info))) 
+
+    # write sample map
+    sample_map = write_sample_map(args.project, file_info, working_dir)
+    print('wrote sample map {0}'.format(sample_map))
+    
+    # write summary md5sums
+    # create a dictionary {run: [md5sum, file_path]}
+    current_time = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    md5sum_file = os.path.join(working_dir, '{0}.batch.release.{1}.md5'.format(args.project, current_time))
+    write_md5sum(file_info, md5sum_file)
+    print('wrote md5sums: {0}'.format(md5sum_file))
+    # generate md5sum
+    
+    # count the number of fastq files by instrument and run
+    fastq_counts = count_released_fastqs_by_instrument(file_info)
+    all_released_files = sum([len(fastq_counts[instrument][run]) for instrument in fastq_counts for run in fastq_counts[instrument]])
+
+    # collect information from bamqc table
+    bamqc = extract_bamqc_data(args.bamqc_db)
+    # collect information from dnaseqqc table
+    dnaseqqc = extract_bamqc_data(args.dnaseqqc_db)
+    # merge bamqc and dnaseqc
+    bamqc_info = merge_bamqc_dnaseqc(bamqc, dnaseqqc)    
+    # collect information from cfmedip table
+    cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
+    # collect information from rnaseq table
+    rnaseqqc_info = extract_rnaseqqc_data(args.rnaseqqc_db)
+    # collect information from emseq cache
+    emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
+    # update file info with QC metrics
+    add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
+
+    #list all platforms for each library design
+    library_designs = map_library_design_to_instrument(file_info)
+    
+    # add file prefix to each fastq file
+    add_file_prefix(file_info)
+
+    # generate plots for each instrument and library source and keep track of figure files
+    figure_files = generate_report_plots(file_info, args.project, library_designs, working_dir)
+
+    # count the number of samples with missing metric values
+    samples_missing_metrics = count_samples_with_missing_values(file_info)
+    
+    # write report
+    # get the report template
+    #environment = Environment(loader=FileSystemLoader("./templates/"))
+    #template = environment.get_template("batch_report_template.html")
+    
+    template_dir = os.path.join(os.path.dirname(__file__), './templates')
+    environment = Environment(loader = FileSystemLoader(template_dir), autoescape = True)
+    template = environment.get_template("batch_report_template.html")
+    
+    # make a dict with project information
+    projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
+
+    # group metrics by pairs of files
+    #header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+    
+    header_identifiers = ['OICR case', 'Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+        
+    sample_identifiers = group_sample_metrics(file_info, 'sample_identifiers')
+    appendix_identifiers = get_identifiers_appendix(file_info, 'batch')
+    
+    qc_metrics = group_sample_metrics(file_info, 'qc_metrics')
+    library_sources = sorted(list(library_designs.keys()))
+    header_metrics = {}
+    for i in library_sources:
+        header_metrics[i] = ['Library Id', 'File prefix'] + get_Y_axis_labels(i)    
+    
+    # get the qc metrics subtables
+    qc_subtables = get_qc_metrics_table_names(library_sources)
+    # get the metrics appendix
+    qc_appendices = get_metrics_appendix(library_sources)
+    
+    # fill in template
+    context = {'projects' : projects,
+               'file_count': all_released_files,
+               'fastq_counts': fastq_counts,
+               'figure_files': figure_files,
+               'samples_missing_metrics': samples_missing_metrics,
+               'header_identifiers': header_identifiers,
+               'sample_identifiers': sample_identifiers,
+               'appendix_identifiers': appendix_identifiers,
+               'header_metrics': header_metrics,
+               'qc_metrics': qc_metrics,
+               'qc_subtables': qc_subtables,
+               'qc_appendices': qc_appendices,
+               'library_sources': library_sources,
+               'libraries': libraries, 
+               'user': args.user,
+               'ticket': os.path.basename(args.ticket),
+               'md5sum': os.path.basename(md5sum_file)}
+       
+    # render template html 
+    content = template.render(context)
+
+    # save html file to disk
+    if args.keep_html:
+        html_file = os.path.join(working_dir, '{0}_run_level_data_release_report.{1}.html'.format(args.project, current_time))
+        newfile = open(html_file, 'w')
+        newfile.write(content)
+        newfile.close()
+
+    # convert html to PDF
+    report_file = os.path.join(working_dir,  '{0}_run_level_data_release_report.{1}.pdf'.format(args.project, current_time))
+    makepdf(content, report_file)
+
+    # remove figure files from disk    
+    if args.keep_html == False:
+        for i in figure_files:
+            for j in figure_files[i]:
+                if os.path.isfile(figure_files[i][j]):
+                    os.remove(figure_files[i][j])
 
 
     
@@ -6759,43 +7639,35 @@ if __name__ == '__main__':
     qc_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     qc_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
     qc_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
-    qc_parser.add_argument('-n', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
+    qc_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
     qc_parser.add_argument('-st', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     qc_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
     qc_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change')
     qc_parser.set_defaults(func=mark_files_nabu)
     
-    
-        
-    
-      
-    
-    
-    # # write a report
-    # r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
-    # r_parser.add_argument('-pr', '--project', dest='project', help='Project name as it appears in File Provenance Report', required=True)
-    # r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
-    # r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
-    # r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
-    # r_parser.add_argument('-rn', '--rundirs', dest='run_directories', nargs='*', help='List of directories with released fastqs')
-    # r_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run IDs. Include one or more run Id separated by white space. Other runs are ignored if provided')
-    # r_parser.add_argument('--exclude_miseq', dest='nomiseq', action='store_true', help='Exclude MiSeq runs if activated')
-    # r_parser.add_argument('-e', '--exclude', dest='exclude', help='File with libraries tagged for non-release. The first column is always the library. The optional second column is the run id')
-    # r_parser.add_argument('-f', '--files', dest='release_files', help='File with file names to be released')
-    # r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The optional second column is the run id')
-    # r_parser.add_argument('-fpr', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz', help='Path to File Provenance Report. Default is /scratch2/groups/gsi/production/vidarr/vidarr_files_report_latest.tsv.gz')
-    # r_parser.add_argument('-a', '--api', dest='api', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
-    # r_parser.add_argument('-px', '--prefix', dest='prefix', help='Use of prefix assumes that FPR containes relative paths. Prefix is added to the relative paths in FPR to determine the full file paths')
-    # r_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
-    # r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
-    # r_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
-    # r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
-    # r_parser.add_argument('-eq', '--emseqqc', dest='emseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest', help='Path to the emseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest')
-    # r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
-    # r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
-    # r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
-    # r_parser.add_argument('--panel', dest='add_panel', action='store_true', help='Add panel to sample if option is used. By default, panel is not added.')
-    # r_parser.set_defaults(func=write_batch_report)
+    # write a report
+    r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
+    r_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
+    r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
+    r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
+    r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
+    r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
+    r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
+    r_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
+    r_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
+    r_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
+    r_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
+    r_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
+    r_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
+    r_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
+    r_parser.add_argument('-bq', '--bamqc', dest='bamqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest', help='Path to the bamqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest')
+    r_parser.add_argument('-dq', '--dnaseqqc', dest='dnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest', help='Path to the dnaseqqc SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest')
+    r_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
+    r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
+    r_parser.add_argument('-eq', '--emseqqc', dest='emseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest', help='Path to the emseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest')
+    r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
+    r_parser.set_defaults(func=write_batch_report)
     
     
     # # write a report
