@@ -7406,17 +7406,31 @@ def write_batch_report(args):
     
     Write a PDF report with QC metrics and released fastqs for a given project
 
-    - project (str): Project name as it appears in File Provenance Report
-    - working-dir (str): Path to the directory with project directories and links to fastqs 
+    Parameters
+    ----------
+    - project (str): Project name
     - project_name (str): Project name used to create the project directory in gsi space
-    - project_code (str): Project code from MISO
-    - bamqc_db (str): Path to the bamqc db
-    - cfmedipqc_db (str): Path to the cfmedipqc db 
-    - run_directories (list): List of directories with links to fastqs
-    - provenance (str): Path to File Provenance Report.
-    - prefix (str | None): Use of prefix assumes that file paths in File Provenance Report are relative paths.
-                           Prefix is added to the relative path in FPR to determine the full file path.
-    - keep_html (bool): Writes html report to file if True
+    - projects_dir (str): Parent directory containing the project subdirectories with file links
+    - project_full_name (str): Full name of the project
+    - user (str): Name of the GSI personnel generating the report
+    - ticket (str): Jira data release ticket code
+    - provenance (str): Path to the json with production data
+    - runs (list): List of run Ids
+    - cases (list): List of case Ids
+    - libraries (str): File with libraries tagged for release.
+                       The first column is always the library.
+                       The second column is the run id.
+                       The third column optional is optional and is the lane
+    - release_files (str): File with file names or full paths of files to release
+    - analyses (str): Path to the json file storing analysis data
+    - directories (list): List of directories with links or files
+    - nabu (str): URL of the Nabu API
+    - bamqc_db (str): Path to the bamqc SQLite database
+    - dnaseqqc_db (str): Path to the dnaseqqc SQLite database
+    - cfmedipqc_db (str): Path to the cfmedip SQLite database
+    - rnaseqqc_db (str): Path to the rnaseq SQLite database
+    - emseqqc_db (str): Path to the emseq SQLite database
+    - keep_html (bool): Write html report if activated
     '''
 
     # check options
