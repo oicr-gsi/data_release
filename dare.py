@@ -19,8 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+#from weasyprint import HTML
+#from weasyprint import CSS
 import re
 
 
@@ -1783,7 +1783,6 @@ def extract_sample_info(case_data):
         lane = d['lane']
         library = d['library']
         library_design = d['libraryDesign']
-        project = d['project']
         run = d['run']
         sample_id = d['sampleId']
         tissue_origin = d['tissueOrigin']
@@ -1795,9 +1794,8 @@ def extract_sample_info(case_data):
                       'external_id': external_id, 'group_id': group_id,
                       'group_description': group_description, 'lane': lane,
                       'library': library, 'library_design': library_design,
-                      'project': project, 'run': run, 'sample_id': sample_id,
-                      'tissue_origin': tissue_origin, 'tissue_type': tissue_type,
-                      'instrument': instrument}
+                      'run': run, 'sample_id': sample_id, 'tissue_origin': tissue_origin,
+                      'tissue_type': tissue_type, 'instrument': instrument}
             
     return D            
         
@@ -1816,6 +1814,8 @@ def extract_file_info(case_data):
 
     D = {}
     
+    projects = [{i['project']: i['deliverables']} for i in case_data['project_info']]
+    
     for d in case_data['workflow_runs']:
         files = json.loads(d['files'])
         lims = d['limsIds'].split(',')
@@ -1831,7 +1831,8 @@ def extract_file_info(case_data):
             assert file not in D
             D[file] = {'lims': lims, 'workflow': workflow, 'wfrun_id': wfrun_id,
                        'version': version, 'md5sum': md5sum, 'accession': accession,
-                       'attributes': file_attributes, 'case_id': case_data['case']}
+                       'attributes': file_attributes, 'case_id': case_data['case'],
+                       'project': projects}
             
     return D                   
             
@@ -1852,10 +1853,6 @@ def add_sample_info(file_info, sample_info):
     for file in file_info:
         for limsid in file_info[file]['lims']:
             assert limsid in sample_info
-            if 'project' not in file_info[file]:
-                file_info[file]['project'] = sample_info[limsid]['project']
-            else:
-                assert file_info[file]['project'] == sample_info[limsid]['project']
             if 'samples'  not in file_info[file]:
                 file_info[file]['samples'] = [sample_info[limsid]] 
             else:
@@ -1867,19 +1864,23 @@ def add_sample_info(file_info, sample_info):
     
  
     
-def is_correct_project(project, expected_project):
+def is_correct_project(projects, expected_project):
     '''
-    (str, str) -> bool     
+    (dict, str) -> bool     
     
-    Returns True if project is expected_project
+    Returns True if expected_project is member of the projects of a case
     
     Parameters
     ----------
-    - project (str): Project of interest
+    - projects (list): List of dictionaries project: deliverables associated with a file
     - expected_project (str): Project name 
     '''
     
-    return project == expected_project
+    L = []
+    for i in projects:
+        L.extend(list(i.keys()))
+        
+    return expected_project in L
             
  
     
@@ -3881,6 +3882,77 @@ def makepdf(html, outputfile):
 
 
 
+def create_nabu_signoff(cases, nabu_key_file, user_name, ticket, signoff_step_name, deliverable, deliverable_type, nabu='https://nabu.gsi.oicr.on.ca/case/sign-off'):
+    '''
+    (list, str, str) -> dict
+    
+    Creates a signoff record  in Nabu at signoff_step_name for the deliverable and deliverable_type,
+    identifying the user and the ticket, for all the case. Returns the response as a json       
+        
+    Parameters
+    ----------
+    - cases (list): List of case identifiers
+    - nabu_key_file (str): File storing the nabu API key
+    - user_name (str):
+    - ticket (str): 
+    - signoff_step_name (str): 
+    - deliverable (str):
+    - deliverable_type (str):
+    - nabu (str) URL to access the signoffs in Nabu
+    '''
+    
+    infile = open(nabu_key_file)
+    nabu_key = infile.read().rstrip()
+    infile.close()
+    
+    headers = {
+        'accept': 'application/json',
+        'X-API-KEY': nabu_key,
+        'Content-Type': 'application/json',
+    }
+
+    json_data = {'caseIdentifiers': cases,
+                 'qcPassed': True,
+                 'username': user_name,
+                 'signoffStepName': 'RELEASE',
+                 'deliverableType': 'Data Release',
+                 'deliverable': deliverable,
+                 'comment': ticket,
+                 'release': True}
+
+
+    response = requests.post(nabu, headers=headers, json=json_data)
+
+    return response
+
+
+
+def get_deliverables(file_info):
+    '''
+    (dict) -> dict
+    
+    Returns a list of deliverables for each case in file_info
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with file information
+    '''
+    
+    deliverables = {}
+    for file in file_info:
+        case_id = file_info[file]['case_id']
+        if case_id not in deliverables:
+            deliverables[case_id] = []
+        for d in file_info[file]['project']:
+            v = list(d.values())
+            for i in v:
+                deliverables[case_id].extend(i.split(','))
+        deliverables[case_id] = list(set(deliverables[case_id]))
+
+    return deliverables
+
+
+
 def link_files(args):
     '''
     (str, str, str, str, str | None, list | None, list | None, List | None, str | None, str | None ) -> None
@@ -4034,7 +4106,10 @@ def map_external_ids(args):
         # keep only fastq files
         if linked_files:
             linked_files = [i for i in linked_files if 'fastq.gz' in i]
-        file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+            if linked_files:
+                file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+            else:
+                file_info = {}
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
@@ -4047,7 +4122,7 @@ def map_external_ids(args):
         if release_files:
             release_files = [i for i in release_files if 'fastq.gz' in i]
         file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
-        print('extracted data for {0} files'.format(len(file_info))) 
+    print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
     sample_map = write_sample_map(args.project, file_info, working_dir)
@@ -4128,8 +4203,10 @@ def mark_files_nabu(args):
         # list path of target files if files are links
         for directory in args.directories:
             linked_files.extend(list_files(directory))
-        file_info = extract_data(provenance_data, args.project, release_files=linked_files)
-
+        if linked_files:
+            file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+        else:
+            file_info = {}
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
@@ -4139,14 +4216,142 @@ def mark_files_nabu(args):
         if args.release_files:
             release_files = get_release_files(args.release_files)
         file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
-        print('extracted data for {0} files'.format(len(file_info))) 
+    print('extracted data for {0} files'.format(len(file_info))) 
 
     # make a list of swids
-    swids = [file_info[i]['accession'] for i in file_info]
-    # mark files in nabu
-    change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.ticket)
+    if file_info:
+        swids = [file_info[i]['accession'] for i in file_info]
+        # mark files in nabu
+        change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.ticket)
 
 
+def case_signoff(args):
+    '''
+    (str, str, str, list|None, List|None,
+     list|None, str|None, str|None, list|None,
+     str|None, str, str, str) -> None
+    
+    Signoff case record in Nabu for specfific deliverable
+    
+    Parameters
+    ----------    
+    - provenance (str): Path to json with production data. Default is
+                        /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
+    - project (str): Project of interest
+    - workflows (list | None): List of workflows generating the data to release
+    - cases (List | None): List of case Ids
+    - runs (list | None): List of run Ids
+    - libraries (str | None): File with libraries tagged for release
+    - release_files (str | None): File with file names or full paths of files to release
+    - analyses (str | None): Path to the json file storing analysis data
+    - directories (list | None): List of directories with links or files to mark in Nabu
+    - user_name (str): Name of user
+    - ticket (str): Jira ticket
+    - nabu (str): URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca
+    - nabu_key (str): Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key
+    - deliverable (str): Deliverable. Choice is FastQ
+    - signoff_step_name (str): Signoff step. Default is RELEASE
+    - deliverable_type (str): Deliverable type. Default is Data Release
+    '''
+    
+    # check options
+    if args.release_files:
+        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        if any(a):
+            c = ['-w', '-r', '-c', '-l', '-a', '-d']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-f cannot be used with options {0}'.format(err))
+    elif args.analyses:
+        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories]
+        if any(a):
+            c = ['-f', '-w', '-r', '-c', '-l', '-d']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-a cannot be used with options {0}'.format(err))
+    elif args.directories:
+        # check that all directories are valid
+        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
+            sys.exit('Please provide valid directories with -d')        
+        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses]
+        if any(a):
+            c = ['-f', '-w', '-r', '-c', '-l', '-a']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-d cannot be used with options {0}'.format(err))
+    else:
+        if not args.workflows:
+            sys.exit('Use -w to indicate the pipeline workflows')
+        if args.runs and args.libraries:
+           sys.exit('-r and -l are exclusive parameters')    
+    
+
+    # get the files to mark
+    # load data
+    provenance_data = load_data(args.provenance)
+    print('loaded data')
+    # clean up data
+    provenance_data, deleted_cases = clean_up_provenance(provenance_data)
+    print('removed {0} incomplete cases'.format(deleted_cases))
+    
+    if args.directories:
+        # list of the linked files
+        linked_files = []
+        # list all files in directories and subdirectories
+        # list path of target files if files are links
+        for directory in args.directories:
+            linked_files.extend(list_files(directory))
+        # keep only fastq files
+        if linked_files:
+            linked_files = [i for i in linked_files if 'fastq.gz' in i]
+            if linked_files:
+                file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+            else:
+                file_info = {}
+    else:
+        # extract data to release
+        libraries = get_libraries(args.libraries)
+        release_files = []
+        if args.analyses:
+            release_files = get_analysis_files(args.analyses)
+        if args.release_files:
+            release_files = get_release_files(args.release_files)
+        if release_files:
+            release_files = [i for i in release_files if 'fastq.gz' in i]
+            if release_files:
+                file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+            else:
+                file_info = {}
+        else:
+            file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        print('extracted data for {0} files'.format(len(file_info))) 
+
+        # get end-point
+        if args.nabu[-1] == '/':
+            api = args.nabu + 'case/sign-off'
+        else:
+            api = args.nabu + '/case/sign-off'
+        
+    # list deliverables for each case
+    cases = get_deliverables(file_info)
+    if cases:
+        print('Signing off for {0} cases at step {1} for deliverable {2} of {3}'.format(len(cases), args.signoff_step_name, args.deliverable, args.deliverable_type))
+        
+        # list cases with expected deliverables
+        signoff_cases = [i for i in cases if args.deliverable in cases[i]]
+               
+        # check that all expected cases have the correct deliverables
+        if sorted(list(cases.keys())) == sorted(signoff_cases):
+            # proceed to signoff
+            response = create_nabu_signoff(signoff_cases, args.nabu_key_file, args.user_name, args.ticket, args.signoff_step_name, args.deliverable, args.deliverable_type, api)
+            # check the response
+            if response.ok:
+                for i in response.json():
+                    print('Signed off {0} for {1} deliverable at \
+                          step {2} for cases: {3}'.format(args.deliverable_type,
+                          args.deliverable, args.signoff_step_name, ','.join(cases)))
+            else:
+                print('Could not proceed with the signoff. Status code is {0}'.format(response.status_code))
+        else:
+            print('Only {0} cases out of {1} cases with released files have the expected deliverable'.format(len(signoff_cases), len(cases)))
+            
 
 
 def write_batch_report(args):
@@ -4407,9 +4612,31 @@ if __name__ == '__main__':
     qc_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
     qc_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
     qc_parser.add_argument('-st', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
-    qc_parser.add_argument('-u', '--user', dest='user', help='User name to appear in Nabu for each released or whitheld file', required=True)
-    qc_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change')
+    qc_parser.add_argument('-u', '--user', dest='user', help='Name of user', required=True)
+    qc_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change', required=True)
     qc_parser.set_defaults(func=mark_files_nabu)
+    
+    
+    # signoff cases in nabu 
+    s_parser = subparsers.add_parser('signoff', help="Create case signoff in Nabu")
+    s_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
+    s_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
+    s_parser.add_argument('-w', '--workflows', dest='workflows', nargs='*', help='List of workflows')
+    s_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    s_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
+    s_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
+    s_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
+    s_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
+    s_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
+    s_parser.add_argument('-u', '--user', dest='user_name', help='Name of user', required=True)
+    s_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change', required=True)
+    s_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
+    s_parser.add_argument('-nk', '--nabu_key', dest='nabu_key', default='/.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key', help='Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key')
+    s_parser.add_argument('-d', '--deliverable', dest='deliverable', default='FastQ', choices=['FastQ'], help='Deliverable', required=True)
+    s_parser.add_argument('-s', '--signoff_step', dest='signoff_step_name', default='RELEASE', choices=['RELEASE'], help='Signoff step. Default is RELEASE', required=True)
+    s_parser.add_argument('-dt', '--deliverable_type', dest='deliverable_type', default='Data Release', choices=['Data Release'], help='Deliverable type. Default is Data Release', required=True)
+    s_parser.set_defaults(func=case_signoff)
+    
     
     # write a report
     r_parser = subparsers.add_parser('report', help="Write a PDF report for released FASTQs")
