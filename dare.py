@@ -19,8 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-#from weasyprint import HTML
-#from weasyprint import CSS
+from weasyprint import HTML
+from weasyprint import CSS
 import re
 
 
@@ -4006,7 +4006,7 @@ def link_files(args):
     print('loaded data')
     # clean up data
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
-    print('removed {0} incomplete cases'.format(deleted_cases))
+    print('removed {0} incomplete cases'.format(len(deleted_cases)))
     # extract data to release
     libraries = get_libraries(args.libraries)
     release_files = []
