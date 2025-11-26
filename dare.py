@@ -2050,6 +2050,8 @@ def select_files(file_info, project, workflows=None, runs = None, cases = None, 
             # evaluating file names
             to_remove = [i for i in file_info if os.path.basename(i) not in release_files or is_correct_project(file_info[i]['project'], project) == False]
         elif all(map(lambda x: os.path.dirname(x), release_files)):
+            # dereference links
+            release_files = list(map(lambda x: os.path.realpath(x), release_files))
             # evaluating full paths
             to_remove = [i for i in file_info if i not in release_files or is_correct_project(file_info[i]['project'], project) == False]    
     else:
