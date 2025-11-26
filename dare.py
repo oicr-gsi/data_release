@@ -2381,7 +2381,7 @@ def get_release_files(release_files):
 
 def generate_links(file_info, project_dir):
     '''
-    (dict, str, str) -> None
+    (dict, str) -> None
     
     Link files in case and workflow subdirectories of the project directory
         
@@ -2400,6 +2400,7 @@ def generate_links(file_info, project_dir):
         os.makedirs(case_dir, exist_ok=True)
         donor = list(set([d['donor'] for d in file_info[file]['samples']]))
         assert len(donor) == 1
+        donor = donor[0]
         donor_dir = os.path.join(case_dir, donor)
         os.makedirs(donor_dir, exist_ok=True)
         if workflow in sequencing_workflows:
@@ -2407,6 +2408,7 @@ def generate_links(file_info, project_dir):
             os.makedirs(workflow_dir, exist_ok=True)
             run = list(set([d['run'] for d in file_info[file]['samples']]))
             assert len(run) == 1
+            run = run[0]
             run_dir = os.path.join(workflow_dir, run + '.fastqs')
             os.makedirs(run_dir, exist_ok=True)
             filename = os.path.basename(file)
@@ -4632,7 +4634,7 @@ if __name__ == '__main__':
     s_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change', required=True)
     s_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
     s_parser.add_argument('-nk', '--nabu_key', dest='nabu_key', default='/.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key', help='Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key')
-    s_parser.add_argument('-d', '--deliverable', dest='deliverable', default='FastQ', choices=['FastQ'], help='Deliverable', required=True)
+    s_parser.add_argument('-dv', '--deliverable', dest='deliverable', default='FastQ', choices=['FastQ'], help='Deliverable', required=True)
     s_parser.add_argument('-s', '--signoff_step', dest='signoff_step_name', default='RELEASE', choices=['RELEASE'], help='Signoff step. Default is RELEASE', required=True)
     s_parser.add_argument('-dt', '--deliverable_type', dest='deliverable_type', default='Data Release', choices=['Data Release'], help='Deliverable type. Default is Data Release', required=True)
     s_parser.set_defaults(func=case_signoff)
