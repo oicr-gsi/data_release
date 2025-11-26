@@ -2424,9 +2424,9 @@ def generate_links(file_info, project_dir):
 
 
 
-def change_nabu_status(api, file_swids, qc_status, user_name, ticket=None):
+def change_nabu_status(api, file_swids, qc_status, user_name, ticket):
     '''
-    (str, list, str, str, str | None) -> None
+    (str, list, str, str, str) -> None
     
     Modifies the file qc status in Nabu to qc_status, the username to user_name
     and comment to ticket if used 
@@ -2448,9 +2448,7 @@ def change_nabu_status(api, file_swids, qc_status, user_name, ticket=None):
     headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
     json_data = {'fileqcs': []}
     for file_swid in file_swids:
-        d = {'fileid': file_swid, 'qcstatus': qc_status, 'username': user_name}
-        if ticket:
-            d['comment'] = ticket    
+        d = {'fileid': file_swid, 'qcstatus': qc_status, 'username': user_name, 'comment': ticket}    
         json_data['fileqcs'].append(d)
          
     response = requests.post(api, headers=headers, json=json_data)
@@ -4224,7 +4222,7 @@ def mark_files_nabu(args):
     if file_info:
         swids = [file_info[i]['accession'] for i in file_info]
         # mark files in nabu
-        change_nabu_status(args.nabu, swids, args.status.upper(), args.user, comment=args.ticket)
+        change_nabu_status(args.nabu, swids, args.status.upper(), args.user, args.ticket)
 
 
 def case_signoff(args):
@@ -4612,7 +4610,7 @@ if __name__ == '__main__':
     qc_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     qc_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
     qc_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
-    qc_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
+    qc_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     qc_parser.add_argument('-st', '--status', dest='status', choices = ['fail', 'pass'], help='Mark files accordingly when released or withheld', required = True)
     qc_parser.add_argument('-u', '--user', dest='user', help='Name of user', required=True)
     qc_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change', required=True)
