@@ -3955,6 +3955,39 @@ def get_deliverables(file_info):
 
 
 
+def keep_files_for_deliverable(file_info, deliverable):
+    '''
+    (dict, str) -> dict
+    
+    Returns the dictionary of file information keeping only the files
+    corresponding to the deliverable
+    
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with file information
+    - deliverable (str): Deliverable associated with the case (FastQ or Full Pipeline)
+    '''
+    
+    # keep opnly files corresponding to deliverable
+    fastqs = [i for i in file_info if 'fastq.gz' in i] 
+    analysis_files = [i for i in file_info if 'fastq.gz' not in i]
+    if deliverable == 'FastQ':
+        print('{0}/{1} are fastq files'.format(len(fastqs), len(file_info)))
+        if analysis_files:
+            print('removing {0} analysis files'.format(len(analysis_files)))
+            for i in analysis_files:
+                del file_info[i]
+    elif deliverable == 'Full Pipeline':
+        print('{0}/{1} are analysis files'.format(len(analysis_files), len(file_info)))
+        if fastqs:
+            print('removing {0} fastqs'.format(len(fastqs)))
+            for i in fastqs:
+                del file_info[i]
+
+    return file_info
+
+
+
 def link_files(args):
     '''
     (str, str, str, str, str | None, list | None, list | None, List | None, str | None, str | None ) -> None
@@ -4300,13 +4333,10 @@ def case_signoff(args):
         # list path of target files if files are links
         for directory in args.directories:
             linked_files.extend(list_files(directory))
-        # keep only fastq files
         if linked_files:
-            linked_files = [i for i in linked_files if 'fastq.gz' in i]
-            if linked_files:
-                file_info = extract_data(provenance_data, args.project, release_files=linked_files)
-            else:
-                file_info = {}
+            file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+        else:
+            file_info = {}
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
@@ -4315,14 +4345,7 @@ def case_signoff(args):
             release_files = get_analysis_files(args.analyses)
         if args.release_files:
             release_files = get_release_files(args.release_files)
-        if release_files:
-            release_files = [i for i in release_files if 'fastq.gz' in i]
-            if release_files:
-                file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
-            else:
-                file_info = {}
-        else:
-            file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
         print('extracted data for {0} files'.format(len(file_info))) 
 
         # get end-point
@@ -4330,12 +4353,19 @@ def case_signoff(args):
             api = args.nabu + 'case/sign-off'
         else:
             api = args.nabu + '/case/sign-off'
-        
+    
     # list deliverables for each case
     cases = get_deliverables(file_info)
+    print('identified {0} cases for {1} signoff'.format(len(cases), args.deliverable))
+    # keep opnly files corresponding to deliverable
+    file_info = keep_files_for_deliverable(file_info, args.deliverable)
+    # list deliverables for each case
+    cases = get_deliverables(file_info)
+    print('keeping {0} cases for {1} signoff'.format(len(cases), args.deliverable))
+    
+    
     if cases:
         print('Signing off for {0} cases at step {1} for deliverable {2} of {3}'.format(len(cases), args.signoff_step_name, args.deliverable, args.deliverable_type))
-        
         # list cases with expected deliverables
         signoff_cases = [i for i in cases if args.deliverable in cases[i]]
                
@@ -4632,9 +4662,9 @@ if __name__ == '__main__':
     s_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
     s_parser.add_argument('-u', '--user', dest='user_name', help='Name of user', required=True)
     s_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change', required=True)
-    s_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca', required=True)
+    s_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
     s_parser.add_argument('-nk', '--nabu_key', dest='nabu_key', default='/.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key', help='Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key')
-    s_parser.add_argument('-dv', '--deliverable', dest='deliverable', default='FastQ', choices=['FastQ'], help='Deliverable', required=True)
+    s_parser.add_argument('-dv', '--deliverable', dest='deliverable', choices=['FastQ', 'Full Pipeline'], help='Deliverable', required=True)
     s_parser.add_argument('-s', '--signoff_step', dest='signoff_step_name', default='RELEASE', choices=['RELEASE'], help='Signoff step. Default is RELEASE', required=True)
     s_parser.add_argument('-dt', '--deliverable_type', dest='deliverable_type', default='Data Release', choices=['Data Release'], help='Deliverable type. Default is Data Release', required=True)
     s_parser.set_defaults(func=case_signoff)
