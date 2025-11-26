@@ -4095,7 +4095,7 @@ def map_external_ids(args):
     print('loaded data')
     # clean up data
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
-    print('removed {0} incomplete cases'.format(deleted_cases))
+    print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     
     if args.directories:
@@ -4196,7 +4196,7 @@ def mark_files_nabu(args):
     print('loaded data')
     # clean up data
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
-    print('removed {0} incomplete cases'.format(deleted_cases))
+    print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     if args.directories:
         # list of the linked files
@@ -4291,7 +4291,7 @@ def case_signoff(args):
     print('loaded data')
     # clean up data
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
-    print('removed {0} incomplete cases'.format(deleted_cases))
+    print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     if args.directories:
         # list of the linked files
