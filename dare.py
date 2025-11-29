@@ -4466,7 +4466,15 @@ def write_batch_report(args):
         # keep only fastq files
         if linked_files:
             linked_files = [i for i in linked_files if 'fastq.gz' in i]
-        file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+            if linked_files:
+                file_info = extract_data(provenance_data, args.project, release_files=linked_files)
+            else:
+                file_info = {}
+                print('Expecting fastqs in directories, but found none')
+        else:
+            file_info = {}
+            print('Expecting fastqs in directories, but found none')
+
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
@@ -4478,7 +4486,13 @@ def write_batch_report(args):
         # keep only the fastq files 
         if release_files:
             release_files = [i for i in release_files if 'fastq.gz' in i]
-        file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+            if release_files:
+                file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+            else:
+                file_info = {}
+                print('Expecting fastqs but found none')
+        else:
+            file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
         print('extracted data for {0} files'.format(len(file_info))) 
 
     # write sample map
