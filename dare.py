@@ -3128,7 +3128,7 @@ def add_file_prefix(file_info):
 
     for file in file_info:
         prefix = get_file_prefix(file)
-        file_info['prefix'] = prefix
+        file_info[file]['prefix'] = prefix
 
 
 def find_fastq_pairs(file_info, platform):
