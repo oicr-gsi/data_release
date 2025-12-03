@@ -1778,8 +1778,14 @@ def extract_sample_info(case_data):
         barcode = d['barcode']
         donor = d['donor']
         external_id = d['externalId']
-        group_id = d['groupId']
-        group_description = d['groupDesc']
+        if d['groupId']:
+            group_id = d['groupId']
+        else:
+            group_id = 'NA'
+        if d['groupDesc']:
+            group_description = d['groupDesc']
+        else:
+            group_description = 'NA'
         lane = d['lane']
         library = d['library']
         library_design = d['libraryDesign']
@@ -2295,13 +2301,13 @@ def write_sample_map(project, file_info, working_dir):
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(project, current_time, 'fastqs'))
     newfile = open(outputfile, 'w')
-    header = ['oicr_case', 'oicr_donor', 'donor_id', 'library_id', 'library_type', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'sample_id', 'sample_description', 'files']
+    header = ['oicr_case', 'oicr_donor', 'donor_id', 'library_id', 'library_type', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'sample_id', 'files']
     
     newfile.write('\t'.join(header) + '\n')
     # make a list of sorted samples
     keys = sorted(list(sample_info.keys()))
     for k in keys:
-        files = ';'.join(list(map(lambda x: os.path.basename(x), sample_info[k]['files'])))
+        files = ';'.join(sorted(list(map(lambda x: os.path.basename(x), sample_info[k]['files']))))
         info = sample_info[k]['info']
         info.append(files)        
         newfile.write('\t'.join(list(map(lambda x: str(x), info))) + '\n')
@@ -2819,7 +2825,8 @@ def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
     barcode = file_info[file]['samples'][0]['barcode']     
     lane = file_info[file]['samples'][0]['lane']
     library_design = file_info[file]['samples'][0]['library_design']
-    
+    read_count = int(file_info[file]['attributes']['read_count'][0])
+        
     if library_design ==' CM' and limskey in cfmedipqc_info:
         assert limskey == cfmedipqc_info[limskey]['Pinery Lims ID']
         assert lane == cfmedipqc_info[limskey]['Lane Number']
@@ -2827,14 +2834,16 @@ def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
         assert run == cfmedipqc_info[limskey]['Run Alias']
         qc_found = True
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'AT_dropout': cfmedipqc_info[limskey]['AT Dropout'],
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      'AT_dropout': cfmedipqc_info[limskey]['AT Dropout'],
                                       'methylation_beta': cfmedipqc_info[limskey]['Methylation beta'],
                                       'duplication': cfmedipqc_info[limskey]['Percent Duplication'],
                                       'CpG_enrichment': cfmedipqc_info[limskey]['Relative CpG Frequency in Regions']}
     
     if library_design == 'CM' and qc_found == False:
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'AT_dropout': 'NA',
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      'AT_dropout': 'NA',
                                       'methylation_beta': 'NA',
                                       'duplication': 'NA',
                                       'CpG_enrichment': 'NA'}
@@ -2864,7 +2873,8 @@ def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
     barcode = file_info[file]['samples'][0]['barcode']     
     lane = file_info[file]['samples'][0]['lane']
     library_design = file_info[file]['samples'][0]['library_design']
-    
+    read_count = int(file_info[file]['attributes']['read_count'][0])
+        
     # check that limskey in recorded in rnaseqqc_db
     if library_design == 'WT' and limskey in rnaseqqc_info:
         assert limskey == rnaseqqc_info[limskey]['Pinery Lims ID']
@@ -2873,14 +2883,16 @@ def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
         assert run == rnaseqqc_info[limskey]['Run Alias']
         qc_found = True
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {"5'-3' bias": rnaseqqc_info[limskey]['MEDIAN_5PRIME_TO_3PRIME_BIAS'],
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      "5'-3' bias": rnaseqqc_info[limskey]['MEDIAN_5PRIME_TO_3PRIME_BIAS'],
                                       'rRNA contamination': round((rnaseqqc_info[limskey]['rrna contamination properly paired'] / rnaseqqc_info[limskey]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3),
                                       'Coding (%)': rnaseqqc_info[limskey]['PCT_CODING_BASES'],
                                       'Correct strand reads (%)': rnaseqqc_info[limskey]['PCT_CORRECT_STRAND_READS']}
     
     if library_design == 'WT' and qc_found == False:
         assert 'metrics' not in file_info[file]    
-        file_info[file]['metrics'] = {"5'-3' bias": 'NA',
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      "5'-3' bias": 'NA',
                                       'rRNA contamination': 'NA',
                                       'Coding (%)': 'NA',
                                       'Correct strand reads (%)': 'NA'}
@@ -2911,7 +2923,8 @@ def add_bamqc_metrics(file_info, file, bamqc_info):
     group_id = file_info[file]['samples'][0]['group_id']
     library = file_info[file]['samples'][0]['library']
     instrument = file_info[file]['samples'][0]['instrument']
-     
+    read_count = int(file_info[file]['attributes']['read_count'][0])
+        
     excluded_libraries = ['CM', 'WT', 'MC', 'MG']
     
     # check that limskey in recorded in bamqc
@@ -2926,14 +2939,16 @@ def add_bamqc_metrics(file_info, file, bamqc_info):
         assert instrument  == bamqc_info[limskey]['instrument']
         qc_found = True
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'coverage': round(bamqc_info[limskey]['coverage'], 2),
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      'coverage': round(bamqc_info[limskey]['coverage'], 2),
                                       'coverage_dedup': round(bamqc_info[limskey]['coverage deduplicated'], 2),
                                       'on_target': round(bamqc_info[limskey]['on_target'], 2),
                                       'percent_duplicate': round(bamqc_info[limskey]['mark duplicates_PERCENT_DUPLICATION'], 2)}
         
     if library_design not in excluded_libraries and qc_found == False:
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'coverage': 'NA',
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      'coverage': 'NA',
                                       'coverage_dedup': 'NA',
                                       'on_target': 'NA',
                                       'percent_duplicate': 'NA'}
@@ -2960,6 +2975,7 @@ def add_emseqqc_metrics(file_info, file, emseqqc_info):
     barcode = file_info[file]['samples'][0]['barcode']     
     lane = file_info[file]['samples'][0]['lane']
     library_design = file_info[file]['samples'][0]['library_design']
+    read_count = int(file_info[file]['attributes']['read_count'][0])
     
     # check that limskey has qc
     if library_design in ['MC', 'MG'] and limskey in emseqqc_info:
@@ -2969,17 +2985,39 @@ def add_emseqqc_metrics(file_info, file, emseqqc_info):
         assert run == emseqqc_info[limskey]['Run Alias']
         qc_found = True
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'Lambda_methylation': emseqqc_info[limskey]['Lambda'],
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      'Lambda_methylation': emseqqc_info[limskey]['Lambda'],
                                       'pUC19_methylation': emseqqc_info[limskey]['pUC19'],
                                       'percent_duplication': emseqqc_info[limskey]['mark duplicates_PERCENT_DUPLICATION']}
         
     if library_design in ['MC', 'MG'] and qc_found == False:
         assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'Lambda_methylation': 'NA',
+        file_info[file]['metrics'] = {'read_count': read_count,
+                                      'Lambda_methylation': 'NA',
                                       'pUC19_methylation': 'NA',
                                       'percent_duplication': 'NA'}
           
         
+
+def add_read_count(file_info, file):
+    '''
+    (dict, str) -> None
+      
+    Records read count metrics  
+           
+    Parameters
+    ----------
+    - file_info (dict): Dictionary with information about the released fastqs
+    - file (str): File path
+    '''
+        
+    read_count = int(file_info[file]['attributes']['read_count'][0]) 
+    
+    if 'metrics' not in file_info[file]:
+        file_info[file]['metrics'] = {}
+    file_info[file]['metrics']['read_count'] = read_count
+    
+
 
 def add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info):
     '''
@@ -3007,7 +3045,9 @@ def add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc
             add_bamqc_metrics(file_info, file, bamqc_info)
         elif library_design in ['MC', 'MG']:
             add_emseqqc_metrics(file_info, file, emseqqc_info)              
-
+        else:
+            add_read_count(file_info, file)
+            
 
 
 def map_library_design_to_instrument(file_info):
@@ -3030,7 +3070,9 @@ def map_library_design_to_instrument(file_info):
             if library_design not in library_designs:
                 library_designs[library_design] = []
             library_designs[library_design].append(instrument)
-            library_designs[library_design] = sorted(list(library_designs[library_design]))
+    
+    for i in library_designs:
+        library_designs[i] = sorted(list(set(library_designs[i])))
                                                           
     return library_designs            
         
@@ -3145,24 +3187,26 @@ def find_fastq_pairs(file_info, platform):
     = platform (str): Sequencing instrument
     '''
      
+    found = []
+    
     # make a list with dictionaries of file info
     L = []
     for file1 in file_info:
         for file2 in file_info:
-            if file1 != file2 and file_info[file1]['wfrun_id'] == file_info[file2]['wfrun_id']:
-                assert file_info[file1]['metrics'] == file_info[file2]['metrics']
-                assert file_info[file1]['prefix'] == file_info[file2]['prefix']
-                read_num = [[file1, int(file_info[file1]['attributes']['read_number'][0])],
-                            [file2, int(file_info[file2]['attributes']['read_number'][0])]]
-                read_num.sort(key=lambda x: x[1])
-                assert file_info[file1]['samples'][0]['instrument'] == file_info[file2]['samples'][0]['instrument']
-                if file_info[file1]['samples'][0]['instrument'] == platform:
-                    L.append([{read_num[0][0]: file_info[read_num[0][0]]},
-                              {read_num[1][0]: file_info[read_num[1][0]]}])
-                    
+            if file1 not in found and file2 not in found:
+                if file1 != file2 and file_info[file1]['wfrun_id'] == file_info[file2]['wfrun_id']:
+                    assert file_info[file1]['metrics'] == file_info[file2]['metrics']
+                    assert file_info[file1]['prefix'] == file_info[file2]['prefix']
+                    read_num = [[file1, int(file_info[file1]['attributes']['read_number'][0])],
+                                [file2, int(file_info[file2]['attributes']['read_number'][0])]]
+                    read_num.sort(key=lambda x: x[1])
+                    assert file_info[file1]['samples'][0]['instrument'] == file_info[file2]['samples'][0]['instrument']
+                    if file_info[file1]['samples'][0]['instrument'] == platform:
+                        L.append([{read_num[0][0]: file_info[read_num[0][0]]},
+                                  {read_num[1][0]: file_info[read_num[1][0]]}])
+                        found.extend([file1, file2])
+                        break
     return L
-
-
 
 
 def get_run_level_metrics(file_info, platform, library_source):
@@ -3181,7 +3225,7 @@ def get_run_level_metrics(file_info, platform, library_source):
     
     # get the list of metrics of interest 
     metrics = get_library_metrics(library_source)
-        
+     
     # find fastq pairs
     L = find_fastq_pairs(file_info, platform)
     
@@ -3193,8 +3237,8 @@ def get_run_level_metrics(file_info, platform, library_source):
         file = list(i[0].keys())[0]
         if i[0][file]['samples'][0]['library_design'] == library_source:
             for j in range(len(metrics)):
-                QC_metrics[j].append(i[0][file]['metrics'][j])            
-           
+                QC_metrics[j].append(i[0][file]['metrics'][metrics[j]])            
+    
     return QC_metrics                 
 
 
@@ -3418,7 +3462,7 @@ def generate_library_platform_figure(file_info, project, library_source, platfor
         subplots = count_subplots(QC_metrics) 
         # determine the position of each subplot
         subplot_pos = get_subplot_position(QC_metrics)
-    
+            
         # get the Y axis labels
         Y_axis = get_Y_axis_labels(library_source)
                 
@@ -3464,8 +3508,6 @@ def generate_report_plots(file_info, project, library_designs, working_dir):
             figure_files[library_source][platform] = figure
 
     return figure_files
-
-
 
 
 
@@ -3529,9 +3571,6 @@ def fit_into_column(text):
     return text
 
 
-
-
-
 def group_sample_metrics(file_info, table):
     '''
     (dict, str) -> dict 
@@ -3564,7 +3603,6 @@ def group_sample_metrics(file_info, table):
             library_design = i[0][file]['samples'][0]['library_design']
             prefix = i[0][file]['prefix']
             group_id = i[0][file]['samples'][0]['group_id']
-            group_description =  i[0][file]['samples'][0]['group_description']
             run =  i[0][file]['samples'][0]['run']
             case_id = i[0][file]['case_id']
             external_name = i[0][file]['samples'][0]['external_id']      
@@ -3587,19 +3625,17 @@ def group_sample_metrics(file_info, table):
                 sample = fit_into_column(sample)
             if len(group_id) >= max_length:
                 group_id = fit_into_column(group_id)
-            if len(group_description) >= max_length:
-                group_description = fit_into_column(group_description)
-                        
+                                    
             if table == 'sample_identifiers':
-                L = [case_id, library, donor, external_name, group_id, group_description, library_design, tissue_origin, tissue_type]
+                L = [case_id, library, donor, external_name, group_id, library_design, tissue_origin, tissue_type]
             elif table == 'qc_metrics':
                 metrics = get_library_metrics(library_design)
                 QC_metrics = []
                 for metric in metrics:
                     if metric == 'read_count':
-                        QC_metrics.append('{:,}'.format(i[0]['read_count']))
+                        QC_metrics.append('{:,}'.format(i[0][file]['metrics'][metric]))
                     else:
-                        QC_metrics.append(i[0][metric])
+                        QC_metrics.append(i[0][file]['metrics'][metric])
                 L = [library, prefix]
                 L.extend(QC_metrics)
                 
@@ -3764,7 +3800,6 @@ def get_identifiers_appendix(file_info, report):
              'Case Id: OICR-generated donor identifier',
              'Donor Id: user supplied donor identifier',
              'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
-             'Sample Description: a description of the Sample Id',
              'Library Type (LT): {0}'.format(D['Library Type']),
              'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
              'Tissue Type (TT): {0}'.format(D['Tissue Type'])]         
@@ -3773,7 +3808,6 @@ def get_identifiers_appendix(file_info, report):
              'Donor Id: user supplied donor identifier',
              'OICR Sample Id: The OICR generated sample identifier. The sample Id is formed from the following: 1. Case Id, 2. Tissue Origin, 3. Tissue Type, 4. Library Type and 5. User supplied Sample Id',
              'Sample Id: user supplied sample, this distinguishes distinct samples of the same type from the same donor. If only one sample per donor is submitted the value may match the donor Id',
-             'Sample Description: a description of the Sample Id',
              'Library Type (LT): {0}'.format(D['Library Type']),
              'Tissue Origin (TO): {0}'.format(D['Tissue Origin']),
              'Tissue Type (TT): {0}'.format(D['Tissue Type'])]
@@ -3985,6 +4019,55 @@ def keep_files_for_deliverable(file_info, deliverable):
                 del file_info[i]
 
     return file_info
+
+
+def collect_qc_metrics(library_designs, bamqc_db, dnaseqqc_db, rnaseqqc_db, emseqqc_db, cfmedipqc_db):
+    '''
+    (list, str, str, str, str, str) -> list
+    
+    Returns a list of dictionaries with QC metrics extracted from the various caches
+        
+    Parameters
+    ----------
+    - bamqc_db (str): Path to the bamqc SQLite database
+    - dnaseqqc_db (str): Path to the dnaseqqc SQLite database
+    - rnaseqqc_db (str): Path to the rnaseq SQLite database
+    - emseqqc_db (str): Path to the emseq SQLite database
+    - cfmedipqc_db (str): Path to the cfmedip SQLite database
+    '''
+    
+    
+    if 'CM' in library_designs:
+        # collect information from cfmedip table
+        cfmedipqc_info = extract_cfmedipqc_data(cfmedipqc_db)
+    else:
+        cfmedipqc_info = {}
+
+
+    if 'WT' in library_designs:
+        # collect information from rnaseq table
+        rnaseqqc_info = extract_rnaseqqc_data(rnaseqqc_db)
+    else:
+        rnaseqqc_info = {}
+
+    if 'MC' in library_designs or 'MG' in library_designs:
+        # collect information from emseq cache
+        emseqqc_info = extract_emseqqc_data(emseqqc_db)    
+    else:
+        emseqqc_info = {}
+
+    if 'WG' in library_designs or 'EX' in library_designs \
+        or 'TS' in library_designs or 'PG' in library_designs:
+            # collect information from bamqc table
+            bamqc = extract_bamqc_data(bamqc_db)
+            # collect information from dnaseqqc table
+            dnaseqqc = extract_bamqc_data(dnaseqqc_db)
+            # merge bamqc and dnaseqc
+            bamqc_info = merge_bamqc_dnaseqc(bamqc, dnaseqqc)    
+    else:
+        bamqc_info = {}
+
+    return bamqc_info, rnaseqqc_info, emseqqc_info, cfmedipqc_info
 
 
 
@@ -4454,7 +4537,7 @@ def write_batch_report(args):
     print('loaded data')
     # clean up data
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
-    print('removed {0} incomplete cases'.format(deleted_cases))
+    print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     if args.directories:
         # list of the linked files
@@ -4510,31 +4593,24 @@ def write_batch_report(args):
     # count the number of fastq files by instrument and run
     fastq_counts = count_released_fastqs_by_instrument(file_info)
     all_released_files = sum([len(fastq_counts[instrument][run]) for instrument in fastq_counts for run in fastq_counts[instrument]])
-
-    # collect information from bamqc table
-    bamqc = extract_bamqc_data(args.bamqc_db)
-    # collect information from dnaseqqc table
-    dnaseqqc = extract_bamqc_data(args.dnaseqqc_db)
-    # merge bamqc and dnaseqc
-    bamqc_info = merge_bamqc_dnaseqc(bamqc, dnaseqqc)    
-    # collect information from cfmedip table
-    cfmedipqc_info = extract_cfmedipqc_data(args.cfmedipqc_db)
-    # collect information from rnaseq table
-    rnaseqqc_info = extract_rnaseqqc_data(args.rnaseqqc_db)
-    # collect information from emseq cache
-    emseqqc_info = extract_emseqqc_data(args.emseqqc_db)
-    # update file info with QC metrics
-    add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
+    all_released_files = int(all_released_files / 2)
 
     #list all platforms for each library design
     library_designs = map_library_design_to_instrument(file_info)
     
+    # collect QC metrics    
+    bamqc_info, rnaseqqc_info, emseqqc_info, cfmedipqc_info = collect_qc_metrics(library_designs.keys(), args.bamqc_db, args.dnaseqqc_db, args.rnaseqqc_db, args.emseqqc_db, args.cfmedipqc_db)
+    # update file info with QC metrics
+    add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc_info)    
+    print('collected QC metrics')
+    
     # add file prefix to each fastq file
     add_file_prefix(file_info)
-
+    
     # generate plots for each instrument and library source and keep track of figure files
     figure_files = generate_report_plots(file_info, args.project, library_designs, working_dir)
-
+    print('generated figure files')
+    
     # count the number of samples with missing metric values
     samples_missing_metrics = count_samples_with_missing_values(file_info)
     
@@ -4553,7 +4629,7 @@ def write_batch_report(args):
     # group metrics by pairs of files
     #header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
-    header_identifiers = ['OICR case', 'Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
+    header_identifiers = ['OICR case', 'Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'LT', 'TO', 'TT']
         
     sample_identifiers = group_sample_metrics(file_info, 'sample_identifiers')
     appendix_identifiers = get_identifiers_appendix(file_info, 'batch')
@@ -4583,7 +4659,7 @@ def write_batch_report(args):
                'qc_subtables': qc_subtables,
                'qc_appendices': qc_appendices,
                'library_sources': library_sources,
-               'libraries': libraries, 
+               'library_designs': library_designs, 
                'user': args.user,
                'ticket': os.path.basename(args.ticket),
                'md5sum': os.path.basename(md5sum_file)}
