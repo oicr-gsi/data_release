@@ -4366,7 +4366,7 @@ def case_signoff(args):
     - user_name (str): Name of user
     - ticket (str): Jira ticket
     - nabu (str): URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca
-    - nabu_key (str): Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key
+    - nabu_key_file (str): Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key
     - deliverable (str): Deliverable. Choice is FastQ
     - signoff_step_name (str): Signoff step. Default is RELEASE
     - deliverable_type (str): Deliverable type. Default is Data Release
@@ -4446,7 +4446,6 @@ def case_signoff(args):
     cases = get_deliverables(file_info)
     print('keeping {0} cases for {1} signoff'.format(len(cases), args.deliverable))
     
-    
     if cases:
         print('Signing off for {0} cases at step {1} for deliverable {2} of {3}'.format(len(cases), args.signoff_step_name, args.deliverable, args.deliverable_type))
         # list cases with expected deliverables
@@ -4458,10 +4457,8 @@ def case_signoff(args):
             response = create_nabu_signoff(signoff_cases, args.nabu_key_file, args.user_name, args.ticket, args.signoff_step_name, args.deliverable, args.deliverable_type, api)
             # check the response
             if response.ok:
-                for i in response.json():
-                    print('Signed off {0} for {1} deliverable at \
-                          step {2} for cases: {3}'.format(args.deliverable_type,
-                          args.deliverable, args.signoff_step_name, ','.join(cases)))
+                print('Signed off {0} for {1} deliverable at step {2} for cases: {3}'.format(args.deliverable_type,
+                       args.deliverable, args.signoff_step_name, ','.join(cases)))
             else:
                 print('Could not proceed with the signoff. Status code is {0}'.format(response.status_code))
         else:
@@ -4753,10 +4750,10 @@ if __name__ == '__main__':
     s_parser.add_argument('-u', '--user', dest='user_name', help='Name of user', required=True)
     s_parser.add_argument('-t', '--ticket', dest='ticket', help='Ticket associated with the file QC change', required=True)
     s_parser.add_argument('-nb', '--nabu', dest='nabu', default='https://nabu-prod.gsi.oicr.on.ca', help='URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca')
-    s_parser.add_argument('-nk', '--nabu_key', dest='nabu_key', default='/.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key', help='Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key')
+    s_parser.add_argument('-nk', '--nabu_key', dest='nabu_key_file', default='/.mounts/labs/gsi/secrets/nabu-prod_case-etl_api-key', help='Path to the file with the nabu key. Default is /.mounts/labs/gsi/secrets/nabu-prod_qc-gate-etl_api-key')
     s_parser.add_argument('-dv', '--deliverable', dest='deliverable', choices=['FastQ', 'Full Pipeline'], help='Deliverable', required=True)
-    s_parser.add_argument('-s', '--signoff_step', dest='signoff_step_name', default='RELEASE', choices=['RELEASE'], help='Signoff step. Default is RELEASE', required=True)
-    s_parser.add_argument('-dt', '--deliverable_type', dest='deliverable_type', default='Data Release', choices=['Data Release'], help='Deliverable type. Default is Data Release', required=True)
+    s_parser.add_argument('-s', '--signoff_step', dest='signoff_step_name', default='RELEASE', choices=['RELEASE'], help='Signoff step. Default is RELEASE')
+    s_parser.add_argument('-dt', '--deliverable_type', dest='deliverable_type', default='Data Release', choices=['Data Release'], help='Deliverable type. Default is Data Release')
     s_parser.set_defaults(func=case_signoff)
     
     
