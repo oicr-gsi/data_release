@@ -9,7 +9,7 @@
 </head>
 <body>
    
-   <table style="width=100%; font-family: Arial, Helvetica, sans-serif; bottom-margin:50px">
+   <table style="width:100%; font-family: Arial, Helvetica, sans-serif; margin-bottom:50px">
    <tr>
      <td style="width: 40%; padding: 3px; text-align: left"><img src="./static/images/OICR_Logo_RGB_ENGLISH.png" alt="OICR_logo" title="OICR_logo" style="padding-right: 8px; padding-left:0px; width:10; height:10"></td>
      <td style="width: 60%; padding: 3px; text-align: left"><p style="text-align: center; color: black; font-size:45px; font-family: Arial, Verdana, sans-serif; font-weight:bold">Data Release Report</p></td>
@@ -54,7 +54,7 @@
          <tr>           
            <td> {{instrument}} </td>
            <td> {{run}} </td>
-           <td> {{fastq_counts[instrument][run]}} </td> 
+           <td> {{(fastq_counts[instrument][run] | length) // 2}}</td> 
            {% endfor %}                    
          </tr>        
        {% endfor %}               
@@ -71,7 +71,7 @@
      
    <h3>Table 1. Sample identifiers</h3>
    
-   <table id="info_table", style="font-size: 12px;">
+   <table id="info_table", style="font-size: 11px;">
    <tr>
      <th>{{header_identifiers.0}}</th>
      <th>{{header_identifiers.1}}</th>
@@ -95,7 +95,7 @@
            <td> {{i.4}} </td>
            <td> {{i.5}} </td>
            <td> {{i.6}} </td>
-           <td> {{i.7}} </td>         
+           <td> {{i.7}} </td>
          </tr>        
        {% endfor %}               
     {% endfor %}
@@ -117,7 +117,7 @@
 
   <h3>{{qc_subtables[library_source]}}</h3>   
 
-  <table id="info_table", style="font-size: 12px;">
+  <table id="info_table", style="font-size: 11px;">
    <tr>
      {% for i in header_metrics[library_source] %}
          <th>{{i}}</th>
@@ -152,7 +152,7 @@
     <p>QC plots are organized by platform. Each plot displays a distinct metric (y-axis) for each sample (x-axis). Samples are organized on each plot by ascending <span style="font-style: italic">read counts</span>. Lines are the median of each metric.</p>
     
     {% for library_source in library_sources %}
-        {% for platform in libraries[library_source] %}
+        {% for platform in library_designs[library_source] %}
             <h3>{{platform}} {{library_source}} libraries</h3> 
             {% if figure_files[library_source][platform] %}
               {% if library_source in samples_missing_metrics and platform in samples_missing_metrics[library_source] %}
