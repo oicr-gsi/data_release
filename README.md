@@ -25,18 +25,23 @@ case_id
      .
 
 Example 1: Link all the raw sequences from 2 runs for project JYCF 
+
 ```dare link -w bcl2fastq -pr JYCF -r 251104_M06816_0279_000000000-DVVRD 251029_M00753_0927_000000000-DVWBH```
 
 Example 2: Link only the raw sequences for the libraries, runs and lanes specified in file LIBRARIES for project JYCF
+
 ```dare link -w bcl2fastq -l /path/to/LIBRARIES -pr JYCF```
 
 Example 3: Link fastq and bmpp bams for project COMBAT for 2 runs
+
 ```dare link -w bcl2fastq bammergepreprocessing -pr COMBAT -r 20251119_LH00130_0289_A237M22LT3 20251029_LH00130_0285_B23CNVJLT4```
 
 Example 4: Link data contained in the analysis.json for project COMBAT
+
 ```dare link -pr COMBAT -a /path/to/analysis.json```
 
 Example 5: Link all the sequences for specific cases for project JYCF from run 251126_M06816_0286_000000000-GR3B7:
+
 ```dare link -pr JYCF -r 251126_M06816_0286_000000000-GR3B7 -w bcl2fastq -c R4547_a140_JYCF_0109_Es_P R4547_a140_JYCF_0111_Es_P R4547_a140_JYCF_0113_Es_P R4547_a140_JYCF_0122_Es_P R4547_a140_JYCF_0123_Es_P R4547_a140_JYCF_0124_Es_P R4547_a140_JYCF_0125_Es_P R4547_a140_JYCF_0126_Es_P R4547_a140_JYCF_0127_Es_P```
 
 
@@ -57,8 +62,11 @@ Parameters
 
 
 Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-l` and `-a`.
+
 Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-l` and `-f`.
+
 Option `-w` is required if `-a` and `-f` are not used.
+
 Options `-r` and `-l` are mutually exclusive
 
 - project `-pr/ --project`:
@@ -97,57 +105,31 @@ Path to the json file storing data to release (eg. from waterzooi)
 
 ## Generating a sample map ##
 
-Create a table file referencing internal IDs with external IDs privided by stakeholders.
+Create a table file with internal and external identifiers mapped to fastq files.
 
-usage: ```dare map -l LIBRARIES -w WORKFLOW -n PROJECT_NAME -p PROJECTS_DIR -pr PROJECT -r RUNS --exclude_miseq -rn RUN_NAME -e EXCLUDE -s SUFFIX -f FILES```
+Example 1: Create a sample map for 2 runs for project JYCF
 
-Parameters are the same as described above
+```dare map -pr JYCF -r 251104_M06816_0279_000000000-DVVRD 251029_M00753_0927_000000000-DVWBH```
 
-Parameters
+Example 2: Create a sample map using only the libraries, runs and lanes specified in file LIBRARIES for project JYCF
 
-| argument | purpose | required/optional                                    |
-| ------- | ------- | ------------------------------------------ |
-| -pr | Project name indicated in FPR  | required              |
-| -l | Path to file with libraries to be released   | optional                |
-| -n | Project name | optional              |
-| -p | Project directory   | required              |
-| -r runs | Single or white space-separated run IDs  | optional              |
-| --exclude_miseq | Excludes MiSeq runs | optional              |
-| -e | Path to file with libraries to be excluded | optional              |
-| -f | Path to file with file names/paths to be released | optional              |
-| --time_points | Add column with time points | optional              |
-| --panel | Add column with panel | optional              |
-| -px | Prefix | optional              |
-| -fpr | Path to the File Provenance Report | required              |
-| -spr | Path to the Sample Provenance | required              |
+```dare map -l /path/to/LIBRARIES -pr JYCF```
 
+Example 3: Create a sample map from the fastqs listed in file release_files for project JYCF. Note that only fastqs are used to extract identifiers. Any other files are ignored.
 
-Options as defined above. In addition to the `map` specific options:
+```dare map -pr JYCF -f /path/to/release_files```
 
-- time points `--time_points`:
-By default time points are not added. Add a column with time points retrieved from Pinery is used.
+Example 4: Create a sample map from fastqs listed in file analysis.json for project COMBAT. Note that only fastqs are used to extract identifiers. Any other files are ignored.
 
-- time points `--time_points`:
-By default time points are not added. Add a column with time points retrieved from Pinery is used.
+```dare map -pr COMBAT -a /path/to/analysis.json```
 
-- sample provenance `-spr/ -sample_provenance`:
-Required parameter with default value: http://pinery.gsi.oicr.on.ca/provenance/v9/sample-provenance
-Path to the sample provenance 
+Example 5: Create a sample map for specific cases for project JYCF and run 251126_M06816_0286_000000000-GR3B7:
 
+```dare map -pr JYCF -r 251126_M06816_0286_000000000-GR3B7 -c R4547_a140_JYCF_0109_Es_P R4547_a140_JYCF_0111_Es_P R4547_a140_JYCF_0113_Es_P R4547_a140_JYCF_0122_Es_P R4547_a140_JYCF_0123_Es_P R4547_a140_JYCF_0124_Es_P R4547_a140_JYCF_0125_Es_P R4547_a140_JYCF_0126_Es_P R4547_a140_JYCF_0127_Es_P```
 
-## Marking files in Nabu with dare.py ##
+Example 6: Create a sample map from fastqs linked in directories for project JYCF:
 
-Tag released files in Nabu.
-
-There are different ways to mark files in Nabu
-For fastq files typically organized by run folder, one possibility is to point to the run directory containing the file links with the following command:
-
-```dare mark -u USER -st pass -rn DIRECTORY -c TICKET -pr PROJECT```
-
-For analysis pipelines, it is still possible to point to a directory containing links provided that links are not in sub-folders.
-However, it is more convinient to mark files using the same json structure that was used to link the files (see baove section).
-
-```dare mark -u USER -st pass -c TICKET -pr PROJECT -a JSON_FILE``` 
+```dare map -pr JYCF -d R4547_a140_JYCF_0109_Es_P R4547_a140_JYCF_0111_Es_P R4547_a140_JYCF_0113_Es_P```
 
 
 
@@ -155,65 +137,347 @@ Parameters
 
 | argument | purpose | required/optional                                    |
 | ------- | ------- | ------------------------------------------ |
-| -u | Name of user handling the data release   | required              |
-| -st | Mark files fail or pass | required              |
-| -pr | Project name | required              |
-| -rn | Directory with file links | optional              |
-| -c | Jira ticket | optional              |
-| -r | List of space-separated run Ids | optional              |
-| -l | File with libraries tagged for release | optional              |
-| -w | Workflow used to generate the output files | optional              |
-| -px | Prefix to file paths if FPR contains relative paths | optional              |
-| --exclude_miseq | Exclude miseq runs | optional              |
-| -n | Nabu api | default              |
-| -fpr | Path to FPR | default              |
-| -e | Files with libraries tagged for non-release | optional              |
-| -f | File with file names to be released | optional              |
-| -a | Files with hierarchical structure storing sample and workflow ids | optional              |
+| -pr | Project name   | required              |
+| -pv | Json file with production data | required             |
+| -p | Project directory | required             |
+| -n | Project name | optional             |
+| -r | List of runs | optional             |
+| -l | File with libraries tagged for release | optional             |
+| -f | File with names or paths of files to release | optional             |
+| -c | List of case identifiers | optional             |
+| -a | Path to json file storing data to release | optional             |
+| -d | List of directories with links or files| optional             |
 
 
+Option `-f` cannot be used with options `-d`, `-r`, `-c`, `-l` and `-a`.
 
-## Generating a batch release report with dare.py ##
+Option `-a` cannot be used with options `-f`, `-r`, `-c`, `-l` and `-d`.
 
-example usage: ```dare report -u USER -rn DIRECTORIES -t TICKET -pr PROJECT -fn PROJECT_FULL_NAME```
+Option `-d` cannot be used with options `-f`, `-r`, `-c`, `-l` and `-a`.
+
+Options `-r` and `-l` are mutually exclusive
+
+
+- project `-pr/ --project`:
+Required parameter. The name of the project.
+
+- provenance_json `-pv/ --provenance`:
+Path to the json with production data.
+Required with default value: /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
+
+- project directory `-p/ --parent`:
+Required parameter with default value `/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS`
+Parent directory containing project directories with links to released files.
+
+- project name `-n/ --name`:
+Rename the project folder when creating the case folders and the symlinks.
+
+- runs `-r/ --runs`:
+White space-separated run identifiers.
+
+- libraries `-l/ --libraries`:
+Tab-delimited file with 2 or 3 columns, without header. The First column and second columns are always respectively the library and run identifiers. The third and optional column is the lane number. The lane number is either omitted or specified for all libraries. If the lane number is omitted, all the lanes for a given library and run will be linked.
+
+- release files  `-f/ --files`:
+File with names of paths of the files to be released
+
+- cases `-c/ --cases`:
+White space-separated case identifiers.
+
+- analyses `-a/ --analyses`:
+Path to the json file storing data to release (eg. from waterzooi)
+
+- direcories `-d/ --directories``:
+White space-separated directories with linked files. Traverses all the subdirectories and extracts identifiers only from linked fastqs.
+
+
+## Marking files in Nabu ##
+
+Changes FileQC status in Nabu following release.  
+
+Example 1: Mark fastq files from 2 runs for project JYCF
+
+```dare qc -pr JYCF -r 251104_M06816_0279_000000000-DVVRD 251029_M00753_0927_000000000-DVWBH -u rjovelin -t GDR-0001 -st pass```
+
+Example 2: Mark fastqs and bmpp output files for project COMBAT for 2 runs
+
+```dare qc -w bcl2fastq bammergepreprocessing -pr COMBAT -r 20251119_LH00130_0289_A237M22LT3 20251029_LH00130_0285_B23CNVJLT4 -u rjovelin -t GDR-0001 -st pass```
+
+Example 3: Mark files listed in file release_files for project JYCF
+
+```dare qc -pr JYCF -f /path/to/release_files -u rjovelin -t GDR-0001 -st pass```
+
+Example 4: Mark all files from the file analysis.json for project COMBAT
+
+```dare qc -pr COMBAT -a /path/to/analysis.json -u rjovelin -t GDR-0001 -st pass```
+
+Example 5: Mark all fastq files for specific cases for run 251126_M06816_0286_000000000-GR3B7 and project JYCF
+
+```dare qc -pr JYCF -r 251126_M06816_0286_000000000-GR3B7 -c R4547_a140_JYCF_0109_Es_P R4547_a140_JYCF_0111_Es_P -w bcl2fastq -u rjovelin -t GDR-0001 -st pass```
+
+Example 6: Mark all files linked in case directories for project JYCF:
+
+```dare qc -pr JYCF -d R4547_a140_JYCF_0109_Es_P R4547_a140_JYCF_0111_Es_P R4547_a140_JYCF_0113_Es_P -u rjovelin -t GDR-0001 -st pass```
+
 
 Parameters
 
 | argument | purpose | required/optional                                    |
 | ------- | ------- | ------------------------------------------ |
-| -pr | Project acronym | required              |
-| -fn | Project full name | required              |
-| -u | Name of user handling the data release   | required              |
-| -st | Mark files fail or pass | required              |
-| -rn | List of space-sparated directories with file links | optional              |
-| -t | Jira ticket | optional              |
-| -r | List of space-separated run Ids | optional              |
-| -l | File with libraries tagged for release | optional              |
-| -w | Workflow used to generate the output files | optional              |
-| -px | Prefix to file paths if FPR contains relative paths | optional              |
-| --exclude_miseq | Exclude miseq runs | optional              |
-| --time_points | Include time points | optional              |
-| -a | Nabu api | default              |
-| -spr | Sample provenance | default              |
-| -fpr | Path to FPR | default              |
-| -bq | BamQC cache | default              |
-| -dq | DNASeqQC cache | default              |
-| -cq | CfMedipQC cache | default              |
-| -rq | RNASeqQC cache | default              |
+| -pr | Project name   | required              |
+| -pv | Json file with production data | required             |
+| -nb | URL of the Nabu API | required             |
+| -st | QC status | required             |
+| -u | User name | required             |
+| -t | Jira ticket | required             |
+| -w | List of worfklows | optional             |
+| -r | List of runs | optional             |
+| -l | File with libraries tagged for release | optional             |
+| -f | File with names or paths of files to release | optional             |
+| -c | List of case identifiers | optional             |
+| -a | Path to json file storing data to release | optional             |
+| -d | List of directories with links or files| optional             |
 
 
-## Transferring files through ociwire ##
+Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-a` and `-d`.
 
-Transfers files in `run_directory` through ociwire to UHN.
+Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-d`.
 
-```bash transfer_out_ociwire.sh run_directory```
+Option `-d` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-a`.
 
-## Uploading files to the transfer server ##
+Option `-w` is required if `-a`, `-f` `-d` are not used.
 
-Uploads files in directory `run_directory` to the transfer server.
+Options `-r` and `-l` are mutually exclusive
 
-```
-tar -cvzhf NAMEORTAR.tar.gz run_directory
-bash copy_to_transfer.sh NAMEOFTAR.tar.gz 
-```
+
+- project `-pr/ --project`:
+Required parameter. The name of the project.
+
+- provenance_json `-pv/ --provenance`:
+Path to the json with production data.
+Required with default value: /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
+
+- nabu `-nb/ --nabu`:
+URL of the Nabu API. Required with default value.
+
+- user name `-u/ --user`:
+Name of the GSI user releasing the date
+
+- ticket `-t/ --ticket`:
+Jira ticket
+
+- runs `-r/ --runs`:
+White space-separated run identifiers.
+
+- libraries `-l/ --libraries`:
+Tab-delimited file with 2 or 3 columns, without header. The First column and second columns are always respectively the library and run identifiers. The third and optional column is the lane number. The lane number is either omitted or specified for all libraries. If the lane number is omitted, all the lanes for a given library and run will be linked.
+
+- release files  `-f/ --files`:
+File with names of paths of the files to be released
+
+- cases `-c/ --cases`:
+White space-separated case identifiers.
+
+- analyses `-a/ --analyses`:
+Path to the json file storing data to release (eg. from waterzooi)
+
+- direcories `-d/ --directories``:
+White space-separated directories with linked files. Traverses all the subdirectories and extracts identifiers only from linked fastqs.
+
+
+## Generating a batch release report ##
+
+Generates a PDF report of a batch release of sequence data.
+
+
+Parameters
+
+| argument | purpose | required/optional                                    |
+| ------- | ------- | ------------------------------------------ |
+| -pr | Project name   | required              |
+| -pv | Json file with production data | required             |
+| -u | User name | required             |
+| -t | Jira ticket | required             |
+| -p | Project directory | required             |
+| -fn | Full name of the project | required             |
+| -n | Project name | optional             |
+| -bq | Bamqc cache | required             |
+| -dq | DNASeqQC cache | required             |
+| -cq | CfMedipQC cache | required             |
+| -rq | RNASeqQC cache | required             |
+| -eq | EMSeqQC cache | required             |
+| -r | List of runs | optional             |
+| -l | File with libraries tagged for release | optional             |
+| -f | File with names or paths of files to release | optional             |
+| -c | List of case identifiers | optional             |
+| -a | Path to json file storing data to release | optional             |
+| -d | List of directories with links or files| optional             |
+| --keep_html | Keep hmtl after PDF conversion | optional             |
+
+
+
+Option `-f` cannot be used with options `-r`, `-c`, `-l`, `-a` and `-d`.
+
+Option `-a` cannot be used with options `-r`, `-c`, `-l`, `-f` and `-d`.
+
+Option `-d` cannot be used with options `-r`, `-c`, `-l`, `-f` and `-a`.
+
+Options `-r` and `-l` are mutually exclusive
+
+
+- project `-pr/ --project`:
+Required parameter. The name of the project.
+
+- provenance_json `-pv/ --provenance`:
+Path to the json with production data.
+Required with default value: /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
+
+- user name `-u/ --user`:
+Name of the GSI user releasing the date
+
+- ticket `-t/ --ticket`:
+Jira ticket
+
+- project directory `-p/ --parent`:
+Required parameter with default value `/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS`
+Parent directory containing project directories with links to released files.
+
+- full name `-fn/ --full_name`:
+Full name of the project
+
+- project name `-n/ --name`:
+Rename the project folder when creating the case folders and the symlinks.
+
+- bamqc cache `-bq/ --bamqc`:
+Path to the bamnqc cache. Required with default value /scratch2/groups/gsi/production/qcetl_v1/bamqc4/latest
+
+- dnaseqqc cache `-dq/ --dnaseqqc`:
+Path to the dnaseqqc cqache. Required with default /scratch2/groups/gsi/production/qcetl_v1/dnaseqqc/latest
+
+- cfmedipqc cache `-cq/ --cfmedipqc`:
+Path to the cfmedipqc cache. Required with default value /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest
+
+- bamqc cache `-rq/ --rnaseqqc`:
+Path to the rnaseqqc cache. Required with default value /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest
+
+- emseqqc cache `-eq/ --emseqqc`:
+Path to the emseqqc cache. Required with default value /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest
+
+- runs `-r/ --runs`:
+White space-separated run identifiers.
+
+- libraries `-l/ --libraries`:
+Tab-delimited file with 2 or 3 columns, without header. The First column and second columns are always respectively the library and run identifiers. The third and optional column is the lane number. The lane number is either omitted or specified for all libraries. If the lane number is omitted, all the lanes for a given library and run will be linked.
+
+- release files  `-f/ --files`:
+File with names of paths of the files to be released
+
+- cases `-c/ --cases`:
+White space-separated case identifiers.
+
+- analyses `-a/ --analyses`:
+Path to the json file storing data to release (eg. from waterzooi)
+
+- direcories `-d/ --directories``:
+White space-separated directories with linked files. Traverses all the subdirectories and extracts identifiers only from linked fastqs.
+
+
+
+
+
+
+## Case signoff in Nabu ##
+
+Case signoff for FastQ and Full pipeline deliverables in Nabu. 
+
+
+
+
+
+
+
+
+Parameters
+
+| argument | purpose | required/optional                                    |
+| ------- | ------- | ------------------------------------------ |
+| -pr | Project name   | required              |
+| -pv | Json file with production data | required             |
+| -u | User name | required             |
+| -t | Jira ticket | required             |
+| -nb | URL of the Nabu API | required             |
+| -nk | File with nabu key | required             |
+| -dv | Deliverable | required             |
+| -dt | Deliverable type | required             |
+| -s | Signoff step | required             |
+| -r | List of runs | optional             |
+| -l | File with libraries tagged for release | optional             |
+| -f | File with names or paths of files to release | optional             |
+| -c | List of case identifiers | optional             |
+| -a | Path to json file storing data to release | optional             |
+| -d | List of directories with links or files| optional             |
+
+
+Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-a` and `-d`.
+
+Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-d`.
+
+Option `-d` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-a`.
+
+Option `-w` is required if `-a`, `-f` `-d` are not used.
+
+Options `-r` and `-l` are mutually exclusive
+
+
+- project `-pr/ --project`:
+Required parameter. The name of the project.
+
+- provenance_json `-pv/ --provenance`:
+Path to the json with production data.
+Required with default value: /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
+
+- user name `-u/ --user`:
+Name of the GSI user releasing the date
+
+- ticket `-t/ --ticket`:
+Jira ticket
+
+- nabu `-nb/ --nabu`:
+URL of the Nabu API
+
+- nabu key `-nk/ --nabu_key`:
+File with nabu key required to record signoffs. 
+Required with default value
+
+- deliverable `-dv'/ --deliverable`:
+Deliverable. Value is FastQ or Full Pipeline.
+
+- sign off step `-s/ --signoff_step`:
+Name of the signoff step. Required value is RELEASE
+
+- deliveranle type `-dt/ --deliverable_type`
+Name of the deliverable type. Required value is Data Release.
+
+- workflows `-w/ --workflows`:
+White space separated list of workflows. Use bcl2fastq for any FASTQ-generating workflow (bcl2fastq, CASAVA and fastq-importing workflows).
+Workflow name is case-incensitive.
+
+- runs `-r/ --runs`:
+White space-separated run identifiers.
+
+- libraries `-l/ --libraries`:
+Tab-delimited file with 2 or 3 columns, without header. The First column and second columns are always respectively the library and run identifiers. The third and optional column is the lane number. The lane number is either omitted or specified for all libraries. If the lane number is omitted, all the lanes for a given library and run will be linked.
+
+- release files  `-f/ --files`:
+File with names of paths of the files to be released
+
+- cases `-c/ --cases`:
+White space-separated case identifiers.
+
+- analyses `-a/ --analyses`:
+Path to the json file storing data to release (eg. from waterzooi)
+
+- direcories `-d/ --directories``:
+White space-separated directories with linked files. Traverses all the subdirectories and extracts identifiers only from linked fastqs.
+
 
