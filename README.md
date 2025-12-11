@@ -197,7 +197,7 @@ Changes FileQC status in Nabu following release.
 
 Example 1: Mark fastq files from 2 runs for project JYCF
 
-```dare qc -pr JYCF -r 251104_M06816_0279_000000000-DVVRD 251029_M00753_0927_000000000-DVWBH -u rjovelin -t GDR-0001 -st pass```
+```dare qc -pr JYCF -w bcl2fastq -r 251104_M06816_0279_000000000-DVVRD 251029_M00753_0927_000000000-DVWBH -u rjovelin -t GDR-0001 -st pass```
 
 Example 2: Mark fastqs and bmpp output files for project COMBAT for 2 runs
 
@@ -288,6 +288,14 @@ White space-separated directories with linked files. Traverses all the subdirect
 ## Generating a batch release report ##
 
 Generates a PDF report of a batch release of sequence data.
+
+Example 1: Generate a batch report for project JYCF and a single run
+
+```dare report -pr JYCF -r 251126_M06816_0286_000000000-GR3B7 -fn "Jonathan Yeung cfDNA project trial" -u "Richard Jovelin" -t GDR-0001```
+
+Example 2: Generate a batch report for a single run and specific cases for project JYCF  
+
+```dare report -pr JYCF -r 251126_M06816_0286_000000000-GR3B7 -c R4547_a140_JYCF_0109_Es_P R4547_a140_JYCF_0111_Es_P -fn "Jonathan Yeung cfDNA project trial" -u "Richard Jovelin" -t GDR-0001```
 
 
 Parameters
@@ -390,11 +398,13 @@ White space-separated directories with linked files. Traverses all the subdirect
 
 Case signoff for FastQ and Full pipeline deliverables in Nabu. 
 
+Example 1: Signoff of Fastq deliverable for a single run for project JYCF
 
+```dare signoff -pr JYCF -r 251126_M06816_0286_000000000-GR3B7 -dv FastQ -u "Richard Jovelin" -t GDR-0001```
 
+Example 2: Signoff of pipeline data for specific cases for project COMBAT
 
-
-
+```dare signoff -pr COMBAT -c R1391_a94_COMBAT_0001_Pl_T_tT0 R1391_a94_COMBAT_0002_Pl_T_tT0 R1391_a94_COMBAT_0003_Pl_T_tT0 R1391_a94_COMBAT_0004_Pl_P_tT0 R1391_a94_COMBAT_0005_Pl_P_tT0 -dv "Full Pipeline" -u "Richard Jovelin" -t GDR-0001```
 
 
 Parameters
