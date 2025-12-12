@@ -19,8 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+#from weasyprint import HTML
+#from weasyprint import CSS
 import re
 
 
@@ -1988,23 +1988,24 @@ def is_correct_library(samples, valid_libraries):
     - valid_libraries (dict): Dictionary with libraries tagged for release
     '''
     
-    keep = True 
+    keep = [] 
      
     libraries = map_libraries_to_file(samples)
     for library in libraries:
         if library not in valid_libraries:
-            keep = False
-        for run in libraries[library]:
-            if run not in valid_libraries[library]:
-                keep = False
-            for lane in libraries[library][run]:
-                # check if lane is specified in valid libraries
-                if '' not in valid_libraries[library][run]:
-                    if lane not in valid_libraries[library][run]:
-                        keep = False
-                        
-    return keep
-
+            keep.append(False)
+        else:
+            for run in libraries[library]:
+                if run not in valid_libraries[library]:
+                    keep.append(False)
+                else:
+                    for lane in libraries[library][run]:
+                        # check if lane is specified in valid libraries
+                        if '' not in valid_libraries[library][run]:
+                            if lane not in valid_libraries[library][run]:
+                                keep.append(False)
+    
+    return all(keep)
     
 
 def get_analysis_files(analysis_pipeline):
