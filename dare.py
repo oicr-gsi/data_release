@@ -1906,7 +1906,7 @@ def is_correct_workflow(workflow, workflows):
     
     # select on workflow
     L = list(map(lambda x: x.lower(), workflows))
-    if 'bl2fastq' not in L:
+    if 'bcl2fastq' not in L:
         return workflow.lower() in L
     else:
         w = L + sequencing_workflows
