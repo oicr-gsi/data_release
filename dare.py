@@ -2139,8 +2139,9 @@ def extract_data(provenance_data, project, workflows=None, runs=None, cases=None
         file_info = select_files(file_info, project, workflows, runs, cases, libraries, release_files)        
         # update dict 
         if file_info:
-            D = update_file_info(D, file_info)
-
+            assert case_id not in D
+            D[case_id] = file_info
+            
     return D                  
                     
 
@@ -2222,14 +2223,18 @@ def write_md5sum(file_info, outputfile):
     - outpufile (str): Path to the outputfile with md5sums
     '''    
     
+    L = [] 
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            md5 = file_info[case_id][file]['md5sum']
+            L.append([file, md5])
+    L = list(map(lambda x: '\t'.join(x), L))
+    L = sorted(list(set(L)))    
+            
     newfile = open(outputfile, 'w')
-    for file in file_info:
-        md5 = file_info[file]['md5sum']
-        newfile.write('\t'.join([file, md5]) + '\n')
+    for i in L:
+        newfile.write(i + '\n')
     newfile.close()
-
-
-
 
 
 def group_sample_info_mapping(file_info):
@@ -2248,35 +2253,35 @@ def group_sample_info_mapping(file_info):
     
     sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
     
-    for file in file_info:
-        workflow = file_info[file]['workflow']
-        case_id = file_info[file]['case_id']
-        if workflow.lower() in sequencing_workflows:
-            for d in file_info[file]['samples']:
-                run = d['run']
-                sample_id = d['sample_id']
-                library = d['library']
-                barcode = d['barcode']                
-                external_id = d['external_id']    
-                donor= d['donor']
-                group_id = d['group_id']
-                group_description = d['group_description']
-                library_design = d['library_design']
-                tissue_origin = d['tissue_origin']
-                tissue_type = d['tissue_type']
-                lane = d['lane']  
-                run = run + '_' + lane
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            workflow = file_info[case_id][file]['workflow']
+            assert case_id == file_info[case_id][file]['case_id']
+            if workflow.lower() in sequencing_workflows:
+                for d in file_info[case_id][file]['samples']:
+                    run = d['run']
+                    sample_id = d['sample_id']
+                    library = d['library']
+                    barcode = d['barcode']                
+                    external_id = d['external_id']    
+                    donor= d['donor']
+                    group_id = d['group_id']
+                    library_design = d['library_design']
+                    tissue_origin = d['tissue_origin']
+                    tissue_type = d['tissue_type']
+                    lane = d['lane']  
+                    run = run + '_' + lane
 
-                # group files by sample, library, run and lane
-                key = '_'.join([case_id, donor, sample_id, library, run, barcode])
+                    # group files by sample, library, run and lane
+                    key = '_'.join([case_id, donor, sample_id, library, run, barcode])
             
-                L = [case_id, donor, external_id, library, library_design, tissue_type, tissue_origin, run, barcode, group_id, group_description]
+                    L = [case_id, donor, external_id, library, library_design, tissue_type, tissue_origin, run, barcode, group_id]
         
-                if key not in D:
-                    D[key] = {'info': L, 'files': [file]}
-                else:
-                    assert D[key]['info'] == L
-                    D[key]['files'].append(file)
+                    if key not in D:
+                        D[key] = {'info': L, 'files': [file]}
+                    else:
+                        assert D[key]['info'] == L
+                        D[key]['files'].append(file)
         
     return D            
 
@@ -2402,33 +2407,34 @@ def generate_links(file_info, project_dir):
     
     sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
     
-    for file in file_info:
-        case_id = file_info[file]['case_id']
-        workflow = file_info[file]['workflow']
-        case_dir = os.path.join(project_dir, case_id)
-        os.makedirs(case_dir, exist_ok=True)
-        donor = list(set([d['donor'] for d in file_info[file]['samples']]))
-        assert len(donor) == 1
-        donor = donor[0]
-        donor_dir = os.path.join(case_dir, donor)
-        os.makedirs(donor_dir, exist_ok=True)
-        if workflow in sequencing_workflows:
-            workflow_dir = os.path.join(donor_dir, 'sequences')
-            os.makedirs(workflow_dir, exist_ok=True)
-            run = list(set([d['run'] for d in file_info[file]['samples']]))
-            assert len(run) == 1
-            run = run[0]
-            run_dir = os.path.join(workflow_dir, run + '.fastqs')
-            os.makedirs(run_dir, exist_ok=True)
-            filename = os.path.basename(file)
-            link = os.path.join(run_dir, filename)
-        else:
-            workflow_dir = os.path.join(donor_dir, workflow)
-            os.makedirs(workflow_dir, exist_ok=True)
-            filename = os.path.basename(file)
-            link = os.path.join(workflow_dir, filename)
-        if os.path.isfile(link) == False:
-            os.symlink(file, link)
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            assert case_id == file_info[case_id][file]['case_id']
+            workflow = file_info[case_id][file]['workflow']
+            case_dir = os.path.join(project_dir, case_id)
+            os.makedirs(case_dir, exist_ok=True)
+            donor = list(set([d['donor'] for d in file_info[case_id][file]['samples']]))
+            assert len(donor) == 1
+            donor = donor[0]
+            donor_dir = os.path.join(case_dir, donor)
+            os.makedirs(donor_dir, exist_ok=True)
+            if workflow in sequencing_workflows:
+                workflow_dir = os.path.join(donor_dir, 'sequences')
+                os.makedirs(workflow_dir, exist_ok=True)
+                run = list(set([d['run'] for d in file_info[case_id][file]['samples']]))
+                assert len(run) == 1
+                run = run[0]
+                run_dir = os.path.join(workflow_dir, run + '.fastqs')
+                os.makedirs(run_dir, exist_ok=True)
+                filename = os.path.basename(file)
+                link = os.path.join(run_dir, filename)
+            else:
+                workflow_dir = os.path.join(donor_dir, workflow)
+                os.makedirs(workflow_dir, exist_ok=True)
+                filename = os.path.basename(file)
+                link = os.path.join(workflow_dir, filename)
+            if os.path.isfile(link) == False:
+                os.symlink(file, link)
 
 
 
@@ -2519,18 +2525,18 @@ def count_released_fastqs_by_instrument(file_info):
         
     D = {}
     
-    for file in file_info:
-        assert file_info[file]['workflow'].lower() in sequencing_workflows
-        for d in file_info[file]['samples']:
-            run = d['run']
-            instrument = d['instrument']
-            
-            if instrument not in D:
-                D[instrument] = {}
-            if run not in D[instrument]:
-                D[instrument][run] = []
-            D[instrument][run].append(file)
-            D[instrument][run] = list(set(D[instrument][run]))
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            assert file_info[case_id][file]['workflow'].lower() in sequencing_workflows
+            for d in file_info[case_id][file]['samples']:
+                run = d['run']
+                instrument = d['instrument']
+                if instrument not in D:
+                    D[instrument] = {}
+                if run not in D[instrument]:
+                    D[instrument][run] = []
+                D[instrument][run].append(file)
+                D[instrument][run] = list(set(D[instrument][run]))
     
     return D
     
@@ -2805,9 +2811,9 @@ def extract_emseqqc_data(emseqqc_db):
     return D
 
 
-def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
+def add_cfmedipqc_metrics(file_info, case_id, file, cfmedipqc_info):
     '''
-    (dict, str, dict) -> None
+    (dict, str, str, dict) -> None
     
     Update the file information in place with the QC information
     collected from cfmedipqc for a given file if library source is CM
@@ -2815,18 +2821,19 @@ def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
     Parameters
     ----------
     - file_info (dict): Dictionary with information about the released fastqs
+    - case_id (str): Case identifier
     - file (str): File path
     - cfmedipqc_info (dict): QC information for each paired fastq from the cfmedip QC db
     '''
     
     qc_found = False
-    assert len(file_info[file]['samples']) == 1
-    run = file_info[file]['samples'][0]['run']
-    limskey = file_info[file]['samples'][0]['lims_id']
-    barcode = file_info[file]['samples'][0]['barcode']     
-    lane = file_info[file]['samples'][0]['lane']
-    library_design = file_info[file]['samples'][0]['library_design']
-    read_count = int(file_info[file]['attributes']['read_count'][0])
+    assert len(file_info[case_id][file]['samples']) == 1
+    run = file_info[case_id][file]['samples'][0]['run']
+    limskey = file_info[case_id][file]['samples'][0]['lims_id']
+    barcode = file_info[case_id][file]['samples'][0]['barcode']     
+    lane = file_info[case_id][file]['samples'][0]['lane']
+    library_design = file_info[case_id][file]['samples'][0]['library_design']
+    read_count = int(file_info[case_id][file]['attributes']['read_count'][0])
         
     if library_design ==' CM' and limskey in cfmedipqc_info:
         assert limskey == cfmedipqc_info[limskey]['Pinery Lims ID']
@@ -2834,16 +2841,16 @@ def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
         assert barcode == cfmedipqc_info[limskey]['Barcodes']
         assert run == cfmedipqc_info[limskey]['Run Alias']
         qc_found = True
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       'AT_dropout': cfmedipqc_info[limskey]['AT Dropout'],
                                       'methylation_beta': cfmedipqc_info[limskey]['Methylation beta'],
                                       'duplication': cfmedipqc_info[limskey]['Percent Duplication'],
                                       'CpG_enrichment': cfmedipqc_info[limskey]['Relative CpG Frequency in Regions']}
     
     if library_design == 'CM' and qc_found == False:
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       'AT_dropout': 'NA',
                                       'methylation_beta': 'NA',
                                       'duplication': 'NA',
@@ -2852,9 +2859,9 @@ def add_cfmedipqc_metrics(file_info, file, cfmedipqc_info):
     
 
 
-def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
+def add_rnaseqqc_metrics(file_info, case_id, file, rnaseqqc_info):
     '''
-    (dict, str, dict) -> None
+    (dict, str, str, dict) -> None
     
     Update the file information in place with the QC information
     collected from rnaseqqc for a given file if library source is WT
@@ -2862,19 +2869,20 @@ def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
     Parameters
     ----------
     - file_info (dict): Dictionary with information about the released fastqs
+    - case_id (str): Case identifier
     - file (str): File path
     - rnaseqqc_info (dict): QC information for each paired fastq from the rnaseqqc QC db
     '''
     
     
     qc_found = False
-    assert len(file_info[file]['samples']) == 1
-    run = file_info[file]['samples'][0]['run']
-    limskey = file_info[file]['samples'][0]['lims_id']
-    barcode = file_info[file]['samples'][0]['barcode']     
-    lane = file_info[file]['samples'][0]['lane']
-    library_design = file_info[file]['samples'][0]['library_design']
-    read_count = int(file_info[file]['attributes']['read_count'][0])
+    assert len(file_info[case_id][file]['samples']) == 1
+    run = file_info[case_id][file]['samples'][0]['run']
+    limskey = file_info[case_id][file]['samples'][0]['lims_id']
+    barcode = file_info[case_id][file]['samples'][0]['barcode']     
+    lane = file_info[case_id][file]['samples'][0]['lane']
+    library_design = file_info[case_id][file]['samples'][0]['library_design']
+    read_count = int(file_info[case_id][file]['attributes']['read_count'][0])
         
     # check that limskey in recorded in rnaseqqc_db
     if library_design == 'WT' and limskey in rnaseqqc_info:
@@ -2883,16 +2891,16 @@ def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
         assert barcode == rnaseqqc_info[limskey]['Barcodes']
         assert run == rnaseqqc_info[limskey]['Run Alias']
         qc_found = True
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       "5'-3' bias": rnaseqqc_info[limskey]['MEDIAN_5PRIME_TO_3PRIME_BIAS'],
                                       'rRNA contamination': round((rnaseqqc_info[limskey]['rrna contamination properly paired'] / rnaseqqc_info[limskey]['rrna contamination in total (QC-passed reads + QC-failed reads)'] * 100), 3),
                                       'Coding (%)': rnaseqqc_info[limskey]['PCT_CODING_BASES'],
                                       'Correct strand reads (%)': rnaseqqc_info[limskey]['PCT_CORRECT_STRAND_READS']}
     
     if library_design == 'WT' and qc_found == False:
-        assert 'metrics' not in file_info[file]    
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]    
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       "5'-3' bias": 'NA',
                                       'rRNA contamination': 'NA',
                                       'Coding (%)': 'NA',
@@ -2900,31 +2908,32 @@ def add_rnaseqqc_metrics(file_info, file, rnaseqqc_info):
     
         
 
-def add_bamqc_metrics(file_info, file, bamqc_info):
+def add_bamqc_metrics(file_info, case_id, file, bamqc_info):
     '''
-    (dict, str, dict) -> None
+    (dict, str, str, dict) -> None
     
     Update the file information with QC information collected from bamqc for a given file 
            
     Parameters
     ----------
     - file_info (dict): Dictionary with information about the released fastqs
+    - case_id (str): Case identifier
     - file (str): File path
     - bamqc_info (dict): QC information for each paired fastq from the bamqc table
     '''
     
     qc_found = False
-    assert len(file_info[file]['samples']) == 1
-    run = file_info[file]['samples'][0]['run']
-    limskey = file_info[file]['samples'][0]['lims_id']
-    barcode = file_info[file]['samples'][0]['barcode']     
-    lane = file_info[file]['samples'][0]['lane']
-    library_design = file_info[file]['samples'][0]['library_design']
-    sample_id = file_info[file]['samples'][0]['sample_id']
-    group_id = file_info[file]['samples'][0]['group_id']
-    library = file_info[file]['samples'][0]['library']
-    instrument = file_info[file]['samples'][0]['instrument']
-    read_count = int(file_info[file]['attributes']['read_count'][0])
+    assert len(file_info[case_id][file]['samples']) == 1
+    run = file_info[case_id][file]['samples'][0]['run']
+    limskey = file_info[case_id][file]['samples'][0]['lims_id']
+    barcode = file_info[case_id][file]['samples'][0]['barcode']     
+    lane = file_info[case_id][file]['samples'][0]['lane']
+    library_design = file_info[case_id][file]['samples'][0]['library_design']
+    sample_id = file_info[case_id][file]['samples'][0]['sample_id']
+    group_id = file_info[case_id][file]['samples'][0]['group_id']
+    library = file_info[case_id][file]['samples'][0]['library']
+    instrument = file_info[case_id][file]['samples'][0]['instrument']
+    read_count = int(file_info[case_id][file]['attributes']['read_count'][0])
         
     excluded_libraries = ['CM', 'WT', 'MC', 'MG']
     
@@ -2939,16 +2948,16 @@ def add_bamqc_metrics(file_info, file, bamqc_info):
             assert ('_'.join(sample_id.split('_')[:-1]) == bamqc_info[limskey]['sample'] or library == bamqc_info[limskey]['sample'])
         assert instrument  == bamqc_info[limskey]['instrument']
         qc_found = True
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       'coverage': round(bamqc_info[limskey]['coverage'], 2),
                                       'coverage_dedup': round(bamqc_info[limskey]['coverage deduplicated'], 2),
                                       'on_target': round(bamqc_info[limskey]['on_target'], 2),
                                       'percent_duplicate': round(bamqc_info[limskey]['mark duplicates_PERCENT_DUPLICATION'], 2)}
         
     if library_design not in excluded_libraries and qc_found == False:
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       'coverage': 'NA',
                                       'coverage_dedup': 'NA',
                                       'on_target': 'NA',
@@ -2956,27 +2965,28 @@ def add_bamqc_metrics(file_info, file, bamqc_info):
 
 
 
-def add_emseqqc_metrics(file_info, file, emseqqc_info):
+def add_emseqqc_metrics(file_info, case_id, file, emseqqc_info):
     '''
-    (dict, str, dict) -> None
+    (dict, str, str, dict) -> None
       
     Update the file information with QC information collected from emseqqc for a given file 
            
     Parameters
     ----------
     - file_info (dict): Dictionary with information about the released fastqs
+    - case_id (str): Case identifier
     - file (str): File path
     - emseqqc_info (dict): QC information for each paired fastq from the emseq QC db
     '''
         
     qc_found = False
-    assert len(file_info[file]['samples']) == 1
-    run = file_info[file]['samples'][0]['run']
-    limskey = file_info[file]['samples'][0]['lims_id']
-    barcode = file_info[file]['samples'][0]['barcode']     
-    lane = file_info[file]['samples'][0]['lane']
-    library_design = file_info[file]['samples'][0]['library_design']
-    read_count = int(file_info[file]['attributes']['read_count'][0])
+    assert len(file_info[case_id][file]['samples']) == 1
+    run = file_info[case_id][file]['samples'][0]['run']
+    limskey = file_info[case_id][file]['samples'][0]['lims_id']
+    barcode = file_info[case_id][file]['samples'][0]['barcode']     
+    lane = file_info[case_id][file]['samples'][0]['lane']
+    library_design = file_info[case_id][file]['samples'][0]['library_design']
+    read_count = int(file_info[case_id][file]['attributes']['read_count'][0])
     
     # check that limskey has qc
     if library_design in ['MC', 'MG'] and limskey in emseqqc_info:
@@ -2985,38 +2995,39 @@ def add_emseqqc_metrics(file_info, file, emseqqc_info):
         assert barcode == emseqqc_info[limskey]['Barcodes']
         assert run == emseqqc_info[limskey]['Run Alias']
         qc_found = True
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       'Lambda_methylation': emseqqc_info[limskey]['Lambda'],
                                       'pUC19_methylation': emseqqc_info[limskey]['pUC19'],
                                       'percent_duplication': emseqqc_info[limskey]['mark duplicates_PERCENT_DUPLICATION']}
         
     if library_design in ['MC', 'MG'] and qc_found == False:
-        assert 'metrics' not in file_info[file]
-        file_info[file]['metrics'] = {'read_count': read_count,
+        assert 'metrics' not in file_info[case_id][file]
+        file_info[case_id][file]['metrics'] = {'read_count': read_count,
                                       'Lambda_methylation': 'NA',
                                       'pUC19_methylation': 'NA',
                                       'percent_duplication': 'NA'}
           
         
 
-def add_read_count(file_info, file):
+def add_read_count(file_info, case_id, file):
     '''
-    (dict, str) -> None
+    (dict, str, str) -> None
       
     Records read count metrics  
            
     Parameters
     ----------
     - file_info (dict): Dictionary with information about the released fastqs
+    - case_id (str): Case identifier
     - file (str): File path
     '''
         
-    read_count = int(file_info[file]['attributes']['read_count'][0]) 
+    read_count = int(file_info[case_id][file]['attributes']['read_count'][0]) 
     
-    if 'metrics' not in file_info[file]:
-        file_info[file]['metrics'] = {}
-    file_info[file]['metrics']['read_count'] = read_count
+    if 'metrics' not in file_info[case_id][file]:
+        file_info[case_id][file]['metrics'] = {}
+    file_info[case_id][file]['metrics']['read_count'] = read_count
     
 
 
@@ -3035,19 +3046,20 @@ def add_QC_metrics(file_info, bamqc_info, cfmedipqc_info, rnaseqqc_info, emseqqc
     - emseqqc_info (dict) QC information for each paired fastqs from the emseqqc db
     '''
     
-    for file in file_info:
-        assert len(file_info[file]['samples']) == 1
-        library_design = file_info[file]['samples'][0]['library_design']
-        if library_design == 'CM':
-            add_cfmedipqc_metrics(file_info, file, cfmedipqc_info)
-        elif library_design == 'WT':
-            add_rnaseqqc_metrics(file_info, file, rnaseqqc_info)
-        elif library_design in ['WG', 'EX', 'TS', 'PG']:
-            add_bamqc_metrics(file_info, file, bamqc_info)
-        elif library_design in ['MC', 'MG']:
-            add_emseqqc_metrics(file_info, file, emseqqc_info)              
-        else:
-            add_read_count(file_info, file)
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            assert len(file_info[case_id][file]['samples']) == 1
+            library_design = file_info[case_id][file]['samples'][0]['library_design']
+            if library_design == 'CM':
+                add_cfmedipqc_metrics(file_info, case_id, file, cfmedipqc_info)
+            elif library_design == 'WT':
+                add_rnaseqqc_metrics(file_info, case_id, file, rnaseqqc_info)
+            elif library_design in ['WG', 'EX', 'TS', 'PG']:
+                add_bamqc_metrics(file_info, case_id, file, bamqc_info)
+            elif library_design in ['MC', 'MG']:
+                add_emseqqc_metrics(file_info, case_id, file, emseqqc_info)              
+            else:
+                add_read_count(file_info, case_id, file)
             
 
 
@@ -3064,13 +3076,14 @@ def map_library_design_to_instrument(file_info):
     
     # list all instruments for each library design
     library_designs = {}
-    for file in file_info:
-        for d in file_info[file]['samples']:
-            instrument = d['instrument']
-            library_design = d['library_design']
-            if library_design not in library_designs:
-                library_designs[library_design] = []
-            library_designs[library_design].append(instrument)
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            for d in file_info[case_id][file]['samples']:
+                instrument = d['instrument']
+                library_design = d['library_design']
+                if library_design not in library_designs:
+                    library_designs[library_design] = []
+                library_designs[library_design].append(instrument)
     
     for i in library_designs:
         library_designs[i] = sorted(list(set(library_designs[i])))
@@ -3151,6 +3164,10 @@ def get_file_prefix(file):
     filename = os.path.basename(file)
     x = re.search("[\._]{1}R[1-2][\._]+.*fastq.gz", filename)
     
+    # injected data have a different file format
+    if x is None:
+        x = re.search("[\._]{1}[1-2][\._]+.*fastq.gz" , filename)
+        
     assert x
     prefix = filename[:x.span()[0]]
     
@@ -3169,9 +3186,10 @@ def add_file_prefix(file_info):
     - file_info (dict): Dictrionary of fastq file information
     '''
 
-    for file in file_info:
-        prefix = get_file_prefix(file)
-        file_info[file]['prefix'] = prefix
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            prefix = get_file_prefix(file)
+            file_info[case_id][file]['prefix'] = prefix
 
 
 def find_fastq_pairs(file_info, platform):
@@ -3192,21 +3210,23 @@ def find_fastq_pairs(file_info, platform):
     
     # make a list with dictionaries of file info
     L = []
-    for file1 in file_info:
-        for file2 in file_info:
-            if file1 not in found and file2 not in found:
-                if file1 != file2 and file_info[file1]['wfrun_id'] == file_info[file2]['wfrun_id']:
-                    assert file_info[file1]['metrics'] == file_info[file2]['metrics']
-                    assert file_info[file1]['prefix'] == file_info[file2]['prefix']
-                    read_num = [[file1, int(file_info[file1]['attributes']['read_number'][0])],
-                                [file2, int(file_info[file2]['attributes']['read_number'][0])]]
-                    read_num.sort(key=lambda x: x[1])
-                    assert file_info[file1]['samples'][0]['instrument'] == file_info[file2]['samples'][0]['instrument']
-                    if file_info[file1]['samples'][0]['instrument'] == platform:
-                        L.append([{read_num[0][0]: file_info[read_num[0][0]]},
-                                  {read_num[1][0]: file_info[read_num[1][0]]}])
-                        found.extend([file1, file2])
-                        break
+    
+    for case_id in file_info:
+        for file1 in file_info[case_id]:
+            for file2 in file_info[case_id]:
+                if file1 not in found and file2 not in found:
+                    if file1 != file2 and file_info[case_id][file1]['wfrun_id'] == file_info[case_id][file2]['wfrun_id']:
+                        assert file_info[case_id][file1]['metrics'] == file_info[case_id][file2]['metrics']
+                        assert file_info[case_id][file1]['prefix'] == file_info[case_id][file2]['prefix']
+                        read_num = [[file1, int(file_info[case_id][file1]['attributes']['read_number'][0])],
+                                    [file2, int(file_info[case_id][file2]['attributes']['read_number'][0])]]
+                        read_num.sort(key=lambda x: x[1])
+                        assert file_info[case_id][file1]['samples'][0]['instrument'] == file_info[case_id][file2]['samples'][0]['instrument']
+                        if file_info[case_id][file1]['samples'][0]['instrument'] == platform:
+                            L.append([{read_num[0][0]: file_info[case_id][read_num[0][0]]},
+                                      {read_num[1][0]: file_info[case_id][read_num[1][0]]}])
+                            found.extend([file1, file2])
+                            break
     return L
 
 
@@ -3526,19 +3546,21 @@ def count_samples_with_missing_values(file_info):
     
     # count the number of samples with missing values for each instrument and library type
     D = {}
-    for file in file_info:
-        platform = file_info[file]['samples'][0]['instrument']
-        sample = file_info[file]['samples'][0]['external_id']
-        library_design = file_info[file]['samples'][0]['library_design']
-        metrics = get_library_metrics(library_design)
+    
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            platform = file_info[case_id][file]['samples'][0]['instrument']
+            sample = file_info[case_id][file]['samples'][0]['external_id']
+            library_design = file_info[case_id][file]['samples'][0]['library_design']
+            metrics = get_library_metrics(library_design)
                        
-        for i in metrics:
-            if i in file_info[file]['metrics'] and file_info[file]['metrics'][i] == 'NA':
-                if library_design not in D:
-                    D[library_design] = {}
-                if platform not in D[library_design]:
-                    D[library_design][platform] = set()
-                D[library_design][platform].add(sample)
+            for i in metrics:
+                if i in file_info[case_id][file]['metrics'] and file_info[case_id][file]['metrics'][i] == 'NA':
+                    if library_design not in D:
+                        D[library_design] = {}
+                    if platform not in D[library_design]:
+                        D[library_design][platform] = set()
+                    D[library_design][platform].add(sample)
     
     for library_design in D:
         for platform in D[library_design]:
@@ -3586,9 +3608,10 @@ def group_sample_metrics(file_info, table):
     
     # make a list of instruments
     instruments = []
-    for file in file_info:
-        for d in file_info[file]['samples']:
-            instruments.append(d['instrument'])
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            for d in file_info[case_id][file]['samples']:
+                instruments.append(d['instrument'])
     instruments = list(set(instruments))
     
     # record sample metrics for each instrument
@@ -3757,11 +3780,12 @@ def get_library_tissue_types(file_info):
     tissue_origin = get_tissue_origin()
     library_design = get_library_design()
 
-    for file in file_info:
-        for d in file_info[file]['samples']:
-            D['Library Type'].append(d['library_design'])
-            D['Tissue Type'].append(d['tissue_type'])
-            D['Tissue Origin'].append(d['tissue_origin'])
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            for d in file_info[case_id][file]['samples']:
+                D['Library Type'].append(d['library_design'])
+                D['Tissue Type'].append(d['tissue_type'])
+                D['Tissue Origin'].append(d['tissue_origin'])
     for i in D:
         D[i] = sorted(list(set(D[i])))                
        
@@ -3976,15 +4000,17 @@ def get_deliverables(file_info):
     '''
     
     deliverables = {}
-    for file in file_info:
-        case_id = file_info[file]['case_id']
-        if case_id not in deliverables:
-            deliverables[case_id] = []
-        for d in file_info[file]['project']:
-            v = list(d.values())
-            for i in v:
-                deliverables[case_id].extend(i.split(','))
-        deliverables[case_id] = list(set(deliverables[case_id]))
+    
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            assert case_id == file_info[file]['case_id']
+            if case_id not in deliverables:
+                deliverables[case_id] = []
+            for d in file_info[file]['project']:
+                v = list(d.values())
+                for i in v:
+                    deliverables[case_id].extend(i.split(','))
+            deliverables[case_id] = list(set(deliverables[case_id]))
 
     return deliverables
 
@@ -4004,20 +4030,30 @@ def keep_files_for_deliverable(file_info, deliverable):
     '''
     
     # keep opnly files corresponding to deliverable
-    fastqs = [i for i in file_info if 'fastq.gz' in i] 
-    analysis_files = [i for i in file_info if 'fastq.gz' not in i]
+    fastqs, analysis_files = [], []
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            if 'fastq.gz' in file:
+                fastqs.append(file)
+            else:
+                analysis_files.append(file)
+             
     if deliverable == 'FastQ':
         print('{0}/{1} are fastq files'.format(len(fastqs), len(file_info)))
         if analysis_files:
             print('removing {0} analysis files'.format(len(analysis_files)))
             for i in analysis_files:
-                del file_info[i]
+                for case_id in file_info:
+                    if i in file_info[case_id]:
+                        del file_info[case_id][i]
     elif deliverable == 'Full Pipeline':
         print('{0}/{1} are analysis files'.format(len(analysis_files), len(file_info)))
         if fastqs:
             print('removing {0} fastqs'.format(len(fastqs)))
             for i in fastqs:
-                del file_info[i]
+                for case_id in file_info:
+                    if i in file_info[case_id]:
+                        del file_info[case_id][i]
 
     return file_info
 
@@ -4339,7 +4375,11 @@ def mark_files_nabu(args):
 
     # make a list of swids
     if file_info:
-        swids = [file_info[i]['accession'] for i in file_info]
+        swids = []
+        for case_id in file_info:
+            for file in file_info[case_id]:
+                swids.append(file_info[case_id][file]['accession'])
+        swids = list(set(swids))
         # mark files in nabu
         change_nabu_status(args.nabu, swids, args.status.upper(), args.user, args.ticket)
 
