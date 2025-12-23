@@ -4003,10 +4003,10 @@ def get_deliverables(file_info):
     
     for case_id in file_info:
         for file in file_info[case_id]:
-            assert case_id == file_info[file]['case_id']
+            assert case_id == file_info[case_id][file]['case_id']
             if case_id not in deliverables:
                 deliverables[case_id] = []
-            for d in file_info[file]['project']:
+            for d in file_info[case_id][file]['project']:
                 v = list(d.values())
                 for i in v:
                     deliverables[case_id].extend(i.split(','))
@@ -4470,13 +4470,14 @@ def case_signoff(args):
         if args.release_files:
             release_files = get_release_files(args.release_files)
         file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
-        print('extracted data for {0} files'.format(len(file_info))) 
+        
+    print('extracted data for {0} files'.format(len(file_info))) 
 
-        # get end-point
-        if args.nabu[-1] == '/':
-            api = args.nabu + 'case/sign-off'
-        else:
-            api = args.nabu + '/case/sign-off'
+    # get end-point
+    if args.nabu[-1] == '/':
+        api = args.nabu + 'case/sign-off'
+    else:
+        api = args.nabu + '/case/sign-off'
     
     # list deliverables for each case
     cases = get_deliverables(file_info)
