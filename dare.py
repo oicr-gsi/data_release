@@ -4510,7 +4510,7 @@ def case_signoff(args):
 
 def write_batch_report(args):
     '''
-    (str, str, str, str, str, str, list, str, str | None, bool) -> None
+    (str, str, str, str, str|None, str|None, str|None, str, str, list, str, str|None, bool) -> None
     
     Write a PDF report with QC metrics and released fastqs for a given project
 
@@ -4520,6 +4520,9 @@ def write_batch_report(args):
     - project_name (str): Project name used to create the project directory in gsi space
     - projects_dir (str): Parent directory containing the project subdirectories with file links
     - project_full_name (str): Full name of the project
+    - project_description (str | None): Description of the project
+    - investigators (str | None): Comma-separated list of the names of principal investigators
+    - analysts (str | None): Comma-separated list of the names of analysts
     - user (str): Name of the GSI personnel generating the report
     - ticket (str): Jira data release ticket code
     - provenance (str): Path to the json with production data
@@ -4664,7 +4667,13 @@ def write_batch_report(args):
     
     # make a dict with project information
     projects = {'acronym': args.project, 'name': args.project_full_name, 'date': time.strftime('%Y-%m-%d', time.localtime(time.time()))}
-
+    if args.description:
+        projects['description'] = args.description
+    if args.investigators:
+        projects['investigators'] = sorted(args.investigators.split(';'))
+    if args.analysts:
+        projects['analysts'] = sorted(args.analysts.split(';'))
+    
     # group metrics by pairs of files
     #header_identifiers = ['Library Id', 'Case Id', 'Donor Id', 'Sample Id', 'Sample Description', 'LT', 'TO', 'TT']
     
@@ -4805,6 +4814,9 @@ if __name__ == '__main__':
     r_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     r_parser.add_argument('-p', '--parents', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     r_parser.add_argument('-fn', '--full_name', dest='project_full_name', help='Full name of the project', required = True)
+    r_parser.add_argument('-as', '--analysts', dest='analysts', help='Comma-seprated list of analyst names')
+    r_parser.add_argument('-ds', '--description', dest='description', help='Project description')
+    r_parser.add_argument('-i', '--investigators', dest='investigators', help='Comma-seprated list of investigator names')
     r_parser.add_argument('-u', '--user', dest='user', help='Name of the GSI personnel generating the report', required = True)
     r_parser.add_argument('-t', '--ticket', dest='ticket', help='Jira data release ticket code', required = True)
     r_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
