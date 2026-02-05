@@ -27,13 +27,39 @@
    <tr>
      <th>Project Code</th>
      <th>Project Name</th>
-     <th>Date</th>     
+    {% if projects['description'] %}
+      <th>Description</th>
+    {% endif %}
+    {% if projects['investigators'] %}
+      <th>Principal Investigators</th>
+    {% endif %}
+    {% if projects['analysts'] %}
+      <th>Analysts</th>
+    {% endif %}
+    <th>Date</th>     
    </tr>   
    <tr>       
     <td> {{ projects['acronym'] }} </td>
     <td> {{ projects['name'] }} </td>        
+    {% if projects['description'] %}
+      <td>{{ projects['description'] }}</td>
+    {% endif %}
+    {% if projects['investigators'] %}
+      <td>
+        {% for i in projects['investigators'] %}
+          {{i}}
+        {% endfor %}  
+      </td>
+    {% endif %}
+    {% if projects['analysts'] %}
+      <td>
+        {% for i in projects['analysts'] %}
+          {{i}}
+        {% endfor %}
+      </td>
+    {% endif %}
     <td> {{ projects['date'] }} </td>
-   </tr>
+  </tr>
    </table>
     
    <p>This report accompanies the release of raw sequence data (fastq format) and provides associated sample information and QC metrics.</p>
