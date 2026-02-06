@@ -19,8 +19,8 @@ import json
 import pathlib
 import sqlite3
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+#from weasyprint import HTML
+#from weasyprint import CSS
 import re
 
 
@@ -2025,9 +2025,9 @@ def get_analysis_files(analysis_pipeline):
     infile.close()
     
     L = []
-    for case in data:
-        for workflow in data[case]:
-            L.extend(data[case][workflow])
+    for case_id in data:
+        for workflow in data[case_id]:
+            L.extend(data[case_id][workflow])
     
     return L
     
@@ -2436,6 +2436,34 @@ def generate_links(file_info, project_dir):
             if os.path.isfile(link) == False:
                 os.symlink(file, link)
 
+
+def generate_moh_links(analyses_file, project_dir):
+    '''
+    (str, str) -> None
+    
+    Link files according to the data structure contained in the analyses_file json
+            
+    Parameters
+    ----------
+    - analyses_file (str): Path to the json file containing the analyses file
+    - project_dir (str): Path to the project directory where files should be linked
+    '''
+    
+    infile = open(analyses_file)
+    data = json.load(infile)
+    infile.close()
+    
+    for donor in data:
+        donordir = os.path.join(project_dir, donor)
+        os.makedirs(donordir, exist_ok=True)
+        for datatype in data[donor]:
+            datadir = os.path.join(donordir, datatype)
+            os.makedirs(datadir, exist_ok=True)
+            for file in data[donor][datatype]:
+                filename = os.path.basename(file)
+                link = os.path.join(datadir, filename)
+            if os.path.isfile(link) == False:
+                os.symlink(file, link)
 
 
 
@@ -4108,6 +4136,8 @@ def collect_qc_metrics(library_designs, bamqc_db, dnaseqqc_db, rnaseqqc_db, emse
 
 
 
+
+
 def link_files(args):
     '''
     (str, str, str, str, str | None, list | None, list | None, List | None, str | None, str | None ) -> None
@@ -4131,8 +4161,13 @@ def link_files(args):
     - cases (List | None): List of case Ids
     - release_files (str | None): Path to file with file names or paths to be released 
     - analyses (str | None): Path to the file with hierarchical structure storing sample and workflow ids
+    - moh (bool):  Link data according to MOH specifications, directly from the 
     '''
     
+    if args.moh:
+        if args.analyses is None:
+            sys.exit('Use option -a to prvide the json for MOH release')
+        
     # check options
     if args.release_files:
         a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses]
@@ -4184,7 +4219,12 @@ def link_files(args):
     print('wrote md5sums: {0}'.format(outputfile))
     
     # link data
-    generate_links(file_info, working_dir)
+    if args.moh:
+        # link data according to MOH specifications
+        generate_moh_links(args.analyses, working_dir)
+    else:
+        # generate directory structure according to the extracted file info
+        generate_links(file_info, working_dir)
     print('linked data to {0}'.format(working_dir))
     
     
@@ -4753,6 +4793,7 @@ if __name__ == '__main__':
     l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     l_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
     l_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
+    l_parser.add_argument('--moh', dest='moh', action='store_true', help='Link files according to MOH specifications. Json file storing analysis data is required')
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
