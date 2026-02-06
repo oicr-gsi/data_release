@@ -2837,7 +2837,7 @@ def add_cfmedipqc_metrics(file_info, case_id, file, cfmedipqc_info):
         
     if library_design ==' CM' and limskey in cfmedipqc_info:
         assert limskey == cfmedipqc_info[limskey]['Pinery Lims ID']
-        assert lane == cfmedipqc_info[limskey]['Lane Number']
+        assert int(lane) == int(cfmedipqc_info[limskey]['Lane Number'])
         assert barcode == cfmedipqc_info[limskey]['Barcodes']
         assert run == cfmedipqc_info[limskey]['Run Alias']
         qc_found = True
@@ -2887,7 +2887,7 @@ def add_rnaseqqc_metrics(file_info, case_id, file, rnaseqqc_info):
     # check that limskey in recorded in rnaseqqc_db
     if library_design == 'WT' and limskey in rnaseqqc_info:
         assert limskey == rnaseqqc_info[limskey]['Pinery Lims ID']
-        assert lane == rnaseqqc_info[limskey]['Lane Number']
+        assert int(lane) == int(rnaseqqc_info[limskey]['Lane Number'])
         assert barcode == rnaseqqc_info[limskey]['Barcodes']
         assert run == rnaseqqc_info[limskey]['Run Alias']
         qc_found = True
@@ -2940,7 +2940,7 @@ def add_bamqc_metrics(file_info, case_id, file, bamqc_info):
     # check that limskey in recorded in bamqc
     if library_design not in excluded_libraries and limskey in bamqc_info:
         assert limskey == bamqc_info[limskey]['Pinery Lims ID']
-        assert lane == bamqc_info[limskey]['Lane Number']
+        assert int(lane) == int(bamqc_info[limskey]['Lane Number'])
         assert barcode == bamqc_info[limskey]['Barcodes']
         assert run == bamqc_info[limskey]['Run Alias']
         assert '_'.join(sample_id.split('_')[:2]) == '_'.join(bamqc_info[limskey]['sample'].split('_')[:2])
@@ -2991,7 +2991,7 @@ def add_emseqqc_metrics(file_info, case_id, file, emseqqc_info):
     # check that limskey has qc
     if library_design in ['MC', 'MG'] and limskey in emseqqc_info:
         assert limskey == emseqqc_info[limskey]['Pinery Lims ID']
-        assert lane ==  emseqqc_info[limskey]['Lane Number']
+        assert int(lane) ==  int(emseqqc_info[limskey]['Lane Number'])
         assert barcode == emseqqc_info[limskey]['Barcodes']
         assert run == emseqqc_info[limskey]['Run Alias']
         qc_found = True
