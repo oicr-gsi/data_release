@@ -2420,7 +2420,11 @@ def generate_links(file_info, project_dir):
         for file in file_info[case_id]:
             assert case_id == file_info[case_id][file]['case_id']
             workflow = file_info[case_id][file]['workflow']
-            case_dir = os.path.join(project_dir, case_id)
+            if ' ' in case_id:
+                case_name = case_id.replace(' ', '_')
+            else:
+                case_name = case_id
+            case_dir = os.path.join(project_dir, case_name)
             os.makedirs(case_dir, exist_ok=True)
             donor = list(set([d['donor'] for d in file_info[case_id][file]['samples']]))
             assert len(donor) == 1
