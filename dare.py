@@ -4298,6 +4298,7 @@ def link_files(args):
     - workflows (list | None): List of workflows generating the data to release
     - runs (list | None): List of run Ids
     - cases (List | None): List of case Ids
+    - casefile (str | None): File with cases
     - release_files (str | None): Path to file with file names or paths to be released 
     - analyses (str | None): Path to the file with hierarchical structure storing sample and workflow ids
     - moh (bool):  Link data according to MOH specifications, directly from the 
@@ -4307,18 +4308,21 @@ def link_files(args):
         if args.analyses is None:
             sys.exit('Use option -a to prvide the json for MOH release')
         
+    if args.cases and args.casefile:
+        sys.exit('-c and -cf are mutually exclusive')
+           
     # check options
     if args.release_files:
-        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses]
+        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-w', '-r', '-c', '-l', '-a']
+            c = ['-w', '-r', '-c', '-l', '-a', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
     else:
         if args.analyses:
-            a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries]
+            a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.casefile]
             if any(a):
-                c = ['-f', '-w', '-r', '-c', '-l']
+                c = ['-f', '-w', '-r', '-c', '-l', '-cf']
                 err = ','.join([c[i] for i in range(len(c)) if a[i]])
                 sys.exit('-a cannot be used with options {0}'.format(err))
         else:
@@ -4343,7 +4347,16 @@ def link_files(args):
         release_files = get_analysis_files(args.analyses, args.moh)
     if args.release_files:
         release_files = get_release_files(args.release_files)
-    file_info = extract_data(provenance_data, args.project, workflows=args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+    # check if cases are defined
+    if args.cases:
+        cases = args.cases
+    elif args.casefile:
+        infile = open(args.casefile)
+        cases = infile.read().rstrip().split('\n')
+        infile.close()
+    else:
+        cases = None
+    file_info = extract_data(provenance_data, args.project, workflows=args.workflows, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
@@ -4388,31 +4401,35 @@ def map_external_ids(args):
                               The third optional column is the lane number.
     - runs (list | None): List of run Ids
     - cases (List | None): List of case Ids
+    - casefile (str | None): File with cases
     - release_files (str | None): File with file names or full paths of files to release
     - analyses (str | None): Path to the json file storing analysis data
     - directories (list | None): List of directories with links or files to mark in Nabu
     '''
     
+    if args.cases and args.casefile:
+        sys.exit('-c and -cf are mutually exclusive')
+    
     # check options
     if args.release_files:
-        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories, args.casefile]
         if any(a):
-            c = ['-r', '-c', '-l', '-a', '-d']
+            c = ['-r', '-c', '-l', '-a', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
     elif args.analyses:
-        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories]
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories, args.casefile]
         if any(a):
-            c = ['-f', '-r', '-c', '-l', '-d']
+            c = ['-f', '-r', '-c', '-l', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-a cannot be used with options {0}'.format(err))
     elif args.directories:
         # check that all directories are valid
         if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
             sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses]
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-f', '-r', '-c', '-l', '-a']
+            c = ['-f', '-r', '-c', '-l', '-a', 'cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-d cannot be used with options {0}'.format(err))
     else:
@@ -4455,7 +4472,16 @@ def map_external_ids(args):
         # keep only the fastq files 
         if release_files:
             release_files = [i for i in release_files if 'fastq.gz' in i]
-        file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        # check if cases are defined
+        if args.cases:
+            cases = args.cases
+        elif args.casefile:
+            infile = open(args.casefile)
+            cases = infile.read().rstrip().split('\n')
+            infile.close()
+        else:
+            cases = None
+        file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
@@ -4480,6 +4506,7 @@ def mark_files_nabu(args):
     - project (str): Project of interest
     - workflows (list | None): List of workflows generating the data to release
     - cases (List | None): List of case Ids
+    - casefile (str | None): File with cases    
     - runs (list | None): List of run Ids
     - libraries (str | None): File with libraries tagged for release.
                               The first column is always the library.
@@ -4493,26 +4520,29 @@ def mark_files_nabu(args):
     - ticket (str): Jira ticket 
     '''
     
+    if args.cases and args.casefile:
+        sys.exit('-c and -cf are mutually exclusive')    
+    
     # check options
     if args.release_files:
-        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories. args.casefile]
         if any(a):
-            c = ['-w', '-r', '-c', '-l', '-a', '-d']
+            c = ['-w', '-r', '-c', '-l', '-a', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
     elif args.analyses:
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories]
+        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories, args.casefile]
         if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-d']
+            c = ['-f', '-w', '-r', '-c', '-l', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-a cannot be used with options {0}'.format(err))
     elif args.directories:
         # check that all directories are valid
         if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
             sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses]
+        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-a']
+            c = ['-f', '-w', '-r', '-c', '-l', '-a', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-d cannot be used with options {0}'.format(err))
     else:
@@ -4549,7 +4579,16 @@ def mark_files_nabu(args):
             release_files = get_analysis_files(args.analyses)
         if args.release_files:
             release_files = get_release_files(args.release_files)
-        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        # check if cases are defined
+        if args.cases:
+            cases = args.cases
+        elif args.casefile:
+            infile = open(args.casefile)
+            cases = infile.read().rstrip().split('\n')
+            infile.close()
+        else:
+            cases = None
+        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # make a list of swids
@@ -4578,6 +4617,7 @@ def case_signoff(args):
     - project (str): Project of interest
     - workflows (list | None): List of workflows generating the data to release
     - cases (List | None): List of case Ids
+    - casefile (str | None): File with cases    
     - runs (list | None): List of run Ids
     - libraries (str | None): File with libraries tagged for release
     - release_files (str | None): File with file names or full paths of files to release
@@ -4592,26 +4632,29 @@ def case_signoff(args):
     - deliverable_type (str): Deliverable type. Default is Data Release
     '''
     
+    if args.cases and args.casefile:
+        sys.exit('-c and -cf are mutually exclusive')    
+       
     # check options
     if args.release_files:
-        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories. args.casefile]
         if any(a):
-            c = ['-w', '-r', '-c', '-l', '-a', '-d']
+            c = ['-w', '-r', '-c', '-l', '-a', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
     elif args.analyses:
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories]
+        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories, args.casefile]
         if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-d']
+            c = ['-f', '-w', '-r', '-c', '-l', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-a cannot be used with options {0}'.format(err))
     elif args.directories:
         # check that all directories are valid
         if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
             sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses]
+        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-a']
+            c = ['-f', '-w', '-r', '-c', '-l', '-a', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-d cannot be used with options {0}'.format(err))
     else:
@@ -4648,7 +4691,16 @@ def case_signoff(args):
             release_files = get_analysis_files(args.analyses)
         if args.release_files:
             release_files = get_release_files(args.release_files)
-        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+        # check if cases are defined
+        if args.cases:
+            case_names = args.cases
+        elif args.casefile:
+            infile = open(args.casefile)
+            case_names = infile.read().rstrip().split('\n')
+            infile.close()
+        else:
+            case_names = None
+        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=case_names, libraries=libraries, release_files=release_files)
         
     print('extracted data for {0} files'.format(len(file_info))) 
 
@@ -4707,6 +4759,7 @@ def write_batch_report(args):
     - provenance (str): Path to the json with production data
     - runs (list): List of run Ids
     - cases (list): List of case Ids
+    - casefile (str | None): File with cases    
     - libraries (str): File with libraries tagged for release.
                        The first column is always the library.
                        The second column is the run id.
@@ -4723,26 +4776,29 @@ def write_batch_report(args):
     - keep_html (bool): Write html report if activated
     '''
 
+    if args.cases and args.casefile:
+        sys.exit('-c and -cf are mutually exclusive')    
+    
     # check options
     if args.release_files:
-        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories]
+        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories, args.casefile]
         if any(a):
-            c = ['-r', '-c', '-l', '-a', '-d']
+            c = ['-r', '-c', '-l', '-a', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
     elif args.analyses:
-        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories]
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories, args.casefile]
         if any(a):
-            c = ['-f', '-r', '-c', '-l', '-d']
+            c = ['-f', '-r', '-c', '-l', '-d', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-a cannot be used with options {0}'.format(err))
     elif args.directories:
         # check that all directories are valid
         if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
             sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses]
+        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-f', '-r', '-c', '-l', '-a']
+            c = ['-f', '-r', '-c', '-l', '-a', -'cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-d cannot be used with options {0}'.format(err))
     else:
@@ -4780,6 +4836,15 @@ def write_batch_report(args):
             print('Expecting fastqs in directories, but found none')
 
     else:
+        # check if cases are defined
+        if args.cases:
+            cases = args.cases
+        elif args.casefile:
+            infile = open(args.casefile)
+            cases = infile.read().rstrip().split('\n')
+            infile.close()
+        else:
+            cases = None
         # extract data to release
         libraries = get_libraries(args.libraries)
         release_files = []
@@ -4791,12 +4856,12 @@ def write_batch_report(args):
         if release_files:
             release_files = [i for i in release_files if 'fastq.gz' in i]
             if release_files:
-                file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+                file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
             else:
                 file_info = {}
                 print('Expecting fastqs but found none')
         else:
-            file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=args.cases, libraries=libraries, release_files=release_files)
+            file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
         print('extracted data for {0} files'.format(len(file_info))) 
 
     # write sample map
@@ -4931,6 +4996,7 @@ if __name__ == '__main__':
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     l_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    l_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     l_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
     l_parser.add_argument('--moh', dest='moh', action='store_true', help='Link files according to MOH specifications. Json file storing analysis data is required')
     l_parser.set_defaults(func=link_files)
@@ -4944,6 +5010,7 @@ if __name__ == '__main__':
     m_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
     m_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     m_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    m_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     m_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
     m_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
@@ -4955,6 +5022,7 @@ if __name__ == '__main__':
     qc_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
     qc_parser.add_argument('-w', '--workflows', dest='workflows', nargs='*', help='List of workflows')
     qc_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    qc_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     qc_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     qc_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
     qc_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
@@ -4973,6 +5041,7 @@ if __name__ == '__main__':
     s_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
     s_parser.add_argument('-w', '--workflows', dest='workflows', nargs='*', help='List of workflows')
     s_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    s_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     s_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     s_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
     s_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
@@ -5002,6 +5071,7 @@ if __name__ == '__main__':
     r_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
     r_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     r_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
+    r_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     r_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
     r_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     r_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
