@@ -58,16 +58,19 @@ Parameters
 | -l | File with libraries tagged for release | optional             |
 | -f | File with names or paths of files to release | optional             |
 | -c | List of case identifiers | optional             |
+| -cf | File with case identifiers | optional             |
 | -a | Path to json file storing data to release | optional             |
 
 
-Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-l` and `-a`.
+Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l` and `-a`.
 
-Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-l` and `-f`.
+Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l` and `-f`.
 
 Option `-w` is required if `-a` and `-f` are not used.
 
 Options `-r` and `-l` are mutually exclusive
+
+Options `-c` and `-cf` are mutually exclusive
 
 - project `-pr/ --project`:
 Required parameter. The name of the project. 
@@ -98,6 +101,9 @@ File with names of paths of the files to be released
 
 - cases `-c/ --cases`:
 White space-separated case identifiers.
+
+- casefile `-cf/ --casefile`:
+File with case identifiers
 
 - analyses `-a/ --analyses`:
 Path to the json file storing data to release (eg. from waterzooi)
@@ -145,18 +151,20 @@ Parameters
 | -l | File with libraries tagged for release | optional             |
 | -f | File with names or paths of files to release | optional             |
 | -c | List of case identifiers | optional             |
+| -cf | File with case identifiers | optional             |
 | -a | Path to json file storing data to release | optional             |
 | -d | List of directories with links or files| optional             |
 
 
-Option `-f` cannot be used with options `-d`, `-r`, `-c`, `-l` and `-a`.
+Option `-f` cannot be used with options `-d`, `-r`, `-c`, `-cf`, `-l` and `-a`.
 
-Option `-a` cannot be used with options `-f`, `-r`, `-c`, `-l` and `-d`.
+Option `-a` cannot be used with options `-f`, `-r`, `-c`, `-cf`, `-l` and `-d`.
 
-Option `-d` cannot be used with options `-f`, `-r`, `-c`, `-l` and `-a`.
+Option `-d` cannot be used with options `-f`, `-r`, `-c`, `-cf`, `-l` and `-a`.
 
 Options `-r` and `-l` are mutually exclusive
 
+Options `-c` and `-cf` are mutually exclusive
 
 - project `-pr/ --project`:
 Required parameter. The name of the project.
@@ -183,6 +191,9 @@ File with names of paths of the files to be released
 
 - cases `-c/ --cases`:
 White space-separated case identifiers.
+
+- casefile `-cf/ --casefile`:
+File with case identifiers
 
 - analyses `-a/ --analyses`:
 Path to the json file storing data to release (eg. from waterzooi)
@@ -235,19 +246,22 @@ Parameters
 | -l | File with libraries tagged for release | optional             |
 | -f | File with names or paths of files to release | optional             |
 | -c | List of case identifiers | optional             |
+| -cf | File with case identifiers | optional             |
 | -a | Path to json file storing data to release | optional             |
 | -d | List of directories with links or files| optional             |
 
 
-Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-a` and `-d`.
+Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l`, `-a` and `-d`.
 
-Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-d`.
+Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l`, `-f` and `-d`.
 
-Option `-d` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-a`.
+Option `-d` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l`, `-f` and `-a`.
 
 Option `-w` is required if `-a`, `-f` `-d` are not used.
 
 Options `-r` and `-l` are mutually exclusive
+
+Options `-c` and `-cf` are mutually exclusive
 
 
 - project `-pr/ --project`:
@@ -277,6 +291,9 @@ File with names of paths of the files to be released
 
 - cases `-c/ --cases`:
 White space-separated case identifiers.
+
+- casefile `-cf/ --casefile`:
+File with case identifiers
 
 - analyses `-a/ --analyses`:
 Path to the json file storing data to release (eg. from waterzooi)
@@ -318,20 +335,22 @@ Parameters
 | -l | File with libraries tagged for release | optional             |
 | -f | File with names or paths of files to release | optional             |
 | -c | List of case identifiers | optional             |
+| -cf | File with case identifiers | optional             |
 | -a | Path to json file storing data to release | optional             |
 | -d | List of directories with links or files| optional             |
 | --keep_html | Keep hmtl after PDF conversion | optional             |
 
 
 
-Option `-f` cannot be used with options `-r`, `-c`, `-l`, `-a` and `-d`.
+Option `-f` cannot be used with options `-r`, `-c`, `-cf`, `-l`, `-a` and `-d`.
 
-Option `-a` cannot be used with options `-r`, `-c`, `-l`, `-f` and `-d`.
+Option `-a` cannot be used with options `-r`, `-c`, `-cf`, `-l`, `-f` and `-d`.
 
-Option `-d` cannot be used with options `-r`, `-c`, `-l`, `-f` and `-a`.
+Option `-d` cannot be used with options `-r`, `-c`, `-cf`, `-l`, `-f` and `-a`.
 
 Options `-r` and `-l` are mutually exclusive
 
+Options `-c` and `-cf` are mutually exclusive
 
 - project `-pr/ --project`:
 Required parameter. The name of the project.
@@ -383,6 +402,9 @@ File with names of paths of the files to be released
 - cases `-c/ --cases`:
 White space-separated case identifiers.
 
+- casefile `-cf/ --casefile`:
+File with case identifiers
+
 - analyses `-a/ --analyses`:
 Path to the json file storing data to release (eg. from waterzooi)
 
@@ -406,7 +428,7 @@ Example 2: Signoff of pipeline data for specific cases for project COMBAT
 
 ```dare signoff -pr COMBAT -c R1391_a94_COMBAT_0001_Pl_T_tT0 R1391_a94_COMBAT_0002_Pl_T_tT0 R1391_a94_COMBAT_0003_Pl_T_tT0 R1391_a94_COMBAT_0004_Pl_P_tT0 R1391_a94_COMBAT_0005_Pl_P_tT0 -dv "Full Pipeline" -u "Richard Jovelin" -t GDR-0001```
 
-
+I
 Parameters
 
 | argument | purpose | required/optional                                    |
@@ -424,19 +446,22 @@ Parameters
 | -l | File with libraries tagged for release | optional             |
 | -f | File with names or paths of files to release | optional             |
 | -c | List of case identifiers | optional             |
+| -cf | File with case identifiers | optional             |
 | -a | Path to json file storing data to release | optional             |
 | -d | List of directories with links or files| optional             |
 
 
-Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-a` and `-d`.
+Option `-f` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l`, `-a` and `-d`.
 
-Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-d`.
+Option `-a` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l`, `-f` and `-d`.
 
-Option `-d` cannot be used with options `-w`, `-r`, `-c`, `-l`, `-f` and `-a`.
+Option `-d` cannot be used with options `-w`, `-r`, `-c`, `-cf`, `-l`, `-f` and `-a`.
 
 Option `-w` is required if `-a`, `-f` `-d` are not used.
 
 Options `-r` and `-l` are mutually exclusive
+
+Options `-c` and `-cf` are mutually exclusive
 
 
 - project `-pr/ --project`:
@@ -483,6 +508,9 @@ File with names of paths of the files to be released
 
 - cases `-c/ --cases`:
 White space-separated case identifiers.
+
+- casefile `-cf/ --casefile`:
+File with case identifiers
 
 - analyses `-a/ --analyses`:
 Path to the json file storing data to release (eg. from waterzooi)
