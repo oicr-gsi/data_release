@@ -2022,7 +2022,7 @@ def get_analysis_files(analysis_pipeline, moh=False):
     - moh (bool): Parse MOH specific json if True. Default is False
     '''
     
-    infile = open(analysis_pipeline)
+    infile = open(analysis_pipeline, encoding='utf-8')
     data = json.load(infile)
     infile.close()
     
@@ -2240,7 +2240,7 @@ def write_md5sum(file_info, outputfile):
     L = list(map(lambda x: '\t'.join(x), L))
     L = sorted(list(set(L)))    
             
-    newfile = open(outputfile, 'w')
+    newfile = open(outputfile, 'w', encoding='utf-8')
     for i in L:
         newfile.write(i + '\n')
     newfile.close()
@@ -2315,7 +2315,7 @@ def write_sample_map(project, file_info, working_dir):
     # write sample maps
     current_time = time.strftime('%Y-%m-%d_%H:%M', time.localtime(time.time()))
     outputfile = os.path.join(working_dir, '{0}.release.{1}.{2}.map.tsv'.format(project, current_time, 'fastqs'))
-    newfile = open(outputfile, 'w')
+    newfile = open(outputfile, 'w', encoding = 'utf-8')
     header = ['oicr_case', 'oicr_donor', 'donor_id', 'library_id', 'library_type', 'tissue_type', 'tissue_origin', 'run', 'barcode', 'sample_id', 'files']
     
     newfile.write('\t'.join(header) + '\n')
@@ -2347,7 +2347,7 @@ def get_libraries(library_file):
     D = {}
     
     if library_file:
-        infile = open(library_file)
+        infile = open(library_file, encoding='utf-8')
         content = infile.read().strip().split('\n')
         for i in range(len(content)):
             content[i] = content[i].split('\t')
@@ -2393,7 +2393,7 @@ def get_release_files(release_files):
     L = []
     
     if release_files:
-        infile = open(release_files)
+        infile = open(release_files, encoding='utf-8')
         L = infile.read().rstrip().split('\n')
         # check that files are all full paths or file names 
         if all(map(lambda x: os.path.dirname(x) == '', L)) or all(map(lambda x: os.path.dirname(x), L)) == False:
@@ -2462,7 +2462,7 @@ def generate_moh_links(analyses_file, project_dir):
     - project_dir (str): Path to the project directory where files should be linked
     '''
     
-    infile = open(analyses_file)
+    infile = open(analyses_file, encoding='utf-8')
     data = json.load(infile)
     infile.close()
     
@@ -4105,7 +4105,7 @@ def makepdf(html, outputfile):
     #htmldoc.write_pdf(outputfile, stylesheets=[CSS('./static/css/style.css')], presentational_hints=True)
 
     css_file = os.path.join(os.path.dirname(__file__), './static/css/style.css')
-    htmldoc = HTML(string=html, base_url=__file__)
+    htmldoc = HTML(string=html, base_url=__file__, encoding='utf-8')
     htmldoc.write_pdf(outputfile, stylesheets=[CSS(css_file)], presentational_hints=True)
 
 
@@ -4129,7 +4129,7 @@ def create_nabu_signoff(cases, nabu_key_file, user_name, ticket, signoff_step_na
     - nabu (str) URL to access the signoffs in Nabu
     '''
     
-    infile = open(nabu_key_file)
+    infile = open(nabu_key_file, encoding='utf-8')
     nabu_key = infile.read().rstrip()
     infile.close()
     
@@ -4351,7 +4351,7 @@ def link_files(args):
     if args.cases:
         cases = args.cases
     elif args.casefile:
-        infile = open(args.casefile)
+        infile = open(args.casefile, encoding='utf-8')
         cases = infile.read().rstrip().split('\n')
         infile.close()
     else:
@@ -4476,7 +4476,7 @@ def map_external_ids(args):
         if args.cases:
             cases = args.cases
         elif args.casefile:
-            infile = open(args.casefile)
+            infile = open(args.casefile, encoding='utf-8')
             cases = infile.read().rstrip().split('\n')
             infile.close()
         else:
@@ -4583,7 +4583,7 @@ def mark_files_nabu(args):
         if args.cases:
             cases = args.cases
         elif args.casefile:
-            infile = open(args.casefile)
+            infile = open(args.casefile, encoding='utf-8')
             cases = infile.read().rstrip().split('\n')
             infile.close()
         else:
@@ -4695,7 +4695,7 @@ def case_signoff(args):
         if args.cases:
             case_names = args.cases
         elif args.casefile:
-            infile = open(args.casefile)
+            infile = open(args.casefile, encoding='utf-8')
             case_names = infile.read().rstrip().split('\n')
             infile.close()
         else:
@@ -4840,7 +4840,7 @@ def write_batch_report(args):
         if args.cases:
             cases = args.cases
         elif args.casefile:
-            infile = open(args.casefile)
+            infile = open(args.casefile, encoding='utf-8')
             cases = infile.read().rstrip().split('\n')
             infile.close()
         else:
@@ -4962,7 +4962,7 @@ def write_batch_report(args):
     # save html file to disk
     if args.keep_html:
         html_file = os.path.join(working_dir, '{0}_run_level_data_release_report.{1}.html'.format(args.project, current_time))
-        newfile = open(html_file, 'w')
+        newfile = open(html_file, 'w', encoding='utf-8')
         newfile.write(content)
         newfile.close()
 
