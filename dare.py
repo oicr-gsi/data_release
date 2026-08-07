@@ -4370,13 +4370,27 @@ def check_input_params(cases, casefile, runs, libraries, workflowfile, workflowi
 
 
 
+def list_release_files(release_files, analyses, moh = False):
+    '''
+    (str | None, str | None, bool) -> list 
 
+    Returns a list of files to release either listed from file release_files
+    or extracted from the analyses json file
 
+    Parameters
+    ----------
+    - release_files (str | None): Path to file with file names or paths to be released 
+    - analyses (str | None): Path to the file with hierarchical structure storing sample and workflow ids
+    - moh (bool):  Link data according to MOH specifications, directly from the 
+    '''
+    
+    release_files = []
+    if analyses:
+        release_files = get_analysis_files(analyses, moh)
+    elif release_files:
+        release_files = get_release_files(release_files)
 
-
-
-
-
+    return release_files
 
 
 
@@ -4461,11 +4475,11 @@ def link_files(args):
         libraries = get_libraries(args.libraries)
     else:
         libraries = []
-    release_files = []
-    if args.analyses:
-        release_files = get_analysis_files(args.analyses, args.moh)
-    if args.release_files:
-        release_files = get_release_files(args.release_files)
+
+    # get files to release if specified
+    release_files = list_release_files(args.release_files, args.analyses, args.moh)
+
+    
         
     # check if cases are defined
     if args.cases:
@@ -4580,11 +4594,8 @@ def map_external_ids(args):
         else:
             libraries = []
     
-        release_files = []
-        if args.analyses:
-            release_files = get_analysis_files(args.analyses)
-        if args.release_files:
-            release_files = get_release_files(args.release_files)
+        # get files to release if specified
+        release_files = list_release_files(args.release_files, args.analyses)
         # keep only the fastq files 
         release_files = [i for i in release_files if 'fastq.gz' in i]
     
@@ -4680,13 +4691,10 @@ def mark_files_nabu(args):
             libraries = get_libraries(args.libraries)
         else:
             libraries
-            
-        release_files = []
-        if args.analyses:
-            release_files = get_analysis_files(args.analyses)
-        if args.release_files:
-            release_files = get_release_files(args.release_files)
         
+        # get files to release if specified
+        release_files = list_release_files(args.release_files, args.analyses)
+    
         # check if cases are defined
         if args.cases:
             cases = args.cases
@@ -4784,11 +4792,10 @@ def case_signoff(args):
     else:
         # extract data to release
         libraries = get_libraries(args.libraries)
-        release_files = []
-        if args.analyses:
-            release_files = get_analysis_files(args.analyses)
-        if args.release_files:
-            release_files = get_release_files(args.release_files)
+        
+        # get files to release if specified
+        release_files = list_release_files(args.release_files, args.analyses)
+               
         # check if cases are defined
         if args.cases:
             case_names = args.cases
@@ -4856,7 +4863,8 @@ def case_signoff(args):
 
 def write_batch_report(args):
     '''
-    (str, str, str, str, str|None, str|None, str|None, str, str, list, str, str|None, bool) -> None
+    (str, str, str, str, str|None, str|None, str|None, str, str, list, str, str|None,
+     str | None, list | None, bool) -> None
     
     Write a PDF report with QC metrics and released fastqs for a given project
 
@@ -4888,38 +4896,16 @@ def write_batch_report(args):
     - cfmedipqc_db (str): Path to the cfmedip SQLite database
     - rnaseqqc_db (str): Path to the rnaseq SQLite database
     - emseqqc_db (str): Path to the emseq SQLite database
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
     - keep_html (bool): Write html report if activated
     '''
 
-    if args.cases and args.casefile:
-        sys.exit('-c and -cf are mutually exclusive')    
-    
-    # check options
-    if args.release_files:
-        a = [args.runs, args.cases, args.libraries, args.analyses, args.directories, args.casefile]
-        if any(a):
-            c = ['-r', '-c', '-l', '-a', '-d', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-f cannot be used with options {0}'.format(err))
-    elif args.analyses:
-        a = [args.release_files, args.runs, args.cases, args.libraries, args.directories, args.casefile]
-        if any(a):
-            c = ['-f', '-r', '-c', '-l', '-d', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-a cannot be used with options {0}'.format(err))
-    elif args.directories:
-        # check that all directories are valid
-        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
-            sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
-        if any(a):
-            c = ['-f', '-r', '-c', '-l', '-a', -'cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-d cannot be used with options {0}'.format(err))
-    else:
-        if args.runs and args.libraries:
-           sys.exit('-r and -l are exclusive parameters')    
-    
+
+    # check compatibility of input parameters
+    check_input_params(args.cases, args.casefile, args.runs, args.libraries, args.workflowfile,
+                       args.workflowids, args.release_files, args.directories, args.analyses)
+
     # create working directory
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     
@@ -4959,26 +4945,37 @@ def write_batch_report(args):
             cases = infile.read().rstrip().split('\n')
             infile.close()
         else:
-            cases = None
+            cases = []
         # extract data to release
         libraries = get_libraries(args.libraries)
-        release_files = []
-        if args.analyses:
-            release_files = get_analysis_files(args.analyses)
-        if args.release_files:
-            release_files = get_release_files(args.release_files)
-        # keep only the fastq files 
-        if release_files:
-            release_files = [i for i in release_files if 'fastq.gz' in i]
-            if release_files:
-                file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
-            else:
-                file_info = {}
-                print('Expecting fastqs but found none')
+        
+        # get files to release if specified
+        release_files = list_release_files(args.release_files, args.analyses)
+               
+        # get the workflow ids if specified
+        if args.workflowfile:
+            workflowids = get_workflowids(args.workflowfile)
+        elif args.workflowids:
+            workflowids = args.workflowids
         else:
-            file_info = extract_data(provenance_data, args.project, ['bcl2fastq'], runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
-        print('extracted data for {0} files'.format(len(file_info))) 
-
+            workflowids = []    
+        
+        # release sequence data if data is not specified in workflowfile, workflowids or release files
+        if workflowids or release_files:
+            sequencing_workflows = []
+        else:
+            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+       
+        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
+                                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
+    
+        # keep only fastqs when files or workflow ids are specified
+        to_remove = [i for i in file_info if file_info[i]['wfrun_id'] not in sequencing_workflows]
+        for i in to_remove:
+            del file_info[i]
+        
+    print('extracted data for {0} files'.format(len(file_info))) 
+          
     # write sample map
     sample_map = write_sample_map(args.project, file_info, working_dir)
     print('wrote sample map {0}'.format(sample_map))
@@ -5201,6 +5198,8 @@ if __name__ == '__main__':
     r_parser.add_argument('-cq', '--cfmedipqc', dest='cfmedipqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest', help='Path to the cfmedip SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/cfmedipqc/latest')
     r_parser.add_argument('-rq', '--rnaseqqc', dest='rnaseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest', help='Path to the rnaseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/rnaseqqc2/latest')
     r_parser.add_argument('-eq', '--emseqqc', dest='emseqqc_db', default = '/scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest', help='Path to the emseq SQLite database. Default is /scratch2/groups/gsi/production/qcetl_v1/emseqqc/latest')
+    r_parser.add_argument('-wf', '--workflowfile', dest='workflowfile', help='Path to the file with workflow ids')
+    r_parser.add_argument('-wids', '--workflowids', dest='workflowids', nargs='*', help='List of workflow run Ids')
     r_parser.add_argument('--keep_html', dest='keep_html', action='store_true', help='Write html report if activated.')
     r_parser.set_defaults(func=write_batch_report)
     
