@@ -4316,6 +4316,75 @@ def collect_qc_metrics(library_designs, bamqc_db, dnaseqqc_db, rnaseqqc_db, emse
 
 
 
+def check_input_params(cases, casefile, runs, libraries, workflowfile, workflowids, release_files, directories, analyses):
+    '''
+    
+    
+    
+    '''
+    
+    
+    if cases and casefile:
+        sys.exit('-c and -cf are mutually exclusive')
+    
+    if runs and libraries:
+        sys.exit('-r and -l are exclusive parameters')    
+    
+    if workflowfile and workflowids:
+        sys.exit('-wf and -wids are mutually exclusive')
+    
+    # check options
+    if release_files:
+        a = [directories, workflowfile, workflowids, runs, cases, libraries, analyses, casefile]
+        if any(a):
+            c = ['-d', '-wf', '-wids', '-r', '-c', '-l', '-a', '-cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-f cannot be used with options {0}'.format(err))
+    
+    if analyses:
+        a = [directories, release_files, workflowfile, workflowids, runs, cases, libraries, casefile]
+        if any(a):
+            c = ['-d', '-f', '-wf', '-wids', '-r', '-c', '-l', '-cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-a cannot be used with options {0}'.format(err))
+    
+    if directories:
+        # check that all directories are valid
+        if all(list(map(lambda x: os.path.isdir(x), directories))) == False:
+            sys.exit('Please provide valid directories with -d')        
+        a = [release_files, workflowfile, workflowids, runs, cases, libraries, analyses, casefile]
+        if any(a):
+            c = ['-f', '-wf', '-wids', '-r', '-c', '-l', '-a', 'cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-d cannot be used with options {0}'.format(err))
+    
+    if workflowfile or workflowids:
+        a = [directories, release_files, analyses, runs, cases, libraries, casefile]
+        if any(a):
+            c = ['-d', '-f', '-a', '-r', '-c', '-l', '-cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-wf and -wids cannot be used with options {0}'.format(err))
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def link_files(args):
     '''
     (str, str, str, str, str | None, str | None, list | None, list | None, list | None, str | None, str | None, str | None, bool) -> None 
@@ -4475,48 +4544,11 @@ def map_external_ids(args):
     - workflowfile (str | None): Path to the file with workflow ids
     - workflowids (list | None): List of workflow run Ids
     '''
-    
-    if args.cases and args.casefile:
-        sys.exit('-c and -cf are mutually exclusive')
-    
-    if args.runs and args.libraries:
-        sys.exit('-r and -l are exclusive parameters')    
-    
-    if args.workflowfile and args.workflowids:
-        sys.exit('-wf and -wids are mutually exclusive')
-    
-    # check options
-    if args.release_files:
-        a = [args.directories, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
-        if any(a):
-            c = ['-d', '-wf', '-wids', '-r', '-c', '-l', '-a', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-f cannot be used with options {0}'.format(err))
-    
-    if args.analyses:
-        a = [args.directories, args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.casefile]
-        if any(a):
-            c = ['-d', '-f', '-wf', '-wids', '-r', '-c', '-l', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-a cannot be used with options {0}'.format(err))
-    
-    if args.directories:
-        # check that all directories are valid
-        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
-            sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
-        if any(a):
-            c = ['-f', '-wf', '-wids', '-r', '-c', '-l', '-a', 'cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-d cannot be used with options {0}'.format(err))
-    
-    if args.workflowfile or args.workflowids:
-        a = [args.directories, args.release_files, args.analyses, args.runs, args.cases, args.libraries, args.casefile]
-        if any(a):
-            c = ['-d', '-f', '-a', '-r', '-c', '-l', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-wf and -wids cannot be used with options {0}'.format(err))
-    
+
+    # check compatibility of input parameters
+    check_input_params(args.cases, args.casefile, args.runs, args.libraries, args.workflowfile,
+                       args.workflowids, args.release_files, args.directories, args.analyses)
+
     # create a working directory to link files and save md5sums 
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
     
@@ -4619,47 +4651,10 @@ def mark_files_nabu(args):
     - ticket (str): Jira ticket 
     '''
     
-    if args.cases and args.casefile:
-        sys.exit('-c and -cf are mutually exclusive')
-    
-    if args.runs and args.libraries:
-        sys.exit('-r and -l are exclusive parameters')    
-    
-    if args.workflowfile and args.workflowids:
-        sys.exit('-wf and -wids are mutually exclusive')
-    
-    # check options
-    if args.release_files:
-        a = [args.directories, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
-        if any(a):
-            c = ['-d', '-wf', '-wids', '-r', '-c', '-l', '-a', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-f cannot be used with options {0}'.format(err))
-    
-    if args.analyses:
-        a = [args.directories, args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.casefile]
-        if any(a):
-            c = ['-d', '-f', '-wf', '-wids', '-r', '-c', '-l', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-a cannot be used with options {0}'.format(err))
-    
-    if args.directories:
-        # check that all directories are valid
-        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
-            sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
-        if any(a):
-            c = ['-f', '-wf', '-wids', '-r', '-c', '-l', '-a', 'cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-d cannot be used with options {0}'.format(err))
-    
-    if args.workflowfile or args.workflowids:
-        a = [args.directories, args.release_files, args.analyses, args.runs, args.cases, args.libraries, args.casefile]
-        if any(a):
-            c = ['-d', '-f', '-a', '-r', '-c', '-l', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-wf and -wids cannot be used with options {0}'.format(err))
-    
+    # check compatibility of input parameters
+    check_input_params(args.cases, args.casefile, args.runs, args.libraries, args.workflowfile,
+                       args.workflowids, args.release_files, args.directories, args.analyses)
+
     # get the files to mark
     # load data
     provenance_data = load_data(args.provenance)
@@ -4710,7 +4705,8 @@ def mark_files_nabu(args):
         else:
             workflowids = []    
     
-        # release sequence data if data is not specified in workflowfile, workflowids or release files
+        # analysis data is extracted using released files or workflow ids
+        # sequence data is extracted if these are not provided
         if workflowids or release_files:
             sequencing_workflows = []
         else:
@@ -4733,9 +4729,9 @@ def mark_files_nabu(args):
 
 def case_signoff(args):
     '''
-    (str, str, str, list|None, List|None,
-     list|None, str|None, str|None, list|None,
-     str|None, str, str, str) -> None
+    (str, str, str | None, list | None, list | None, str | None, list | None,
+    str | None, str | None, str | None, list | None, str, str, str, str,
+    str, str, str) -> None
     
     Signoff case record in Nabu for specfific deliverable
     
@@ -4744,7 +4740,8 @@ def case_signoff(args):
     - provenance (str): Path to json with production data. Default is
                         /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
     - project (str): Project of interest
-    - workflows (list | None): List of workflows generating the data to release
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
     - cases (List | None): List of case Ids
     - casefile (str | None): File with cases    
     - runs (list | None): List of run Ids
@@ -4761,37 +4758,9 @@ def case_signoff(args):
     - deliverable_type (str): Deliverable type. Default is Data Release
     '''
     
-    if args.cases and args.casefile:
-        sys.exit('-c and -cf are mutually exclusive')    
-       
-    # check options
-    if args.release_files:
-        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories. args.casefile]
-        if any(a):
-            c = ['-w', '-r', '-c', '-l', '-a', '-d', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-f cannot be used with options {0}'.format(err))
-    elif args.analyses:
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories, args.casefile]
-        if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-d', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-a cannot be used with options {0}'.format(err))
-    elif args.directories:
-        # check that all directories are valid
-        if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
-            sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
-        if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-a', '-cf']
-            err = ','.join([c[i] for i in range(len(c)) if a[i]])
-            sys.exit('-d cannot be used with options {0}'.format(err))
-    else:
-        if not args.workflows:
-            sys.exit('Use -w to indicate the pipeline workflows')
-        if args.runs and args.libraries:
-           sys.exit('-r and -l are exclusive parameters')    
-    
+    # check compatibility of input parameters
+    check_input_params(args.cases, args.casefile, args.runs, args.libraries, args.workflowfile,
+                       args.workflowids, args.release_files, args.directories, args.analyses)
 
     # get the files to mark
     # load data
@@ -4828,9 +4797,26 @@ def case_signoff(args):
             case_names = infile.read().rstrip().split('\n')
             infile.close()
         else:
-            case_names = None
-        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=case_names, libraries=libraries, release_files=release_files)
+            case_names = []
         
+        # get the workflow ids if specified
+        if args.workflowfile:
+            workflowids = get_workflowids(args.workflowfile)
+        elif args.workflowids:
+            workflowids = args.workflowids
+        else:
+            workflowids = []    
+    
+        # analysis data is extracted using released files or workflow ids
+        # sequence data is extracted if these are not provided
+        if workflowids or release_files:
+            sequencing_workflows = []
+        else:
+            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+
+        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
+                                 workflowids = workflowids, runs=args.runs, cases=case_names, libraries=libraries, release_files=release_files)
+    
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # get end-point
@@ -4842,7 +4828,7 @@ def case_signoff(args):
     # list deliverables for each case
     cases = get_deliverables(file_info)
     print('identified {0} cases for {1} signoff'.format(len(cases), args.deliverable))
-    # keep opnly files corresponding to deliverable
+    # keep only files corresponding to deliverable
     file_info = keep_files_for_deliverable(file_info, args.deliverable)
     # list deliverables for each case
     cases = get_deliverables(file_info)
@@ -5172,7 +5158,8 @@ if __name__ == '__main__':
     s_parser = subparsers.add_parser('signoff', help="Create case signoff in Nabu")
     s_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
     s_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
-    s_parser.add_argument('-w', '--workflows', dest='workflows', nargs='*', help='List of workflows')
+    s_parser.add_argument('-wf', '--workflowfile', dest='workflowfile', help='Path to the file with workflow ids')
+    s_parser.add_argument('-wids', '--workflowids', dest='workflowids', nargs='*', help='List of workflow run Ids')
     s_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
     s_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     s_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
