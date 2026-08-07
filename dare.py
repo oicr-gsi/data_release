@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-from weasyprint import CSS
+# from jinja2 import Environment, FileSystemLoader
+# from weasyprint import HTML
+# from weasyprint import CSS
 import re
 
 
@@ -2041,9 +2041,9 @@ def get_analysis_files(analysis_pipeline, moh=False):
     return L
  
     
-def select_files(file_info, project, workflows=None, runs = None, cases = None, libraries=None, release_files=None):
+def select_files(file_info, project, sequencing_workflows = None, workflowids=None, runs = None, cases = None, libraries=None, release_files=None):
     '''
-    (dict, str, list, list | None, list | None, dict | None, list | None) -> dict
+    (dict, str, list | None, list | None, list | None, list | None, dict | None, list | None) -> dict
      
     Restrict the file information of the files to release based
      
@@ -2051,7 +2051,8 @@ def select_files(file_info, project, workflows=None, runs = None, cases = None, 
     ----------
     - file_info (dict): Dictionary with file information of all files in a case
     - project (str): Project of interest
-    - workflows (list | None): List of workflows generating the files to release
+    - sequencing_workflows (list | None): List of sequencing workflows
+    - workflowids (list | None): List of workflows run ids generating the files to release
     - runs (list | None): List of sequencing runs of generating the underlying sequences of the data 
     - cases (List | None): List of case identifiers
     - libraries (dict | None): Dictionary with libraries and runs for which data is to be released
@@ -2070,15 +2071,25 @@ def select_files(file_info, project, workflows=None, runs = None, cases = None, 
             release_files = list(map(lambda x: os.path.realpath(x), release_files))
             # evaluating full paths
             to_remove = [i for i in file_info if i not in release_files or is_correct_project(file_info[i]['project'], project) == False]    
-    else:
+    # keep only files corresponding to the workflow ids
+    elif workflowids:
+        # keep only files corresponding to the workflow ids
+        # check if the workflow ids are complete or only contain the numerical portion
+        if all(map(lambda x: os.path.dirname(x) == '', workflowids)):
+            # evaluating the numerical potion of the workflow id
+            to_remove = [i for i in file_info if os.path.basename(file_info[i]['wfrun_id']) not in workflowids or is_correct_project(file_info[i]['project'], project) == False]
+        elif all(map(lambda x: os.path.dirname(x), workflowids)):
+            # evaluating full workflow id
+            to_remove = [i for i in file_info if file_info[i]['wfrun_id'] not in workflowids or is_correct_project(file_info[i]['project'], project) == False]
+    # extract sequencing data if release files and workflow ids are not specified
+    elif sequencing_workflows:
         # select based on other options
         to_remove = []
         for file in file_info:
             # select the correct project
             L = [is_correct_project(file_info[file]['project'], project)]
             # select the correct workflow
-            if workflows:
-                L.append(is_correct_workflow(file_info[file]['workflow'], workflows))
+            L.append(is_correct_workflow(file_info[file]['workflow'], sequencing_workflows))
             # select based on the list of cases
             if cases:
                 L.append(is_correct_case(file_info[file]['case_id'], cases))
@@ -2119,7 +2130,7 @@ def update_file_info(D, file_info):
 
 
 
-def extract_data(provenance_data, project, workflows=None, runs=None, cases=None, libraries=None, release_files=None):
+def extract_data(provenance_data, project, sequencing_workflows=None, workflowids = None, runs=None, cases=None, libraries=None, release_files=None):
     '''
     (list, str, list, list | None, list | None, dict | None, list | None) -> dict
     
@@ -2129,7 +2140,8 @@ def extract_data(provenance_data, project, workflows=None, runs=None, cases=None
     ----------
     - provenance_data (list): List of dictionaries with case information
     - project (str): Project of interest
-    - workflows (list | None): List of workflows generating the data to release
+    - sequencing_workflows (list | None): List of sequencing workflow names
+    - workflowids (list | None): List of workflow run ids generating the data to release
     - runs (list | None): List of sequencing runs
     - cases (list | None): List of case identifiers for which data need to be released
     - libraries (dict | None): Dictionary with libraries, runs and optional lanes 
@@ -2145,7 +2157,7 @@ def extract_data(provenance_data, project, workflows=None, runs=None, cases=None
         sample_info = extract_sample_info(case_data)
         file_info = add_sample_info(file_info, sample_info)
         # select files
-        file_info = select_files(file_info, project, workflows, runs, cases, libraries, release_files)        
+        select_files(file_info, project, sequencing_workflows, workflowids, runs, cases, libraries, release_files)
         # update dict 
         if file_info:
             assert case_id not in D
@@ -2392,14 +2404,42 @@ def get_release_files(release_files):
     
     L = []
     
-    if release_files:
-        infile = open(release_files, encoding='utf-8')
-        L = infile.read().rstrip().split('\n')
-        # check that files are all full paths or file names 
-        if all(map(lambda x: os.path.dirname(x) == '', L)) or all(map(lambda x: os.path.dirname(x), L)) == False:
-            raise ValueError('Expecting only full paths or only file names')
+    infile = open(release_files, encoding='utf-8')
+    L = infile.read().rstrip().split('\n')
+    # check that files are all full paths or file names 
+    if all(map(lambda x: os.path.dirname(x) == '', L)) == False or all(map(lambda x: os.path.dirname(x), L)) == False:
+        raise ValueError('Expecting only full paths or only file names')
               
     return L
+
+
+
+def get_workflowids(workflowfile):
+    '''
+    (str) -> list
+    
+    Returns a list of workflow ids to be released
+    Pre-condition: The list should contain only full workflow identifiers or the numerical part of the Id
+    
+    Parameters
+    ----------
+    - workflowfile (str): Path to the file containing the workflow ids
+    '''
+    
+    L = []
+    
+    infile = open(workflowfile, encoding='utf-8')
+    L = infile.read().rstrip().split('\n')
+    # check that files are all full paths or file names 
+    if all(map(lambda x: os.path.dirname(x) == '', L)) == False or all(map(lambda x: os.path.dirname(x), L)) == False:
+        raise ValueError('Expecting only full workflow id or short numerical workflow ids')
+              
+    return L
+
+
+
+
+
 
 
 def generate_links(file_info, project_dir):
@@ -4276,7 +4316,6 @@ def collect_qc_metrics(library_designs, bamqc_db, dnaseqqc_db, rnaseqqc_db, emse
 
 
 
-
 def link_files(args):
     '''
     (str, str, str, str, str | None, list | None, list | None, List | None, str | None, str | None ) -> None
@@ -4296,6 +4335,8 @@ def link_files(args):
                               The second column is the run id.
                               The third optional column is the lane number.
     - workflows (list | None): List of workflows generating the data to release
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
     - runs (list | None): List of run Ids
     - cases (List | None): List of case Ids
     - casefile (str | None): File with cases
@@ -4310,26 +4351,33 @@ def link_files(args):
         
     if args.cases and args.casefile:
         sys.exit('-c and -cf are mutually exclusive')
-           
-    # check options
+    
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')           
+    
+    if args.workflowfile and args.workflowids:
+        sys.exit('-wf and -wids are mutually exclusive')
+        
     if args.release_files:
-        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
+        a = [args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-w', '-r', '-c', '-l', '-a', '-cf']
+            c = ['-wf', '-wids', '-r', '-c', '-l', '-a', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
-    else:
-        if args.analyses:
-            a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.casefile]
-            if any(a):
-                c = ['-f', '-w', '-r', '-c', '-l', '-cf']
-                err = ','.join([c[i] for i in range(len(c)) if a[i]])
-                sys.exit('-a cannot be used with options {0}'.format(err))
-        else:
-            if not args.workflows:
-                sys.exit('Use -w to indicate the pipeline workflows')
-            if args.runs and args.libraries:
-                sys.exit('-r and -l are exclusive parameters')    
+    
+    if args.analyses:
+        a = [args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.casefile]
+        if any(a):
+            c = ['-f', '-wf', '-wids', '-r', '-c', '-l', '-cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-a cannot be used with options {0}'.format(err))
+    
+    if args.workflowfile or args.workflowids:
+        a = [args.release_files, args.analyses, args.runs, args.cases, args.libraries, args.casefile]
+        if any(a):
+            c = ['-f', '-a', '-r', '-c', '-l', '-cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-wf and -wids cannot be used with options {0}'.format(err))
         
     # create a working directory to link files and save md5sums 
     working_dir = create_working_dir(args.project, args.projects_dir, args.project_name)
@@ -4341,12 +4389,16 @@ def link_files(args):
     provenance_data, deleted_cases = clean_up_provenance(provenance_data)
     print('removed {0} incomplete cases'.format(len(deleted_cases)))
     # extract data to release
-    libraries = get_libraries(args.libraries)
+    if args.libraries:
+        libraries = get_libraries(args.libraries)
+    else:
+        libraries = []
     release_files = []
     if args.analyses:
         release_files = get_analysis_files(args.analyses, args.moh)
     if args.release_files:
         release_files = get_release_files(args.release_files)
+        
     # check if cases are defined
     if args.cases:
         cases = args.cases
@@ -4355,8 +4407,24 @@ def link_files(args):
         cases = infile.read().rstrip().split('\n')
         infile.close()
     else:
-        cases = None
-    file_info = extract_data(provenance_data, args.project, workflows=args.workflows, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
+        cases = []
+    
+    # get the workflow ids if specified
+    if args.workflowfile:
+        workflowids = get_workflowids(args.workflowfile)
+    elif args.workflowids:
+        workflowids = args.workflowids
+    else:
+        workflowids = []
+    
+    # release sequence data if data is not specified in workflowfile, workflowids or release files
+    if workflowids or release_files:
+        sequencing_workflows = []
+    else:
+        sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+       
+    file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
+                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
@@ -4992,12 +5060,13 @@ if __name__ == '__main__':
     l_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
     l_parser.add_argument('-l', '--libraries', dest='libraries', help='File with libraries tagged for release. The first column is always the library. The second column is the run id and the third optional column is the lane number')
     l_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
-    l_parser.add_argument('-w', '--workflows', dest='workflows', nargs='*', help='List of workflows')
     l_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
     l_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     l_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
     l_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     l_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
+    l_parser.add_argument('-wf', '--workflowfile', dest='workflowfile', help='Path to the file with workflow ids')
+    l_parser.add_argument('-wids', '--workflowids', dest='workflowids', nargs='*', help='List of workflow run Ids')
     l_parser.add_argument('--moh', dest='moh', action='store_true', help='Link files according to MOH specifications. Json file storing analysis data is required')
     l_parser.set_defaults(func=link_files)
     
