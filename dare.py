@@ -4318,8 +4318,8 @@ def collect_qc_metrics(library_designs, bamqc_db, dnaseqqc_db, rnaseqqc_db, emse
 
 def link_files(args):
     '''
-    (str, str, str, str, str | None, list | None, list | None, List | None, str | None, str | None ) -> None
-    
+    (str, str, str, str, str | None, str | None, list | None, list | None, list | None, str | None, str | None, str | None, bool) -> None 
+       
     Links files to release in the project directory, with data organized by case and workflow name
         
     Parameters
@@ -4334,7 +4334,6 @@ def link_files(args):
                               The first column is always the library.
                               The second column is the run id.
                               The third optional column is the lane number.
-    - workflows (list | None): List of workflows generating the data to release
     - workflowfile (str | None): Path to the file with workflow ids
     - workflowids (list | None): List of workflow run Ids
     - runs (list | None): List of run Ids
@@ -4451,8 +4450,8 @@ def link_files(args):
        
 def map_external_ids(args):
     '''
-    (str, str, str, str, str | None, list | None, list | None) -> None
-        
+    (str, str, str, str, str, list | None, List | None, str | None, str | None, str | None, list | None, str | None, list | None) -> None    
+            
     Generate sample maps with sample and sequencing information
     
     Parameters
@@ -4473,6 +4472,8 @@ def map_external_ids(args):
     - release_files (str | None): File with file names or full paths of files to release
     - analyses (str | None): Path to the json file storing analysis data
     - directories (list | None): List of directories with links or files to mark in Nabu
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
     '''
     
     if args.cases and args.casefile:
@@ -4540,49 +4541,49 @@ def map_external_ids(args):
             file_info = extract_data(provenance_data, args.project, release_files=linked_files)
         else:
             file_info = {}
-    
-    # extract data to release
-    if args.libraries:
-        libraries = get_libraries(args.libraries)
     else:
-        libraries = []
+        # extract data to release
+        if args.libraries:
+            libraries = get_libraries(args.libraries)
+        else:
+            libraries = []
     
-    release_files = []
-    if args.analyses:
-        release_files = get_analysis_files(args.analyses)
-    if args.release_files:
-        release_files = get_release_files(args.release_files)
-    # keep only the fastq files 
-    release_files = [i for i in release_files if 'fastq.gz' in i]
+        release_files = []
+        if args.analyses:
+            release_files = get_analysis_files(args.analyses)
+        if args.release_files:
+            release_files = get_release_files(args.release_files)
+        # keep only the fastq files 
+        release_files = [i for i in release_files if 'fastq.gz' in i]
     
-    # check if cases are defined
-    if args.cases:
-        cases = args.cases
-    elif args.casefile:
-        infile = open(args.casefile, encoding='utf-8')
-        cases = infile.read().rstrip().split('\n')
-        infile.close()
-    else:
-        cases = []
+        # check if cases are defined
+        if args.cases:
+            cases = args.cases
+        elif args.casefile:
+            infile = open(args.casefile, encoding='utf-8')
+            cases = infile.read().rstrip().split('\n')
+            infile.close()
+        else:
+            cases = []
         
-    # get the workflow ids if specified
-    if args.workflowfile:
-        workflowids = get_workflowids(args.workflowfile)
-    elif args.workflowids:
-        workflowids = args.workflowids
-    else:
-        workflowids = []    
+        # get the workflow ids if specified
+        if args.workflowfile:
+            workflowids = get_workflowids(args.workflowfile)
+        elif args.workflowids:
+            workflowids = args.workflowids
+        else:
+            workflowids = []    
         
-    # release sequence data if data is not specified in workflowfile, workflowids or release files
-    if workflowids or release_files:
-        sequencing_workflows = []
-    else:
-        sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+        # release sequence data if data is not specified in workflowfile, workflowids or release files
+        if workflowids or release_files:
+            sequencing_workflows = []
+        else:
+            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
        
-    file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
-                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
-    print('extracted data for {0} files'.format(len(file_info)))     
+        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
+                                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
     
+    print('extracted data for {0} files'.format(len(file_info)))     
     # create sample map
     sample_map = write_sample_map(args.project, file_info, working_dir)
     print('wrote sample map {0}'.format(sample_map))
@@ -4591,10 +4592,8 @@ def map_external_ids(args):
 
 def mark_files_nabu(args):
     '''
-    (str, str, str, list|None, List|None,
-     list|None, str|None, str|None, list|None,
-     str|None, str, str, str) -> None
-    
+    (str, str, str, str | None, list | None, List | None, str | None, list | None, str | None, str | None, list | None, str | None, str, str, str
+       
     Mark released files with user name and PASS and withheld files with user name and FAIL in Nabu
 
     Parameters
@@ -4603,7 +4602,8 @@ def mark_files_nabu(args):
                         /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json
     - nabu (str): URL of the Nabu API. Default is https://nabu-prod.gsi.oicr.on.ca
     - project (str): Project of interest
-    - workflows (list | None): List of workflows generating the data to release
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
     - cases (List | None): List of case Ids
     - casefile (str | None): File with cases    
     - runs (list | None): List of run Ids
@@ -4620,37 +4620,46 @@ def mark_files_nabu(args):
     '''
     
     if args.cases and args.casefile:
-        sys.exit('-c and -cf are mutually exclusive')    
+        sys.exit('-c and -cf are mutually exclusive')
+    
+    if args.runs and args.libraries:
+        sys.exit('-r and -l are exclusive parameters')    
+    
+    if args.workflowfile and args.workflowids:
+        sys.exit('-wf and -wids are mutually exclusive')
     
     # check options
     if args.release_files:
-        a = [args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.directories. args.casefile]
+        a = [args.directories, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-w', '-r', '-c', '-l', '-a', '-d', '-cf']
+            c = ['-d', '-wf', '-wids', '-r', '-c', '-l', '-a', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-f cannot be used with options {0}'.format(err))
-    elif args.analyses:
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.directories, args.casefile]
+    
+    if args.analyses:
+        a = [args.directories, args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.casefile]
         if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-d', '-cf']
+            c = ['-d', '-f', '-wf', '-wids', '-r', '-c', '-l', '-cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-a cannot be used with options {0}'.format(err))
-    elif args.directories:
+    
+    if args.directories:
         # check that all directories are valid
         if all(list(map(lambda x: os.path.isdir(x), args.directories))) == False:
             sys.exit('Please provide valid directories with -d')        
-        a = [args.release_files, args.workflows, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
+        a = [args.release_files, args.workflowfile, args.workflowids, args.runs, args.cases, args.libraries, args.analyses, args.casefile]
         if any(a):
-            c = ['-f', '-w', '-r', '-c', '-l', '-a', '-cf']
+            c = ['-f', '-wf', '-wids', '-r', '-c', '-l', '-a', 'cf']
             err = ','.join([c[i] for i in range(len(c)) if a[i]])
             sys.exit('-d cannot be used with options {0}'.format(err))
-    else:
-        if not args.workflows:
-            sys.exit('Use -w to indicate the pipeline workflows')
-        if args.runs and args.libraries:
-           sys.exit('-r and -l are exclusive parameters')    
     
-
+    if args.workflowfile or args.workflowids:
+        a = [args.directories, args.release_files, args.analyses, args.runs, args.cases, args.libraries, args.casefile]
+        if any(a):
+            c = ['-d', '-f', '-a', '-r', '-c', '-l', '-cf']
+            err = ','.join([c[i] for i in range(len(c)) if a[i]])
+            sys.exit('-wf and -wids cannot be used with options {0}'.format(err))
+    
     # get the files to mark
     # load data
     provenance_data = load_data(args.provenance)
@@ -4672,12 +4681,17 @@ def mark_files_nabu(args):
             file_info = {}
     else:
         # extract data to release
-        libraries = get_libraries(args.libraries)
+        if args.libraries:
+            libraries = get_libraries(args.libraries)
+        else:
+            libraries
+            
         release_files = []
         if args.analyses:
             release_files = get_analysis_files(args.analyses)
         if args.release_files:
             release_files = get_release_files(args.release_files)
+        
         # check if cases are defined
         if args.cases:
             cases = args.cases
@@ -4686,10 +4700,26 @@ def mark_files_nabu(args):
             cases = infile.read().rstrip().split('\n')
             infile.close()
         else:
-            cases = None
-        file_info = extract_data(provenance_data, args.project, args.workflows, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
-    print('extracted data for {0} files'.format(len(file_info))) 
+            cases = []
+        
+        # get the workflow ids if specified
+        if args.workflowfile:
+            workflowids = get_workflowids(args.workflowfile)
+        elif args.workflowids:
+            workflowids = args.workflowids
+        else:
+            workflowids = []    
+    
+        # release sequence data if data is not specified in workflowfile, workflowids or release files
+        if workflowids or release_files:
+            sequencing_workflows = []
+        else:
+            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
 
+        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
+                                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
+    print('extracted data for {0} files'.format(len(file_info))) 
+    
     # make a list of swids
     if file_info:
         swids = []
@@ -5102,7 +5132,7 @@ if __name__ == '__main__':
     l_parser.set_defaults(func=link_files)
     
    	# map external IDs 
-    m_parser = subparsers.add_parser('map', help="Map files to external IDs")
+    m_parser = subparsers.add_parser('map', help="Map sequencing files to external IDs")
     m_parser.add_argument('-p', '--parent', dest='projects_dir', default='/.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/', help='Parent directory containing the project subdirectories with file links. Default is /.mounts/labs/gsiprojects/gsi/Data_Transfer/Release/PROJECTS/')
     m_parser.add_argument('-n', '--name', dest='project_name', help='Project name used to create the project directory in gsi space')
     m_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
@@ -5114,13 +5144,16 @@ if __name__ == '__main__':
     m_parser.add_argument('-f', '--files', dest='release_files', help='File with file names or full paths of files to release')
     m_parser.add_argument('-a', '--analyses', dest='analyses', help='Path to the json file storing analysis data')
     m_parser.add_argument('-d', '--directories', dest='directories', nargs='*', help='List of directories with links or files to mark in Nabu')
+    m_parser.add_argument('-wf', '--workflowfile', dest='workflowfile', help='Path to the file with workflow ids')
+    m_parser.add_argument('-wids', '--workflowids', dest='workflowids', nargs='*', help='List of workflow run Ids')
     m_parser.set_defaults(func=map_external_ids)
 
     # mark files in nabu 
     qc_parser = subparsers.add_parser('qc', help="Updates FileQC status in Nabu")
     qc_parser.add_argument('-pv', '--provenance', dest='provenance', default='/scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json', help='Path to the json with production data. Default is /scratch2/groups/gsi/production/pr_refill_v2/provenance_reporter.json')
     qc_parser.add_argument('-pr', '--project', dest='project', help='Project name', required=True)
-    qc_parser.add_argument('-w', '--workflows', dest='workflows', nargs='*', help='List of workflows')
+    qc_parser.add_argument('-wf', '--workflowfile', dest='workflowfile', help='Path to the file with workflow ids')
+    qc_parser.add_argument('-wids', '--workflowids', dest='workflowids', nargs='*', help='List of workflow run Ids')
     qc_parser.add_argument('-c', '--cases', dest='cases', nargs='*', help='List of case Ids')
     qc_parser.add_argument('-cf', '--casefile', dest='casefile', help='File with cases')
     qc_parser.add_argument('-r', '--runs', dest='runs', nargs='*', help='List of run Ids')
