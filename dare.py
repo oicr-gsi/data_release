@@ -4394,8 +4394,151 @@ def list_release_files(release_files, analyses, moh = False):
 
 
 
+def list_cases(cases, casefile):
+    '''
+    (list | None, str | None) -> list
+    
+    Returns a list of cases if defined 
+    
+    Parameters
+    ----------
+    - cases (List | None): List of case Ids
+    - casefile (str | None): File with cases
+    '''
+
+    # check if cases are defined
+    if cases:
+        case_names = cases
+    elif casefile:
+        infile = open(casefile, encoding='utf-8')
+        case_names = infile.read().rstrip().split('\n')
+        infile.close()
+    else:
+        case_names = []
+
+    return case_names
 
 
+def list_workflowids(workflowfile, workflowids):
+    '''
+    (str | None, list | None) -> list
+    
+    Returns a list of workflow ids if defined
+        
+    Parameters
+    ----------
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
+    '''
+
+    # get the workflow ids if specified
+    if workflowfile:
+        wfrunids = get_workflowids(workflowfile)
+    elif workflowids:
+        wfrunids = workflowids
+    else:
+        wfrunids = []
+    
+    return wfrunids
+
+
+
+def get_file_info_from_links(directories, provenance_data, project, keep_fastq=False):
+    '''
+    (list | None, list, str, bool) -> dict
+    
+    Returns a dictionary with file information for all the linked files
+    in directories
+       
+    Parameters
+    ----------
+    - directories (list): List of directories with linked released files
+    - provenance_data (list): List of dictionaries with case information
+    - project (str): name of project
+    - feep_fastq (bool): Keep only fastq files
+    '''
+    
+    # list of the linked files
+    linked_files = []
+    # list all files in directories and subdirectories
+    # list path of target files if files are links
+    for directory in directories:
+        linked_files.extend(list_files(directory))
+    
+    if keep_fastq:
+        # keep only fastq files
+        linked_files = [i for i in linked_files if 'fastq.gz' in i]
+            
+    if linked_files:
+        file_info = extract_data(provenance_data, project, release_files=linked_files)
+    else:
+        file_info = {}
+    
+    return file_info
+
+
+
+def get_file_info(provenance_data, libraries_file, cases, casefile, workflowfile, workflowids,
+                  files_to_release, analyses, project, runs, keep_fastq=False):
+    '''
+    
+    Returns a dictionary with file information for all the files or fastqs only
+        
+    Parameters
+    ----------
+    - provenance_data (list): List of dictionaries with case information
+    - libraries_file (str | None): File with libraries tagged for release.
+                              The first column is always the library.
+                              The second column is the run id.
+                              The third optional column is the lane number.
+    - cases (List | None): List of case Ids
+    - casefile (str | None): File with cases
+    - workflowfile (str | None): Path to the file with workflow ids
+    - workflowids (list | None): List of workflow run Ids
+    - files_to_release (str | None): File with file names or full paths of files to release
+    - analyses (str | None): Path to the json file storing analysis data
+    - project (str): name of project
+    - runs (list | None): List of run Ids
+    - feep_fastq (bool): Keep only fastq files
+    '''
+    
+    if libraries_file:
+        libraries = get_libraries(libraries_file)
+    else:
+        libraries = []
+
+    # check if cases are defined
+    case_names = list_cases(cases, casefile)
+       
+    # get the workflow ids if specified
+    wfrunids = list_workflowids(workflowfile, workflowids)
+    
+    # get files to release if specified
+    release_files = list_release_files(files_to_release, analyses)
+    
+    if keep_fastq:
+        # keep only the fastq files 
+        release_files = [i for i in release_files if 'fastq.gz' in i]
+
+    # analysis data is extracted using released files or workflow ids
+    # sequence data is extracted if these are not provided
+    if workflowids or release_files:
+        sequencing_workflows = []
+    else:
+        sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+
+    file_info = extract_data(provenance_data, project, sequencing_workflows=sequencing_workflows,
+                             workflowids = wfrunids, runs=runs, cases=case_names, libraries=libraries,
+                             release_files=release_files)
+ 
+    if keep_fastq:
+        # keep only fastqs when files or workflow ids are specified
+        to_remove = [i for i in file_info if file_info[i]['wfrun_id'] not in sequencing_workflows]
+        for i in to_remove:
+            del file_info[i]
+   
+    return file_info
+    
 
 
 
@@ -4479,25 +4622,11 @@ def link_files(args):
     # get files to release if specified
     release_files = list_release_files(args.release_files, args.analyses, args.moh)
 
-    
-        
     # check if cases are defined
-    if args.cases:
-        cases = args.cases
-    elif args.casefile:
-        infile = open(args.casefile, encoding='utf-8')
-        cases = infile.read().rstrip().split('\n')
-        infile.close()
-    else:
-        cases = []
-    
+    cases = list_cases(args.cases, args.casefile)
+
     # get the workflow ids if specified
-    if args.workflowfile:
-        workflowids = get_workflowids(args.workflowfile)
-    elif args.workflowids:
-        workflowids = args.workflowids
-    else:
-        workflowids = []
+    workflowids = list_workflowids(args.workflowfile, args.workflowids)
     
     # release sequence data if data is not specified in workflowfile, workflowids or release files
     if workflowids or release_files:
@@ -4575,57 +4704,13 @@ def map_external_ids(args):
     
     
     if args.directories:
-        # list of the linked files
-        linked_files = []
-        # list all files in directories and subdirectories
-        # list path of target files if files are links
-        for directory in args.directories:
-            linked_files.extend(list_files(directory))
-        # keep only fastq files
-        linked_files = [i for i in linked_files if 'fastq.gz' in i]
-        if linked_files:
-            file_info = extract_data(provenance_data, args.project, release_files=linked_files)
-        else:
-            file_info = {}
-    else:
-        # extract data to release
-        if args.libraries:
-            libraries = get_libraries(args.libraries)
-        else:
-            libraries = []
-    
-        # get files to release if specified
-        release_files = list_release_files(args.release_files, args.analyses)
-        # keep only the fastq files 
-        release_files = [i for i in release_files if 'fastq.gz' in i]
-    
-        # check if cases are defined
-        if args.cases:
-            cases = args.cases
-        elif args.casefile:
-            infile = open(args.casefile, encoding='utf-8')
-            cases = infile.read().rstrip().split('\n')
-            infile.close()
-        else:
-            cases = []
-        
-        # get the workflow ids if specified
-        if args.workflowfile:
-            workflowids = get_workflowids(args.workflowfile)
-        elif args.workflowids:
-            workflowids = args.workflowids
-        else:
-            workflowids = []    
-        
-        # release sequence data if data is not specified in workflowfile, workflowids or release files
-        if workflowids or release_files:
-            sequencing_workflows = []
-        else:
-            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+        file_info = get_file_info_from_links(args.directories, provenance_data, args.project, keep_fastq=True)
        
-        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
-                                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
-    
+    else:
+        file_info = get_file_info(provenance_data, args.libraries, args.cases, args.casefile,
+                                  args.workflowfile, args.workflowids, args.release_files,
+                                  args.analyses, args.project, args.runs, keep_fastq=True)
+            
     print('extracted data for {0} files'.format(len(file_info)))     
     # create sample map
     sample_map = write_sample_map(args.project, file_info, working_dir)
@@ -4675,53 +4760,13 @@ def mark_files_nabu(args):
     print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     if args.directories:
-        # list of the linked files
-        linked_files = []
-        # list all files in directories and subdirectories
-        # list path of target files if files are links
-        for directory in args.directories:
-            linked_files.extend(list_files(directory))
-        if linked_files:
-            file_info = extract_data(provenance_data, args.project, release_files=linked_files)
-        else:
-            file_info = {}
-    else:
-        # extract data to release
-        if args.libraries:
-            libraries = get_libraries(args.libraries)
-        else:
-            libraries
-        
-        # get files to release if specified
-        release_files = list_release_files(args.release_files, args.analyses)
-    
-        # check if cases are defined
-        if args.cases:
-            cases = args.cases
-        elif args.casefile:
-            infile = open(args.casefile, encoding='utf-8')
-            cases = infile.read().rstrip().split('\n')
-            infile.close()
-        else:
-            cases = []
-        
-        # get the workflow ids if specified
-        if args.workflowfile:
-            workflowids = get_workflowids(args.workflowfile)
-        elif args.workflowids:
-            workflowids = args.workflowids
-        else:
-            workflowids = []    
-    
-        # analysis data is extracted using released files or workflow ids
-        # sequence data is extracted if these are not provided
-        if workflowids or release_files:
-            sequencing_workflows = []
-        else:
-            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+        file_info = get_file_info_from_links(args.directories, provenance_data, args.project)
 
-        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
-                                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
+    else:
+        file_info = get_file_info(provenance_data, args.libraries, args.cases, args.casefile,
+                                  args.workflowfile, args.workflowids, args.release_files,
+                                  args.analyses, args.project, args.runs)
+        
     print('extracted data for {0} files'.format(len(file_info))) 
     
     # make a list of swids
@@ -4779,51 +4824,13 @@ def case_signoff(args):
     print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     if args.directories:
-        # list of the linked files
-        linked_files = []
-        # list all files in directories and subdirectories
-        # list path of target files if files are links
-        for directory in args.directories:
-            linked_files.extend(list_files(directory))
-        if linked_files:
-            file_info = extract_data(provenance_data, args.project, release_files=linked_files)
-        else:
-            file_info = {}
-    else:
-        # extract data to release
-        libraries = get_libraries(args.libraries)
-        
-        # get files to release if specified
-        release_files = list_release_files(args.release_files, args.analyses)
-               
-        # check if cases are defined
-        if args.cases:
-            case_names = args.cases
-        elif args.casefile:
-            infile = open(args.casefile, encoding='utf-8')
-            case_names = infile.read().rstrip().split('\n')
-            infile.close()
-        else:
-            case_names = []
-        
-        # get the workflow ids if specified
-        if args.workflowfile:
-            workflowids = get_workflowids(args.workflowfile)
-        elif args.workflowids:
-            workflowids = args.workflowids
-        else:
-            workflowids = []    
-    
-        # analysis data is extracted using released files or workflow ids
-        # sequence data is extracted if these are not provided
-        if workflowids or release_files:
-            sequencing_workflows = []
-        else:
-            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+        file_info = file_info = get_file_info_from_links(args.directories, provenance_data, args.project)
 
-        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
-                                 workflowids = workflowids, runs=args.runs, cases=case_names, libraries=libraries, release_files=release_files)
-    
+    else:
+        file_info = get_file_info(provenance_data, args.libraries, args.cases, args.casefile,
+                                  args.workflowfile, args.workflowids, args.release_files,
+                                  args.analyses, args.project, args.runs, keep_fastq=True)
+
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # get end-point
@@ -4918,61 +4925,12 @@ def write_batch_report(args):
     print('removed {0} incomplete cases'.format(len(deleted_cases)))
     
     if args.directories:
-        # list of the linked files
-        linked_files = []
-        # list all files in directories and subdirectories
-        # list path of target files if files are links
-        for directory in args.directories:
-            linked_files.extend(list_files(directory))
-        # keep only fastq files
-        if linked_files:
-            linked_files = [i for i in linked_files if 'fastq.gz' in i]
-            if linked_files:
-                file_info = extract_data(provenance_data, args.project, release_files=linked_files)
-            else:
-                file_info = {}
-                print('Expecting fastqs in directories, but found none')
-        else:
-            file_info = {}
-            print('Expecting fastqs in directories, but found none')
-
-    else:
-        # check if cases are defined
-        if args.cases:
-            cases = args.cases
-        elif args.casefile:
-            infile = open(args.casefile, encoding='utf-8')
-            cases = infile.read().rstrip().split('\n')
-            infile.close()
-        else:
-            cases = []
-        # extract data to release
-        libraries = get_libraries(args.libraries)
-        
-        # get files to release if specified
-        release_files = list_release_files(args.release_files, args.analyses)
-               
-        # get the workflow ids if specified
-        if args.workflowfile:
-            workflowids = get_workflowids(args.workflowfile)
-        elif args.workflowids:
-            workflowids = args.workflowids
-        else:
-            workflowids = []    
-        
-        # release sequence data if data is not specified in workflowfile, workflowids or release files
-        if workflowids or release_files:
-            sequencing_workflows = []
-        else:
-            sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
-       
-        file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
-                                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
+        file_info = get_file_info_from_links(args.directories, provenance_data, args.project, keep_fastq=True)
     
-        # keep only fastqs when files or workflow ids are specified
-        to_remove = [i for i in file_info if file_info[i]['wfrun_id'] not in sequencing_workflows]
-        for i in to_remove:
-            del file_info[i]
+    else:
+        file_info = get_file_info(provenance_data, args.libraries, args.cases, args.casefile,
+                                  args.workflowfile, args.workflowids, args.release_files,
+                                  args.analyses, args.project, args.runs, keep_fastq=True)
         
     print('extracted data for {0} files'.format(len(file_info))) 
           
