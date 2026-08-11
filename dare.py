@@ -18,9 +18,9 @@ import sys
 import json
 import pathlib
 import sqlite3
-# from jinja2 import Environment, FileSystemLoader
-# from weasyprint import HTML
-# from weasyprint import CSS
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+from weasyprint import CSS
 import re
 
 
@@ -2490,33 +2490,111 @@ def generate_links(file_info, project_dir):
                 os.symlink(file, link)
 
 
-def generate_moh_links(analyses_file, project_dir):
+def generate_moh_links(file_info, project_dir):
     '''
-    (str, str) -> None
+    (str, list, str) -> None
     
-    Link files according to the data structure contained in the analyses_file json
+    Link files according to MOH specifications  
             
     Parameters
     ----------
-    - analyses_file (str): Path to the json file containing the analyses file
+    - file_info (dict): Dictionary with file information
     - project_dir (str): Path to the project directory where files should be linked
     '''
     
-    infile = open(analyses_file, encoding='utf-8')
-    data = json.load(infile)
-    infile.close()
+    groups = {'purple': 'calls.copynumber',
+              'sequenza': 'calls.copynumber',
+              'varscan': 'calls.copynumber',
+              'gridss': 'calls.copynumber',
+              'rsem': 'calls.expression',
+              'bammergepreprocessing': 'alignments_WG.callready',  
+              'haplotypecaller': 'calls.germline.mutations',
+              'starfusion': 'calls.fusions',
+              'arriba': 'calls.fusions',
+              'mavis': 'calls.structuralvariants',
+              'delly': 'calls.structuralvariants',
+              'star_call_ready': 'alignments_WT.callready',
+              'varianteffectpredictor': 'calls.mutations',           
+              'msisensor': 'calls.msi',
+              'hrdetect': 'calls.hrd'}
     
-    for donor in data:
-        donordir = os.path.join(project_dir, donor)
-        os.makedirs(donordir, exist_ok=True)
-        for datatype in data[donor]:
+    
+    for case_id in file_info:
+        for file in file_info[case_id]:
+            assert case_id == file_info[case_id][file]['case_id']
+            workflow = file_info[case_id][file]['workflow']
+            # get the general workflow name
+            workflow_name = workflow.split('_')[0].lower()
+            assert workflow_name in groups
+            datatype = groups[workflow_name]
+            # make donor directory
+            donor = list(set([d['donor'] for d in file_info[case_id][file]['samples']]))
+            assert len(donor) == 1
+            donor = donor[0]
+            donordir = os.path.join(project_dir, donor)
+            os.makedirs(donordir, exist_ok=True)
+            # make a datatype directory
             datadir = os.path.join(donordir, datatype)
             os.makedirs(datadir, exist_ok=True)
-            for file in data[donor][datatype]:
-                filename = os.path.basename(file)
-                link = os.path.join(datadir, filename)
+            # link file in datatype directory
+            filename = os.path.basename(file)
+            link = os.path.join(datadir, filename)
             if os.path.isfile(link) == False:
                 os.symlink(file, link)
+
+            
+         
+
+
+# ######## NEED TO MODIFY JSON IN WATERZOOI TO BE ABLE TO LINK DIRECTORY FROM JSON ACCORDING TO EXPECTED DIRE STRUCTURE
+
+# def generate_links_from_json(analyses_file, project_dir, moh=False):
+#     '''
+#     (str, list, str) -> None
+    
+#     Link files according to the data structure contained in the analyses_file json
+#     or 
+            
+#     Parameters
+#     ----------
+
+
+#     - analyses_file (str): Path to json storing files to release
+#     - project_dir (str): Path to the project directory where files should be linked
+#     - moh (bool): Link files according to MOH specification if True
+#     '''
+    
+#     sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
+    
+#     # link files according to the json structure
+#     infile = open(analyses_file, encoding='utf-8')
+#     data = json.load(infile)
+#     infile.close()
+    
+#     if moh:
+#         # link data according to the MOH specifications
+#         for donor in data:
+#             donordir = os.path.join(project_dir, donor)
+#             os.makedirs(donordir, exist_ok=True)
+#             for datatype in data[donor]:
+#                 datadir = os.path.join(donordir, datatype)
+#                 os.makedirs(datadir, exist_ok=True)
+#                 for file in data[donor][datatype]:
+#                     filename = os.path.basename(file)
+#                     link = os.path.join(datadir, filename)
+#                 if os.path.isfile(link) == False:
+#                     os.symlink(file, link)
+#     else:
+#         for case_id in data:
+#             if ' ' in case_id:
+#                 case_name = case_id.replace(' ', '_')
+#             else:
+#                 case_name = case_id
+            
+            
+#             ######## continue here        
+            
+
 
 
 
@@ -4381,7 +4459,7 @@ def list_release_files(release_files, analyses, moh = False):
     ----------
     - release_files (str | None): Path to file with file names or paths to be released 
     - analyses (str | None): Path to the file with hierarchical structure storing sample and workflow ids
-    - moh (bool):  Link data according to MOH specifications, directly from the 
+    - moh (bool):  Link data according to MOH specifications 
     '''
     
     release_files = []
@@ -4567,12 +4645,12 @@ def link_files(args):
     - casefile (str | None): File with cases
     - release_files (str | None): Path to file with file names or paths to be released 
     - analyses (str | None): Path to the file with hierarchical structure storing sample and workflow ids
-    - moh (bool):  Link data according to MOH specifications, directly from the 
+    - moh (bool):  Link data according to MOH specifications 
     '''
     
     if args.moh:
-        if args.analyses is None:
-            sys.exit('Use option -a to prvide the json for MOH release')
+        if all([args.analyses, args.release_files, args.workflowfile, args.workflowids]) == False:
+            sys.exit('Use option -a, -f, -wids or -wf to identify the MOH data to release')
         
     if args.cases and args.casefile:
         sys.exit('-c and -cf are mutually exclusive')
@@ -4619,6 +4697,7 @@ def link_files(args):
     else:
         libraries = []
 
+
     # get files to release if specified
     release_files = list_release_files(args.release_files, args.analyses, args.moh)
 
@@ -4635,7 +4714,7 @@ def link_files(args):
         sequencing_workflows = ['casava', 'bcl2fastq', 'fileimportforanalysis', 'fileimport', 'import_fastq']
        
     file_info = extract_data(provenance_data, args.project, sequencing_workflows=sequencing_workflows,
-                 workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
+                             workflowids = workflowids, runs=args.runs, cases=cases, libraries=libraries, release_files=release_files)
     print('extracted data for {0} files'.format(len(file_info))) 
 
     # create sample map
@@ -4652,7 +4731,7 @@ def link_files(args):
     # link data
     if args.moh:
         # link data according to MOH specifications
-        generate_moh_links(args.analyses, working_dir)
+        generate_moh_links(file_info, working_dir)
     else:
         # generate directory structure according to the extracted file info
         generate_links(file_info, working_dir)
