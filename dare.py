@@ -2431,7 +2431,7 @@ def get_workflowids(workflowfile):
     infile = open(workflowfile, encoding='utf-8')
     L = infile.read().rstrip().split('\n')
     # check that files are all full paths or file names 
-    if all(map(lambda x: os.path.dirname(x) == '', L)) == False or all(map(lambda x: os.path.dirname(x), L)) == False:
+    if any(map(lambda x: os.path.dirname(x) == '', L)) and any(map(lambda x: os.path.dirname(x), L)):
         raise ValueError('Expecting only full workflow id or short numerical workflow ids')
               
     return L
