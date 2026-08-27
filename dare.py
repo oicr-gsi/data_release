@@ -2071,6 +2071,7 @@ def select_files(file_info, project, sequencing_workflows = None, workflowids=No
             release_files = list(map(lambda x: os.path.realpath(x), release_files))
             # evaluating full paths
             to_remove = [i for i in file_info if i not in release_files or is_correct_project(file_info[i]['project'], project) == False]    
+      
     # keep only files corresponding to the workflow ids
     elif workflowids:
         # keep only files corresponding to the workflow ids
@@ -2407,7 +2408,7 @@ def get_release_files(release_files):
     infile = open(release_files, encoding='utf-8')
     L = infile.read().rstrip().split('\n')
     # check that files are all full paths or file names 
-    if all(map(lambda x: os.path.dirname(x) == '', L)) == False or all(map(lambda x: os.path.dirname(x), L)) == False:
+    if (all(map(lambda x: os.path.dirname(x) == '', L)) or all(map(lambda x: os.path.dirname(x), L))) == False:
         raise ValueError('Expecting only full paths or only file names')
               
     return L
@@ -4462,13 +4463,13 @@ def list_release_files(release_files, analyses, moh = False):
     - moh (bool):  Link data according to MOH specifications 
     '''
     
-    release_files = []
+    L = []
     if analyses:
-        release_files = get_analysis_files(analyses, moh)
+        L = get_analysis_files(analyses, moh)
     elif release_files:
-        release_files = get_release_files(release_files)
+        L = get_release_files(release_files)
 
-    return release_files
+    return L
 
 
 
@@ -4593,7 +4594,7 @@ def get_file_info(provenance_data, libraries_file, cases, casefile, workflowfile
     
     # get files to release if specified
     release_files = list_release_files(files_to_release, analyses)
-    
+        
     if keep_fastq:
         # keep only the fastq files 
         release_files = [i for i in release_files if 'fastq.gz' in i]
@@ -4700,7 +4701,7 @@ def link_files(args):
 
     # get files to release if specified
     release_files = list_release_files(args.release_files, args.analyses, args.moh)
-
+    
     # check if cases are defined
     cases = list_cases(args.cases, args.casefile)
 
