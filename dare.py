@@ -4612,10 +4612,14 @@ def get_file_info(provenance_data, libraries_file, cases, casefile, workflowfile
  
     if keep_fastq:
         # keep only fastqs when files or workflow ids are specified
-        to_remove = [i for i in file_info if file_info[i]['wfrun_id'] not in sequencing_workflows]
+        for case_id in file_info:
+            to_remove = [file for file in file_info[case_id] if file_info[case_id][file]['workflow'] not in sequencing_workflows]
+            for i in to_remove:
+                del file_info[case_id][i]
+        to_remove = [case_id for case_id in file_info if len(file_info[case_id]) == 0]        
         for i in to_remove:
             del file_info[i]
-   
+        
     return file_info
     
 
