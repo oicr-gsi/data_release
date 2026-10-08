@@ -4913,7 +4913,7 @@ def case_signoff(args):
     else:
         file_info = get_file_info(provenance_data, args.libraries, args.cases, args.casefile,
                                   args.workflowfile, args.workflowids, args.release_files,
-                                  args.analyses, args.project, args.runs, keep_fastq=True)
+                                  args.analyses, args.project, args.runs)
 
     print('extracted data for {0} files'.format(len(file_info))) 
 
